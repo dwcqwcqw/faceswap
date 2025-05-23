@@ -1,0 +1,25 @@
+name = "faceswap-api"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[env.production]
+name = "faceswap-api"
+
+[env.staging]
+name = "faceswap-api-staging"
+
+# R2 bucket bindings
+[[r2_buckets]]
+binding = "FACESWAP_BUCKET"
+bucket_name = "faceswap-storage"
+
+# KV namespace for session management
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "your-kv-namespace-id"
+
+# Environment variables
+[vars]
+RUNPOD_API_KEY = "your-runpod-api-key"
+RUNPOD_ENDPOINT_ID = "your-runpod-endpoint-id"
+ALLOWED_ORIGINS = "https://faceswap.yourdomain.com" 
