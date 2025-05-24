@@ -2,7 +2,7 @@ import { useState } from 'react'
 import FileUpload from '../components/FileUpload'
 import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
-import { ProcessingJob, DetectedFaces, Face } from '../types'
+import { ProcessingJob, DetectedFaces } from '../types'
 
 interface FaceMapping {
   faceId: string;
@@ -67,7 +67,7 @@ export default function MultiImagePage() {
       setDetectedFaces(faces)
       
       // Initialize face mappings
-      const mappings: FaceMapping[] = faces.faces.map((face, index) => ({
+      const mappings: FaceMapping[] = faces.faces.map((_, index) => ({
         faceId: `face_${index}`,
         targetFile: null
       }))

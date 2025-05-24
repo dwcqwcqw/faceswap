@@ -44,21 +44,36 @@ export default function SingleImagePage() {
 
     try {
       // Upload source image
-      console.log('上传原图...')
+      console.log('上传原图...', sourceImage.name, sourceImage.size)
       const sourceResponse = await apiService.uploadFile(sourceImage)
+      console.log('原图上传响应:', sourceResponse)
+      
       if (!sourceResponse.success || !sourceResponse.data) {
-        throw new Error('原图上传失败')
+        throw new Error(`原图上传失败: ${sourceResponse.error || '未知错误'}`)
       }
+      
+      console.log('✅ 原图上传成功:', sourceResponse.data.fileId)
 
       // Upload target face
-      console.log('上传目标人脸...')
+      console.log('上传目标人脸...', targetFace.name, targetFace.size)
       const targetResponse = await apiService.uploadFile(targetFace)
+      console.log('目标人脸上传响应:', targetResponse)
+      
       if (!targetResponse.success || !targetResponse.data) {
-        throw new Error('目标人脸上传失败')
+        throw new Error(`目标人脸上传失败: ${targetResponse.error || '未知错误'}`)
       }
+      
+      console.log('✅ 目标人脸上传成功:', targetResponse.data.fileId)
 
-      // Start processing
-      console.log('开始处理...')
+      // Verify both files can be accessed before processing
+      console.log('验证文件可访问性...')
+      
+      // Start processing only after both uploads are confirmed
+      console.log('开始处理...', {
+        source_file: sourceResponse.data.fileId,
+        target_file: targetResponse.data.fileId
+      })
+      
       const processResponse = await apiService.processSingleImage({
         source_file: sourceResponse.data.fileId,
         target_file: targetResponse.data.fileId,
@@ -67,8 +82,12 @@ export default function SingleImagePage() {
         }
       })
 
+      console.log('处理响应:', processResponse)
+
       if (processResponse.success && processResponse.data) {
         const jobId = processResponse.data.jobId
+        console.log('✅ 处理任务创建成功:', jobId)
+        
         setProcessingStatus({
           id: jobId,
           status: 'pending',
@@ -80,7 +99,7 @@ export default function SingleImagePage() {
         // Start polling for status
         setTimeout(() => pollJobStatus(jobId), 2000)
       } else {
-        throw new Error('处理启动失败')
+        throw new Error(`处理启动失败: ${processResponse.error || '未知错误'}`)
       }
       
     } catch (error: any) {

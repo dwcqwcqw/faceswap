@@ -67,7 +67,7 @@ export default function MultiVideoPage() {
       setDetectedFaces(faces)
       
       // Initialize face mappings
-      const mappings: FaceMapping[] = faces.faces.map((face, index) => ({
+      const mappings: FaceMapping[] = faces.faces.map((_, index) => ({
         faceId: `face_${index}`,
         targetFile: null
       }))
