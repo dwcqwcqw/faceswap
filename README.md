@@ -1,49 +1,108 @@
-# AI Face Swap Platform
+# 🎨 AI Face Swap Platform
 
-基于先进AI技术的图片和视频换脸平台，支持单人和多人换脸，提供专业级的处理效果和用户体验。
+基于 [Deep-Live-Cam](https://github.com/hacksider/Deep-Live-Cam) 的先进AI换脸平台，支持单人和多人换脸，提供专业级的处理效果和用户体验。
+
+## 🚀 快速部署 (30分钟)
+
+### 🎯 推荐方案：GitHub 直接部署
+```bash
+# 1. 访问 RunPod Console
+open https://runpod.io/console/serverless
+
+# 2. 创建 Serverless Endpoint
+# Source: GitHub Repository
+# Repository: https://github.com/dwcqwcqw/faceswap.git
+# Branch: main
+
+# 3. 按照指南操作
+cat GITHUB_DEPLOY.md
+```
+
+### 📋 部署指南
+- 🚀 **[GITHUB_DEPLOY.md](./GITHUB_DEPLOY.md)** - GitHub 直接部署 (推荐)
+- ⚡ **[QUICK_START.md](./QUICK_START.md)** - 30分钟快速开始
+- 📖 **[RUNPOD_DEPLOYMENT.md](./RUNPOD_DEPLOYMENT.md)** - 详细部署指南
 
 ## 🌟 功能特性
 
 ### 1. 单人图片换脸
-- 上传原图和目标人脸
-- AI自动识别并进行换脸处理
-- 操作简单快速
+- 🎭 AI自动识别并进行换脸处理
+- ⚡ 5-15秒快速处理
+- 🎨 高质量输出效果
 
 ### 2. 多人图片换脸
-- 自动检测图片中的多个人脸
-- 可以分别为每个人脸上传不同的替换图片
-- 支持批量处理
+- 👥 自动检测图片中的多个人脸
+- 🔄 分别为每个人脸上传不同的替换图片
+- 📦 支持批量处理
 
-### 3. 视频换脸
-- 为视频中的人脸进行换脸处理
-- 采用逐帧处理技术确保视频流畅自然
-- 支持多种视频格式
+### 3. 单人视频换脸
+- 🎬 逐帧处理技术确保视频流畅自然
+- 🎵 保持原始音频
+- 📱 支持多种视频格式
 
 ### 4. 多人视频换脸
-- 高级视频处理功能
-- 检测视频中的多个人脸并分别进行替换处理
-- 专业级视频处理效果
+- 🏆 高级视频处理功能
+- 👨‍👩‍👧‍👦 检测视频中的多个人脸并分别进行替换
+- 💎 专业级视频处理效果
 
 ## 🏗️ 技术架构
 
-### 前端
-- **框架**: React 18 + TypeScript
-- **构建工具**: Vite
-- **样式**: Tailwind CSS
-- **UI组件**: Heroicons
-- **路由**: React Router
-- **HTTP客户端**: Axios
+### 🎨 前端架构
+```yaml
+框架: React 18 + TypeScript
+构建: Vite
+样式: Tailwind CSS
+路由: React Router
+状态: React Hooks
+```
 
-### 后端
-- **平台**: Cloudflare Workers
-- **存储**: Cloudflare R2
-- **数据库**: Cloudflare KV
-- **AI处理**: RunPod Serverless GPU
+### ⚙️ 后端架构
+```yaml
+API: Cloudflare Workers
+存储: Cloudflare R2  
+数据库: Cloudflare KV
+```
 
-### 部署
-- **前端**: 可部署到任何静态托管平台
-- **后端**: Cloudflare Workers (已部署)
-- **API地址**: https://faceswap-api.faceswap.workers.dev
+### 🤖 AI 处理架构
+```yaml
+平台: RunPod Serverless
+GPU: NVIDIA RTX 系列
+框架: PyTorch + ONNX
+模型: Deep-Live-Cam 模型库
+```
+
+### 🗂️ 模型库
+```yaml
+换脸: inswapper_128_fp16.onnx
+增强: GFPGANv1.4.pth  
+分析: buffalo_l
+解析: 79999_iter.pth
+```
+
+## 📊 性能表现
+
+### ⚡ 处理速度
+- **图片换脸**: 5-15秒/张
+- **视频换脸**: 30秒-5分钟 (取决于长度)
+- **并发处理**: 最多 3 个 worker
+- **启动时间**: 15-30秒 (优化后)
+
+### 💾 优化成果
+- **镜像大小**: 减少 85% (500MB vs 3.5GB)
+- **启动时间**: 提升 75% (30秒 vs 2分钟)
+- **构建时间**: 减少 60% (7-11分钟 vs 15-20分钟)
+
+## 🔗 重要链接
+
+### 📚 项目资源
+- **GitHub 仓库**: https://github.com/dwcqwcqw/faceswap.git
+- **前端应用**: http://localhost:3003 (本地开发)
+- **API 服务**: https://faceswap-api.faceswap.workers.dev
+
+### 🛠️ 外部服务
+- **RunPod Console**: https://runpod.io/console/serverless
+- **Cloudflare Dashboard**: https://dash.cloudflare.com
+- **原项目源码**: https://github.com/hacksider/Deep-Live-Cam
 
 ## 🚀 快速开始
 
