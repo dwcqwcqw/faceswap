@@ -30,14 +30,28 @@ live_resizable = True
 max_memory = None
 execution_providers: List[str] = []
 execution_threads = None
-headless = None
+
+# Check if running in headless mode (RunPod Serverless)
+headless = os.environ.get('HEADLESS', 'false').lower() == 'true' or os.environ.get('DISPLAY', '') == ''
+
 log_level = "error"
 fp_ui: Dict[str, bool] = {"face_enhancer": False}
-camera_input_combobox = None
-webcam_preview_running = False
-show_fps = False
-mouth_mask = False
-show_mouth_mask_box = False
+
+# GUI-related variables (only used in non-headless mode)
+if not headless:
+    camera_input_combobox = None
+    webcam_preview_running = False
+    show_fps = False
+    mouth_mask = False
+    show_mouth_mask_box = False
+else:
+    # Set safe defaults for headless mode
+    camera_input_combobox = None
+    webcam_preview_running = False
+    show_fps = False
+    mouth_mask = False
+    show_mouth_mask_box = False
+
 mask_feather_ratio = 8
 mask_down_size = 0.50
 mask_size = 1

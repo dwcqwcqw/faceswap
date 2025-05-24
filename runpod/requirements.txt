@@ -1,10 +1,10 @@
 # Face swap core dependencies
 runpod>=1.5.0
-opencv-python-headless>=4.8.0
-onnxruntime-gpu>=1.15.0
-insightface>=0.7.3
-numpy>=1.24.0
-Pillow>=10.0.0
+opencv-python==4.8.1.78
+onnxruntime-gpu==1.16.3
+insightface==0.7.3
+numpy<2.0.0
+Pillow==10.0.1
 
 # Enhanced dependencies for quality output
 gfpgan>=1.3.8
@@ -18,9 +18,13 @@ ffmpeg-python>=0.2.0
 # R2 Storage and web requests
 boto3>=1.28.0
 botocore>=1.31.0
-requests>=2.31.0
+requests==2.31.0
 
 # Additional utilities
-torch>=2.0.0
-torchvision>=0.15.0
-torchaudio>=2.0.0 
+torch==2.0.1+cu118 --index-url https://download.pytorch.org/whl/cu118
+torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+torchaudio>=2.0.0
+gradio==3.50.2
+# Remove GUI-related dependencies for serverless
+# customtkinter  # Not needed for serverless
+# tkinter  # Not available in serverless containers 
