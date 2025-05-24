@@ -13,16 +13,28 @@ from pathlib import Path
 def get_models_dir():
     """Get models directory, preferring RunPod volume"""
     
-    # Priority 1: RunPod Network Volume (if mounted)
+    # Priority 1: Volume mount - workspace/faceswap (as user mentioned)
+    if os.path.exists('/workspace/faceswap'):
+        models_dir = '/workspace/faceswap/models'
+        os.makedirs(models_dir, exist_ok=True)
+        print(f"🔍 Using volume mount models directory: {models_dir}")
+        return models_dir
+    
+    # Priority 2: RunPod Network Volume (if mounted)
     if os.path.exists('/runpod-volume/models'):
+        print(f"🔍 Using RunPod network volume: /runpod-volume/models")
         return '/runpod-volume/models'
     
-    # Priority 2: Workspace models (if exists)
+    # Priority 3: Workspace models (if exists)
     if os.path.exists('/workspace/models'):
+        print(f"🔍 Using workspace models: /workspace/models")
         return '/workspace/models'
     
-    # Priority 3: Local app models
-    return '/app/models'
+    # Priority 4: Local app models
+    models_dir = '/app/models'
+    os.makedirs(models_dir, exist_ok=True)
+    print(f"🔍 Using local app models: {models_dir}")
+    return models_dir
 
 def download_file(url, filepath, description=""):
     """Download file with progress indication"""
@@ -68,16 +80,54 @@ def extract_zip(zip_path, extract_to):
         print(f"❌ Error extracting {os.path.basename(zip_path)}: {str(e)}")
         return False
 
+def check_existing_models(models_dir):
+    """Check for existing models in various locations"""
+    existing_models = {}
+    
+    # Check workspace/faceswap root directory (user mentioned models are there)
+    if os.path.exists('/workspace/faceswap'):
+        for filename in ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth']:
+            workspace_path = os.path.join('/workspace/faceswap', filename)
+            if os.path.exists(workspace_path):
+                # Copy or symlink to models directory
+                models_path = os.path.join(models_dir, filename)
+                if not os.path.exists(models_path):
+                    try:
+                        # Try to create symlink first, fallback to copy
+                        os.symlink(workspace_path, models_path)
+                        print(f"🔗 Linked {filename} from workspace")
+                    except:
+                        import shutil
+                        shutil.copy2(workspace_path, models_path)
+                        print(f"📋 Copied {filename} from workspace")
+                existing_models[filename] = True
+    
+    # Check models directory itself
+    for filename in ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth', '79999_iter.pth']:
+        model_path = os.path.join(models_dir, filename)
+        if os.path.exists(model_path):
+            existing_models[filename] = True
+    
+    # Check buffalo_l directory
+    buffalo_dir = os.path.join(models_dir, 'buffalo_l')
+    if os.path.exists(buffalo_dir) and os.listdir(buffalo_dir):
+        existing_models['buffalo_l.zip'] = True
+    
+    return existing_models
+
 def check_and_download_models():
     """Check for required models and download if missing"""
     
     models_dir = get_models_dir()
-    print(f"🔍 Using models directory: {models_dir}")
+    print(f"✅ Models initialized in: {models_dir}")
+    
+    # Check for existing models
+    existing_models = check_existing_models(models_dir)
     
     # Required models with their download URLs
     models = {
         'inswapper_128_fp16.onnx': {
-            'url': 'https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx',
+            'url': 'https://huggingface.co/deepinsight/inswapper/resolve/main/inswapper_128.onnx',
             'description': 'Face Swapper Model (inswapper)'
         },
         'GFPGANv1.4.pth': {
@@ -85,11 +135,11 @@ def check_and_download_models():
             'description': 'Face Enhancer Model (GFPGAN)'
         },
         '79999_iter.pth': {
-            'url': 'https://huggingface.co/hacksider/deep-live-cam/resolve/main/79999_iter.pth',
+            'url': 'https://huggingface.co/ManyOtherFunctions/face-parse-bisent/resolve/main/79999_iter.pth',
             'description': 'Face Parsing Model'
         },
         'buffalo_l.zip': {
-            'url': 'https://huggingface.co/hacksider/deep-live-cam/resolve/main/buffalo_l.zip',
+            'url': 'https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip',
             'description': 'Face Analysis Model (Buffalo_L)',
             'extract': True
         }
@@ -99,15 +149,7 @@ def check_and_download_models():
     
     # Check which models are missing
     for model_name, model_info in models.items():
-        model_path = os.path.join(models_dir, model_name)
-        
-        # For buffalo_l, check if directory exists instead of zip
-        if model_name == 'buffalo_l.zip':
-            buffalo_dir = os.path.join(models_dir, 'buffalo_l')
-            if os.path.exists(buffalo_dir) and os.listdir(buffalo_dir):
-                print(f"✅ {model_info['description']} already exists")
-                continue
-        elif os.path.exists(model_path):
+        if existing_models.get(model_name):
             print(f"✅ {model_info['description']} already exists")
             continue
         
@@ -115,6 +157,7 @@ def check_and_download_models():
         all_models_exist = False
         
         # Download missing model
+        model_path = os.path.join(models_dir, model_name)
         if download_file(model_info['url'], model_path, model_info['description']):
             # Extract if it's a zip file
             if model_info.get('extract') and model_name.endswith('.zip'):
