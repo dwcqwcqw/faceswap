@@ -21,10 +21,9 @@ botocore>=1.31.0
 requests==2.31.0
 
 # Additional utilities
-torch==2.0.1+cu118 --index-url https://download.pytorch.org/whl/cu118
-torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
-torchaudio>=2.0.0
 gradio==3.50.2
+
+# PyTorch will be installed separately in Dockerfile with CUDA support
 # Remove GUI-related dependencies for serverless
 # customtkinter  # Not needed for serverless
 # tkinter  # Not available in serverless containers 

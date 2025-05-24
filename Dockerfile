@@ -29,7 +29,10 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install PyTorch with CUDA support first (the base image should have it, but let's be explicit)
+RUN pip install --no-cache-dir torch==2.0.1+cu118 torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+
+# Install Python dependencies (excluding torch since we installed it above)
 COPY runpod/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
