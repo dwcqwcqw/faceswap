@@ -430,11 +430,9 @@ function getFileExtension(filename) {
 }
 
 async function getR2FileUrl(env, fileId) {
-  // Generate a presigned URL for RunPod to access the file
-  const fileName = `uploads/${fileId}`
-  
-  // For now, return a direct URL - in production you might want presigned URLs
-  return `https://${env.R2_BUCKET_NAME}.${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/${fileName}`
+  // Instead of generating a direct R2 URL that might not work due to missing extensions,
+  // use our own Worker download endpoint which handles file extension detection
+  return `https://faceswap-api.faceswap.workers.dev/api/download/${fileId}`
 }
 
 async function storeResultFromUrl(env, resultUrl, jobId) {
