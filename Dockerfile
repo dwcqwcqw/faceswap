@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     libgthread-2.0-0 \
     libgbm1 \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -46,29 +47,11 @@ COPY modules/ /app/modules/
 COPY locales/ /app/locales/
 COPY runpod/handler.py /app/handler.py
 
-# Create models directory
-RUN mkdir -p /app/models
+# Create directories for models and temp processing
+RUN mkdir -p /app/models /tmp/faceswap
 
-# Download required models (as per Deep-Live-Cam requirements)
-RUN wget -O /app/models/inswapper_128_fp16.onnx \
-    "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx"
-
-RUN wget -O /app/models/GFPGANv1.4.pth \
-    "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth"
-
-RUN wget -O /app/models/buffalo_l.zip \
-    "https://huggingface.co/hacksider/deep-live-cam/resolve/main/buffalo_l.zip" \
-    && cd /app/models && unzip buffalo_l.zip && rm buffalo_l.zip
-
-# Additional face analysis models
-RUN wget -O /app/models/79999_iter.pth \
-    "https://huggingface.co/hacksider/deep-live-cam/resolve/main/79999_iter.pth"
-
-# Set model permissions
-RUN chmod -R 755 /app/models
-
-# Create temp directory for processing
-RUN mkdir -p /tmp/faceswap
+# Create model download script (will run at startup if models not found)
+COPY runpod/download_models.py /app/download_models.py
 
 # Set up the handler as the entry point
 CMD ["python", "-u", "handler.py"] 

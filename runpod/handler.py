@@ -7,6 +7,22 @@ import requests
 import boto3
 from botocore.config import Config
 
+# Initialize models before importing modules
+print("🚀 Initializing Face Swap Handler...")
+
+# Download models if needed
+try:
+    from download_models import check_and_download_models
+    models_dir = check_and_download_models()
+    print(f"✅ Models initialized in: {models_dir}")
+    
+    # Set environment variable for global module access
+    os.environ['MODELS_DIR'] = models_dir
+    
+except Exception as e:
+    print(f"⚠️  Model initialization error: {str(e)}")
+    print("📦 Proceeding with default model paths...")
+
 from modules.face_swapper import swap_face
 from modules.face_enhancer import enhance_faces
 from modules.face_detector import detect_faces

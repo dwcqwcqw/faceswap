@@ -46,17 +46,27 @@ mask_size = 1
 def get_models_dir():
     """Get models directory path, supporting both local development and RunPod deployment"""
     
-    # Check if we're running in RunPod environment
-    if os.path.exists('/workspace/faceswap'):
-        # RunPod environment - models are directly in workspace
-        models_dir = '/workspace/faceswap'
-    elif os.path.exists('/app/models'):
-        # Docker environment
-        models_dir = '/app/models'
-    else:
-        # Local development - use relative path
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        models_dir = os.path.join(os.path.dirname(current_dir), 'models')
+    # Priority 1: Environment variable (set by download_models.py)
+    if 'MODELS_DIR' in os.environ:
+        models_dir = os.environ['MODELS_DIR']
+        if os.path.exists(models_dir):
+            return models_dir
+    
+    # Priority 2: RunPod Network Volume (if mounted)
+    if os.path.exists('/runpod-volume/models'):
+        return '/runpod-volume/models'
+    
+    # Priority 3: Workspace models (if exists)
+    if os.path.exists('/workspace/models'):
+        return '/workspace/models'
+    
+    # Priority 4: Docker app models
+    if os.path.exists('/app/models'):
+        return '/app/models'
+    
+    # Priority 5: Local development - use relative path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    models_dir = os.path.join(os.path.dirname(current_dir), 'models')
     
     return models_dir
 

@@ -7,13 +7,12 @@
 ### 第1步：准备工作 (5分钟)
 ```bash
 # 确保您有以下账户：
-# - Docker Hub: https://hub.docker.com
 # - RunPod: https://runpod.io
-# - GitHub: https://github.com (可选)
+# - GitHub: https://github.com (已完成)
+# - Cloudflare: https://cloudflare.com (已配置)
 
-# 检查本地环境
-docker --version
-git --version
+# 检查仓库状态
+open https://github.com/dwcqwcqw/faceswap.git
 ```
 
 ### 第2步：同步代码到 GitHub (2分钟)
@@ -22,43 +21,57 @@ git --version
 ./sync-to-github.sh
 ```
 
-### 第3步：构建 Docker 镜像 (10分钟)
+### 第3步：直接部署到 RunPod (10分钟)
 ```bash
-# 构建镜像
-./build-docker.sh
+# 🎯 无需本地 Docker 构建！
+# RunPod 将直接从 GitHub 构建和部署
 
-# 推送到 Docker Hub（替换用户名）
-DOCKER_USERNAME="your-dockerhub-username"
-docker tag faceswap-runpod:latest $DOCKER_USERNAME/faceswap-runpod:latest
-docker login
-docker push $DOCKER_USERNAME/faceswap-runpod:latest
+# 1. 访问 RunPod Console
+open https://runpod.io/console/serverless
+
+# 2. 按照 GitHub 部署指南操作
+cat GITHUB_DEPLOY.md
 ```
 
-### 第4步：创建 RunPod Endpoint (8分钟)
+### 第4步：创建 RunPod Endpoint (12分钟)
 
 1. 访问 [RunPod Console](https://runpod.io/console/serverless)
-2. 点击 "New Endpoint"
+2. 点击 "Create Endpoint"
 3. 填写配置：
 
+**Source (GitHub)**
+```yaml
+Source Type: GitHub Repository
+Repository: https://github.com/dwcqwcqw/faceswap.git
+Branch: main
+Dockerfile Path: Dockerfile
+```
+
+**基本配置**
 ```yaml
 Name: faceswap-api
-Docker Image: your-dockerhub-username/faceswap-runpod:latest
-Container Disk: 25 GB
+Container Disk: 15 GB
 GPU Types: RTX4090, RTXA6000, RTX3090
 Max Workers: 3
 Idle Timeout: 60s
 Execution Timeout: 300s
-
-Environment Variables:
-  CLOUDFLARE_ACCOUNT_ID: c7c141ce43d175e60601edc46d904553
-  R2_BUCKET_NAME: faceswap-storage
-
-Secrets:
-  R2_ACCESS_KEY_ID: [您的R2访问密钥]
-  R2_SECRET_ACCESS_KEY: [您的R2机密密钥]
 ```
 
-4. 复制生成的 Endpoint ID
+**环境变量**
+```yaml
+CLOUDFLARE_ACCOUNT_ID: c7c141ce43d175e60601edc46d904553
+R2_BUCKET_NAME: faceswap-storage
+```
+
+**机密变量**
+```yaml
+R2_ACCESS_KEY_ID: [您的R2访问密钥]
+R2_SECRET_ACCESS_KEY: [您的R2机密密钥]
+```
+
+4. 点击 "Create Endpoint" 开始构建
+5. 等待 7-11 分钟完成构建 ⏱️
+6. 复制生成的 Endpoint ID
 
 ### 第5步：配置前端 (5分钟)
 ```bash

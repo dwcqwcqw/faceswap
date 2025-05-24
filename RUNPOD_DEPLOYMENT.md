@@ -122,11 +122,32 @@ curl -X POST "https://faceswap-api.faceswap.workers.dev/api/single-image" \
 - **RTX 3090**: 基础性能，适合测试
 
 ### 成本估算
-- 镜像存储: ~2-3GB
+- 镜像存储: ~500MB (优化后，原来 3GB+)
+- Network Volume: 20GB (一次性设置)
 - 运行时内存: 8-12GB
 - 处理时间: 
   - 图片换脸: 5-15秒
   - 视频换脸: 1-5分钟（取决于长度）
+
+## 🗂️ Network Volume 配置 (推荐)
+
+为了获得最佳性能，建议使用 RunPod Network Volume 存储模型：
+
+1. **创建 Network Volume**:
+   - Name: `faceswap-models`
+   - Size: `20 GB`
+   - 与 Serverless 同一数据中心
+
+2. **在 Endpoint 配置中添加 Volume Mount**:
+   ```yaml
+   Volume Mounts:
+     - Volume: faceswap-models
+       Mount Path: /runpod-volume
+   ```
+
+3. **容器磁盘减少到**: `10 GB` (因为模型存储在 Volume 中)
+
+详细配置请参考：[RUNPOD_VOLUME_SETUP.md](./RUNPOD_VOLUME_SETUP.md)
 
 ## 🔍 监控和日志
 
