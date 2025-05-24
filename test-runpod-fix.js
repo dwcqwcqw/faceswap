@@ -1,6 +1,6 @@
 /**
  * 测试 RunPod Serverless 修复效果
- * 验证模块导入和依赖问题是否解决
+ * 验证真实的图片处理功能
  */
 
 const https = require('https');
@@ -18,6 +18,46 @@ async function testRunPodHealth() {
         }
     };
 
+    return await makeRunPodRequest(payload);
+}
+
+async function testImageProcessing() {
+    console.log('🔍 测试图片处理功能...');
+    
+    // 使用公开的测试图片URL
+    const payload = {
+        input: {
+            process_type: 'single-image',
+            source_file: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face',
+            target_file: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&h=300&fit=crop&crop=face',
+            options: {
+                mouth_mask: true
+            }
+        }
+    };
+
+    console.log('📤 发送的数据:', JSON.stringify(payload, null, 2));
+    return await makeRunPodRequest(payload);
+}
+
+async function testLegacyFormat() {
+    console.log('🔍 测试传统base64格式...');
+    
+    // 1x1像素的PNG测试图片(base64)
+    const testImageBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAGA4849cgAAAABJRU5ErkJggg==';
+    
+    const payload = {
+        input: {
+            type: 'single_image',
+            source_image: testImageBase64,
+            target_image: testImageBase64
+        }
+    };
+
+    return await makeRunPodRequest(payload);
+}
+
+async function makeRunPodRequest(payload) {
     const options = {
         hostname: 'api.runpod.ai',
         port: 443,
@@ -40,6 +80,7 @@ async function testRunPodHealth() {
                     resolve(response);
                 } catch (error) {
                     console.error('❌ 解析响应失败:', error.message);
+                    console.log('📄 原始响应:', data);
                     reject(error);
                 }
             });
@@ -96,20 +137,46 @@ async function main() {
     try {
         // 测试 Cloudflare Worker
         console.log('1️⃣ 测试 Cloudflare Worker');
+        console.log('=' .repeat(50));
         const workerResult = await testCloudflareWorker();
         if (workerResult) {
             console.log('✅ Cloudflare Worker 正常运行\n');
         }
         
-        // 测试 RunPod Serverless
-        console.log('2️⃣ 测试 RunPod Serverless');
-        const runpodResult = await testRunPodHealth();
+        // 测试 RunPod 健康状态
+        console.log('2️⃣ 测试 RunPod 健康状态');
+        console.log('=' .repeat(50));
+        const healthResult = await testRunPodHealth();
         
-        if (runpodResult.status === 'COMPLETED' || runpodResult.output) {
-            console.log('✅ RunPod Serverless 正常运行');
-            console.log('✅ 模块导入问题已修复');
+        if (healthResult.status === 'COMPLETED' && healthResult.output) {
+            console.log('✅ RunPod Serverless 健康检查通过');
+            console.log('✅ 所有模块已成功导入\n');
         } else {
-            console.log('⚠️ RunPod Serverless 可能仍在构建中...');
+            console.log('⚠️ RunPod Serverless 响应异常\n');
+        }
+        
+        // 测试真实图片处理
+        console.log('3️⃣ 测试真实图片处理 (URL格式)');
+        console.log('=' .repeat(50));
+        const imageResult = await testImageProcessing();
+        
+        if (imageResult.status === 'COMPLETED' && imageResult.output && !imageResult.output.error) {
+            console.log('✅ 图片处理功能正常工作！');
+            console.log('✅ Cloudflare Worker 数据格式兼容性修复成功');
+        } else if (imageResult.output && imageResult.output.error) {
+            console.log('⚠️ 图片处理遇到错误:', imageResult.output.error);
+        } else {
+            console.log('⚠️ 图片处理响应异常');
+        }
+        
+        console.log('\n4️⃣ 测试传统格式兼容性');
+        console.log('=' .repeat(50));
+        const legacyResult = await testLegacyFormat();
+        
+        if (legacyResult.status === 'COMPLETED' && legacyResult.output && !legacyResult.output.error) {
+            console.log('✅ 传统base64格式兼容性正常');
+        } else if (legacyResult.output && legacyResult.output.error) {
+            console.log('⚠️ 传统格式测试:', legacyResult.output.error);
         }
         
     } catch (error) {
@@ -117,7 +184,9 @@ async function main() {
     }
     
     console.log('\n📊 测试完成');
-    console.log('💡 如果 RunPod 仍在构建，请等待 5-10 分钟后重试');
+    console.log('=' .repeat(50));
+    console.log('💡 如果图片处理成功，说明前端"Missing source_image or target_image"问题已修复');
+    console.log('🔧 RunPod Serverless 现在可以处理 Cloudflare Worker 发送的URL格式数据');
 }
 
 // 运行测试

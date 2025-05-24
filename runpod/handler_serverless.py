@@ -10,6 +10,7 @@ import sys
 import json
 import base64
 import tempfile
+import requests
 from io import BytesIO
 from PIL import Image
 import cv2
@@ -96,8 +97,78 @@ def download_models():
         # Don't fail completely, allow handler to try anyway
         return True
 
-def process_image_swap(source_image_data, target_image_data):
-    """Process single image face swap"""
+def download_image_from_url(url):
+    """Download image from URL and return as OpenCV format"""
+    try:
+        logger.info(f"📥 Downloading image from: {url}")
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        # Convert to PIL Image
+        image = Image.open(BytesIO(response.content))
+        
+        # Convert to OpenCV format (BGR)
+        image_array = np.array(image)
+        if len(image_array.shape) == 3 and image_array.shape[2] == 3:
+            # RGB to BGR for OpenCV
+            opencv_image = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+        elif len(image_array.shape) == 3 and image_array.shape[2] == 4:
+            # RGBA to BGR for OpenCV
+            opencv_image = cv2.cvtColor(image_array, cv2.COLOR_RGBA2BGR)
+        else:
+            # Grayscale to BGR
+            opencv_image = cv2.cvtColor(image_array, cv2.COLOR_GRAY2BGR)
+        
+        logger.info(f"✅ Image downloaded successfully, shape: {opencv_image.shape}")
+        return opencv_image
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to download image from {url}: {e}")
+        return None
+
+def process_image_swap_from_urls(source_url, target_url):
+    """Process face swap with image URLs"""
+    try:
+        # Download images from URLs
+        source_frame = download_image_from_url(source_url)
+        target_frame = download_image_from_url(target_url)
+        
+        if source_frame is None:
+            return {"error": "Failed to download source image"}
+        
+        if target_frame is None:
+            return {"error": "Failed to download target image"}
+        
+        # Get source face
+        logger.info("🔍 Detecting face in source image...")
+        source_face = get_one_face(source_frame)
+        if source_face is None:
+            return {"error": "No face detected in source image"}
+        
+        logger.info("✅ Source face detected successfully")
+        
+        # Swap face
+        logger.info("🔄 Starting face swap...")
+        result_frame = swap_face(source_face, target_frame)
+        logger.info("✅ Face swap completed")
+        
+        # Convert back to PIL and encode to base64
+        result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
+        
+        # Encode to base64
+        buffer = BytesIO()
+        result_image.save(buffer, format='PNG')
+        result_data = base64.b64encode(buffer.getvalue()).decode()
+        
+        logger.info("✅ Result image encoded successfully")
+        return {"result": result_data}
+        
+    except Exception as e:
+        logger.error(f"❌ Face swap processing failed: {e}")
+        return {"error": str(e)}
+
+def process_image_swap_from_base64(source_image_data, target_image_data):
+    """Process face swap with base64 data (backward compatibility)"""
     try:
         # Decode base64 images
         source_image = Image.open(BytesIO(base64.b64decode(source_image_data)))
@@ -126,7 +197,7 @@ def process_image_swap(source_image_data, target_image_data):
         return {"result": result_data}
         
     except Exception as e:
-        logger.error(f"❌ Image processing failed: {e}")
+        logger.error(f"❌ Base64 image processing failed: {e}")
         return {"error": str(e)}
 
 def process_video_swap(source_image_data, target_video_data):
@@ -145,6 +216,7 @@ def handler(event):
     """
     try:
         logger.info("🚀 Face Swap Handler started")
+        logger.info(f"📋 Received event: {json.dumps(event, indent=2)}")
         
         # Check models (don't fail if download doesn't work)
         download_models()
@@ -161,23 +233,42 @@ def handler(event):
                 "models_directory": modules.globals.get_models_dir()
             }
         
-        swap_type = input_data.get("type", "single_image")
+        # Determine swap type - support both new format and legacy format
+        swap_type = input_data.get("type") or input_data.get("process_type", "single_image")
+        
+        # Normalize type format (convert single-image to single_image)
+        if swap_type == "single-image":
+            swap_type = "single_image"
+        
+        logger.info(f"🎯 Processing type: {swap_type}")
         
         if swap_type == "single_image":
-            source_image = input_data.get("source_image")
-            target_image = input_data.get("target_image")
+            # Check for new format (URLs from Cloudflare Worker)
+            if input_data.get("source_file") and input_data.get("target_file"):
+                logger.info("📡 Processing URLs from Cloudflare Worker")
+                source_url = input_data.get("source_file")
+                target_url = input_data.get("target_file")
+                
+                return process_image_swap_from_urls(source_url, target_url)
             
-            if not source_image or not target_image:
-                return {"error": "Missing source_image or target_image"}
+            # Check for legacy format (base64 data)
+            elif input_data.get("source_image") and input_data.get("target_image"):
+                logger.info("📄 Processing base64 data (legacy format)")
+                source_image = input_data.get("source_image")
+                target_image = input_data.get("target_image")
+                
+                return process_image_swap_from_base64(source_image, target_image)
             
-            return process_image_swap(source_image, target_image)
+            else:
+                logger.error("❌ Missing required image data")
+                return {"error": "Missing source_file/target_file or source_image/target_image"}
             
         elif swap_type == "video":
-            source_image = input_data.get("source_image")
-            target_video = input_data.get("target_video")
+            source_image = input_data.get("source_image") or input_data.get("source_file")
+            target_video = input_data.get("target_video") or input_data.get("target_file")
             
             if not source_image or not target_video:
-                return {"error": "Missing source_image or target_video"}
+                return {"error": "Missing source_image/source_file or target_video/target_file"}
             
             return process_video_swap(source_image, target_video)
             
