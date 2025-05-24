@@ -101,6 +101,24 @@ def download_image_from_url(url):
     """Download image from URL and return as OpenCV format"""
     try:
         logger.info(f"📥 Downloading image from: {url}")
+        
+        # Check if this is a Cloudflare R2 direct URL and convert to Worker download URL
+        if 'r2.cloudflarestorage.com' in url:
+            logger.info("🔄 Converting R2 direct URL to Worker download URL")
+            # Extract file ID from R2 URL
+            # URL format: https://faceswap-storage.xxx.r2.cloudflarestorage.com/uploads/FILE_ID.ext
+            parts = url.split('/')
+            if 'uploads' in parts:
+                upload_index = parts.index('uploads')
+                if upload_index + 1 < len(parts):
+                    file_name = parts[upload_index + 1]
+                    # Remove extension to get file ID
+                    file_id = file_name.split('.')[0]
+                    # Convert to Worker download URL
+                    worker_url = f"https://faceswap-api.faceswap.workers.dev/api/download/{file_id}"
+                    logger.info(f"🔗 Converted URL: {worker_url}")
+                    url = worker_url
+        
         response = requests.get(url, timeout=30)
         response.raise_for_status()
         
