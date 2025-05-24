@@ -23,8 +23,6 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     libgomp1 \
     libgl1-mesa-glx \
-    libglib2.0-0 \
-    libgthread-2.0-0 \
     libgbm1 \
     unzip \
     && rm -rf /var/lib/apt/lists/*
