@@ -177,7 +177,7 @@ export async function handleProcess(request, env, path) {
     const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.RUNPOD_API_KEY}`,
+        'Authorization': `Bearer ${env.RUNPOD_TOKEN}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(runpodPayload)
@@ -239,7 +239,7 @@ export async function handleStatus(request, env, path) {
     if (job.status === 'processing' && job.runpod_id) {
       const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${job.runpod_id}`, {
         headers: {
-          'Authorization': `Bearer ${env.RUNPOD_API_KEY}`
+          'Authorization': `Bearer ${env.RUNPOD_TOKEN}`
         }
       })
 
@@ -379,7 +379,7 @@ export async function handleDetectFaces(request, env) {
     const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.RUNPOD_API_KEY}`,
+        'Authorization': `Bearer ${env.RUNPOD_TOKEN}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(runpodPayload)

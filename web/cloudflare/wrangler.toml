@@ -20,8 +20,8 @@ id = "07e5f7afa309412e9d7e77fe672a415a"
 
 # Environment variables
 [vars]
-RUNPOD_API_KEY = "your-runpod-api-key"
-RUNPOD_ENDPOINT_ID = "your-runpod-endpoint-id"
+# RUNPOD_TOKEN - Set via: wrangler secret put RUNPOD_TOKEN
+RUNPOD_ENDPOINT_ID = "sbta9w9yx2cc1e"
 ALLOWED_ORIGINS = "*"
 # R2 Configuration
 CLOUDFLARE_ACCOUNT_ID = "c7c141ce43d175e60601edc46d904553"
