@@ -33,7 +33,7 @@ os.environ['HEADLESS'] = '1'
 try:
     # Import core modules (avoid UI modules)
     from modules.face_analyser import get_one_face, get_many_faces
-    from modules.face_swapper import swap_face
+    from modules.processors.frame.face_swapper import swap_face
     from modules.processors.frame.face_swapper import process_frame
     import modules.globals
     
@@ -151,9 +151,14 @@ def process_image_swap_from_urls(source_url, target_url):
         
         logger.info("✅ Source face detected successfully")
         
+        # Get target face as well
+        target_face = get_one_face(target_frame)
+        if target_face is None:
+            return {"error": "No face detected in target image"}
+        
         # Swap face
         logger.info("🔄 Starting face swap...")
-        result_frame = swap_face(source_face, target_frame)
+        result_frame = swap_face(source_face, target_face, target_frame)
         logger.info("✅ Face swap completed")
         
         # Convert back to PIL and encode to base64
@@ -187,8 +192,13 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         if source_face is None:
             return {"error": "No face detected in source image"}
         
+        # Get target face as well
+        target_face = get_one_face(target_frame)
+        if target_face is None:
+            return {"error": "No face detected in target image"}
+        
         # Swap face
-        result_frame = swap_face(source_face, target_frame)
+        result_frame = swap_face(source_face, target_face, target_frame)
         
         # Convert back to PIL and encode
         result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
