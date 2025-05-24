@@ -22,13 +22,14 @@ logger = logging.getLogger(__name__)
 
 # Add the app directory to Python path
 sys.path.insert(0, '/app')
+sys.path.insert(0, '/app/runpod')
+
+# Set headless mode before importing any modules
+os.environ['DISPLAY'] = ''
+os.environ['HEADLESS'] = '1'
 
 # Import face swap functionality without GUI modules
 try:
-    # Set headless mode before importing any modules
-    os.environ['DISPLAY'] = ''
-    os.environ['HEADLESS'] = '1'
-    
     # Import core modules (avoid UI modules)
     from modules.face_analyser import get_one_face, get_many_faces
     from modules.face_swapper import swap_face
@@ -48,10 +49,24 @@ except ImportError as e:
 def download_models():
     """Download required models if not present"""
     try:
-        # Import and run model download
-        from runpod.download_models import check_and_download_models
+        # Import and run model download script
+        from download_models import check_and_download_models
         models_dir = check_and_download_models()
         logger.info(f"✅ Models ready in: {models_dir}")
+        return True
+    except ImportError:
+        logger.warning("⚠️ Model download script not found, using existing models")
+        # Check if essential models exist
+        models_dir = modules.globals.get_models_dir()
+        essential_models = ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth']
+        
+        for model in essential_models:
+            model_path = os.path.join(models_dir, model)
+            if os.path.exists(model_path):
+                logger.info(f"✅ Found model: {model}")
+            else:
+                logger.warning(f"⚠️ Model not found: {model}")
+        
         return True
     except Exception as e:
         logger.error(f"❌ Model download failed: {e}")

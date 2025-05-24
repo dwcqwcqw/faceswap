@@ -16,7 +16,6 @@ from modules.utilities import (
 )
 from modules.cluster_analysis import find_closest_centroid
 import os
-from modules.face_store import default_source_face
 
 FACE_SWAPPER = None
 THREAD_LOCK = threading.Lock()
