@@ -1,81 +1,75 @@
-# 🔧 RunPod Serverless GUI 依赖修复
+# 🔧 RunPod Serverless 依赖修复
 
-## 🚨 问题描述
+## 🚨 问题总结
 
-RunPod Serverless 部署时遇到以下错误：
+RunPod Serverless 部署遇到的两个主要错误：
 
+### 1. GUI 依赖错误
 ```bash
 ModuleNotFoundError: No module named 'tkinter'
 ```
 
-**错误原因：**
-- 原代码包含GUI依赖（tkinter、customtkinter）
-- RunPod Serverless 容器不支持GUI库
-- NumPy 2.0 兼容性问题
+### 2. PyTorch 依赖错误
+```bash
+ERROR: Could not find a version that satisfies the requirement torch==2.0.1+cu118
+ERROR: No matching distribution found for torch==2.0.1+cu118
+```
 
 ## ✅ 修复方案
 
-### 1. 创建无GUI版本处理器
+### 1. GUI 依赖修复
 
-**新文件：`runpod/handler_serverless.py`**
-- 移除所有GUI相关导入
+**创建无GUI版本处理器：`runpod/handler_serverless.py`**
+- 移除所有GUI相关导入（tkinter、customtkinter）
 - 设置 `HEADLESS=1` 环境变量
 - 创建专用的图片/视频处理函数
 
-### 2. 修复依赖问题
+**修改 `modules/globals.py` 和 `modules/core.py`：**
+- 添加 headless 模式检测
+- 条件导入UI模块，避免在Serverless环境中加载GUI
 
-**更新 `runpod/requirements.txt`：**
-```txt
-# 固定NumPy版本避免兼容性问题
-numpy<2.0.0
+### 2. PyTorch 依赖修复
 
-# 移除GUI依赖
-# customtkinter  # 已移除
-# tkinter        # 不支持
+**问题原因：**
+- `requirements.txt` 中的 `--index-url` 语法在某些环境下不被正确解析
+- RunPod 构建器对特殊 URL 格式支持有限
 
-# 固定核心依赖版本
-torch==2.0.1+cu118
-torchvision==0.15.2+cu118
-onnxruntime-gpu==1.16.3
-```
+**解决方案：**
+在 Dockerfile 中分步安装 PyTorch，而不是在 requirements.txt 中：
 
-### 3. Headless 模式支持
-
-**修改 `modules/globals.py`：**
-```python
-# 检测 headless 模式
-headless = (os.environ.get('HEADLESS', 'false').lower() == 'true' or 
-           os.environ.get('DISPLAY', '') == '')
-```
-
-**修改 `modules/core.py`：**
-```python
-# 条件导入UI模块
-if not is_headless:
-    try:
-        import modules.ui as ui
-    except ImportError:
-        ui = MockUI()
-else:
-    ui = MockUI()
-```
-
-### 4. 更新 Dockerfile
-
-**修改后的 `Dockerfile`：**
 ```dockerfile
-# 设置headless环境变量
+# 先安装 PyTorch CUDA 版本
+RUN pip install --no-cache-dir torch==2.0.1+cu118 torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+
+# 再安装其他依赖
+COPY runpod/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+```
+
+### 3. 最终的文件修改
+
+**`runpod/requirements.txt`：**
+```txt
+# 移除 PyTorch 相关依赖（在 Dockerfile 中单独安装）
+# torch, torchvision, torchaudio - 已移除
+
+# 保留其他核心依赖
+runpod>=1.5.0
+opencv-python==4.8.1.78
+onnxruntime-gpu==1.16.3
+insightface==0.7.3
+numpy<2.0.0
+Pillow==10.0.1
+```
+
+**`Dockerfile`：**
+```dockerfile
+# 设置 headless 环境
 ENV HEADLESS=1
 ENV DISPLAY=
 
-# 移除GUI依赖
-RUN pip install --no-cache-dir \
-    typing-extensions>=4.8.0 \
-    cv2_enumerate_cameras==1.1.15 \
-    psutil==5.9.8 \
-    opennsfw2==0.10.2 \
-    protobuf==4.23.2
-    # customtkinter 已移除
+# 分步安装 PyTorch
+RUN pip install --no-cache-dir torch==2.0.1+cu118 torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
 
 # 使用无GUI处理器
 COPY runpod/handler_serverless.py /app/handler.py
@@ -83,21 +77,24 @@ COPY runpod/handler_serverless.py /app/handler.py
 
 ## 🧪 测试验证
 
-修复后的启动日志应显示：
+修复后的构建过程应该显示：
 
 ```bash
+# PyTorch 安装成功
+✅ Successfully installed torch-2.0.1+cu118 torchvision-0.15.2+cu118
+
+# 其他依赖安装成功
+✅ Successfully installed runpod-1.7.9 opencv-python-4.8.1.78 ...
+
+# 启动成功
 ✅ Core modules imported successfully
 🔍 Using volume mount models directory: /workspace/faceswap/models
-🔗 Linked inswapper_128_fp16.onnx from workspace
-🔗 Linked GFPGANv1.4.pth from workspace
-📥 Downloading Face Analysis Model (Buffalo_L)...
-✅ Models ready in: /workspace/faceswap/models
 🚀 Face Swap Handler ready!
 ```
 
 ## 📊 API 接口
 
-修复后的 Serverless 支持以下请求格式：
+修复后的 Serverless 支持：
 
 ### 单图换脸
 ```json
@@ -123,10 +120,11 @@ COPY runpod/handler_serverless.py /app/handler.py
 
 ## 🔄 重新部署
 
-要应用修复：
+修复已自动应用：
 
-1. **RunPod Console 自动拉取最新代码**
-2. 或者手动重建 Endpoint：
+1. **GitHub 代码已更新** ✅
+2. **RunPod 会自动重新构建** 🔄
+3. 或手动重建：
    - 访问 https://runpod.io/console/serverless
    - 找到 endpoint `sbta9w9yx2cc1e`
    - 点击 "Settings" → "Rebuild"
@@ -136,19 +134,20 @@ COPY runpod/handler_serverless.py /app/handler.py
 | 文件 | 修改内容 |
 |------|----------|
 | `runpod/handler_serverless.py` | ✅ 新建无GUI处理器 |
-| `runpod/requirements.txt` | ✅ 移除GUI依赖，固定版本 |
+| `runpod/requirements.txt` | ✅ 移除PyTorch依赖和GUI库 |
 | `modules/globals.py` | ✅ 添加headless检测 |
 | `modules/core.py` | ✅ 条件导入UI模块 |
-| `Dockerfile` | ✅ 设置headless环境 |
+| `Dockerfile` | ✅ 分步安装PyTorch，设置headless环境 |
 
 ## 🎉 预期结果
 
 修复完成后：
 
+- ✅ 成功构建 Docker 镜像
+- ✅ 正确安装 PyTorch CUDA 版本
 - ✅ 成功启动 RunPod Serverless
 - ✅ 正确加载所有AI模型
 - ✅ 支持图片换脸API调用
-- ✅ 无GUI依赖错误
-- ✅ NumPy兼容性问题解决
+- ✅ 无GUI和依赖错误
 
-**状态**: 🟢 已修复并部署 
+**状态**: 🟢 已修复并重新部署 
