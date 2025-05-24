@@ -49,28 +49,52 @@ except ImportError as e:
 def download_models():
     """Download required models if not present"""
     try:
-        # Import and run model download script
-        from download_models import check_and_download_models
-        models_dir = check_and_download_models()
-        logger.info(f"✅ Models ready in: {models_dir}")
-        return True
-    except ImportError:
-        logger.warning("⚠️ Model download script not found, using existing models")
-        # Check if essential models exist
         models_dir = modules.globals.get_models_dir()
-        essential_models = ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth']
+        logger.info(f"🔍 Using models directory: {models_dir}")
         
-        for model in essential_models:
-            model_path = os.path.join(models_dir, model)
+        # Ensure models directory exists
+        os.makedirs(models_dir, exist_ok=True)
+        
+        # Check essential models
+        essential_models = {
+            'inswapper_128_fp16.onnx': 'Face swapper model',
+            'GFPGANv1.4.pth': 'Face enhancer model'
+        }
+        
+        all_found = True
+        for model_name, description in essential_models.items():
+            model_path = os.path.join(models_dir, model_name)
             if os.path.exists(model_path):
-                logger.info(f"✅ Found model: {model}")
+                logger.info(f"✅ Found {description}: {model_name}")
             else:
-                logger.warning(f"⚠️ Model not found: {model}")
+                logger.warning(f"⚠️ Missing {description}: {model_name}")
+                all_found = False
         
+        # If essential models are found, proceed without downloading additional ones
+        if all_found:
+            logger.info("✅ Essential models found, ready for face swapping")
+            return True
+        
+        # Try to download models using the download script if available
+        try:
+            from download_models import check_and_download_models
+            models_dir = check_and_download_models()
+            logger.info(f"✅ Models ready in: {models_dir}")
+            return True
+        except ImportError:
+            logger.warning("⚠️ Model download script not found")
+        except Exception as e:
+            logger.error(f"❌ Model download script failed: {e}")
+        
+        # If we reach here, some models are missing but we can try to proceed
+        logger.warning("⚠️ Some models may be missing, but attempting to proceed")
+        logger.info("💡 Face swapping may work if essential models are mounted in workspace")
         return True
+        
     except Exception as e:
-        logger.error(f"❌ Model download failed: {e}")
-        return False
+        logger.error(f"❌ Model setup failed: {e}")
+        # Don't fail completely, allow handler to try anyway
+        return True
 
 def process_image_swap(source_image_data, target_image_data):
     """Process single image face swap"""
@@ -122,12 +146,21 @@ def handler(event):
     try:
         logger.info("🚀 Face Swap Handler started")
         
-        # Download models on first run
-        if not download_models():
-            return {"error": "Failed to download required models"}
+        # Check models (don't fail if download doesn't work)
+        download_models()
         
         # Get request data
         input_data = event.get("input", {})
+        
+        # Handle health check
+        if input_data.get("type") == "health_check":
+            return {
+                "status": "healthy",
+                "message": "RunPod Serverless Face Swap Handler is running",
+                "modules_imported": True,
+                "models_directory": modules.globals.get_models_dir()
+            }
+        
         swap_type = input_data.get("type", "single_image")
         
         if swap_type == "single_image":
