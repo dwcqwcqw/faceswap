@@ -16,15 +16,16 @@ from modules.utilities import (
 )
 from modules.cluster_analysis import find_closest_centroid
 import os
+from modules.face_store import default_source_face
 
 FACE_SWAPPER = None
 THREAD_LOCK = threading.Lock()
 NAME = "DLC.FACE-SWAPPER"
 
+# Use the centralized model directory configuration
+models_dir = modules.globals.get_models_dir()
+
 abs_dir = os.path.dirname(os.path.abspath(__file__))
-models_dir = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(abs_dir))), "models"
-)
 
 
 def pre_check() -> bool:

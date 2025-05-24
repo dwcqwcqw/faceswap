@@ -48,18 +48,25 @@ def upload_result(file_path, upload_url):
         return None
 
 def process_single_image(source_path, target_path, output_path, options=None):
-    """Process single image face swap"""
+    """Process single image face swap with high quality settings"""
     try:
-        # Set global options
+        # Set global options for high quality output
         modules.globals.source_path = source_path
         modules.globals.target_path = target_path
         modules.globals.output_path = output_path
-        modules.globals.frame_processors = ['face_swapper']
+        
+        # Use both face_swapper and face_enhancer for best quality
+        modules.globals.frame_processors = ['face_swapper', 'face_enhancer']
         modules.globals.headless = True
         
+        # High quality default settings
         if options:
             modules.globals.many_faces = options.get('many_faces', False)
-            modules.globals.mouth_mask = options.get('mouth_mask', False)
+            modules.globals.mouth_mask = options.get('mouth_mask', True)  # Enable mouth mask for better quality
+            modules.globals.execution_providers = options.get('execution_provider', ['CPUExecutionProvider'])
+        else:
+            modules.globals.many_faces = False
+            modules.globals.mouth_mask = True  # Default to enabled for better quality
             modules.globals.execution_providers = ['CPUExecutionProvider']
         
         # Initialize frame processors
@@ -71,7 +78,7 @@ def process_single_image(source_path, target_path, output_path, options=None):
         import shutil
         shutil.copy2(target_path, output_path)
         
-        # Process the image
+        # Process the image with both face swapping and enhancement
         for frame_processor in get_frame_processors_modules(modules.globals.frame_processors):
             frame_processor.process_image(source_path, output_path, output_path)
         
@@ -81,21 +88,33 @@ def process_single_image(source_path, target_path, output_path, options=None):
         return False
 
 def process_video(source_path, target_path, output_path, options=None):
-    """Process video face swap"""
+    """Process video face swap with high quality settings"""
     try:
-        # Set global options
+        # Set global options for high quality output
         modules.globals.source_path = source_path
         modules.globals.target_path = target_path
         modules.globals.output_path = output_path
-        modules.globals.frame_processors = ['face_swapper']
+        
+        # Use both face_swapper and face_enhancer for best quality
+        modules.globals.frame_processors = ['face_swapper', 'face_enhancer']
         modules.globals.headless = True
-        modules.globals.keep_fps = options.get('keep_fps', True) if options else True
-        modules.globals.keep_audio = True
+        
+        # High quality video settings
+        modules.globals.keep_fps = True  # Always keep original fps
+        modules.globals.keep_audio = True  # Always keep original audio
+        modules.globals.keep_frames = False  # Clean up temporary frames
         
         if options:
             modules.globals.many_faces = options.get('many_faces', False)
-            modules.globals.mouth_mask = options.get('mouth_mask', False)
-            modules.globals.video_quality = options.get('video_quality', 18)
+            modules.globals.mouth_mask = options.get('mouth_mask', True)  # Enable mouth mask for better quality
+            modules.globals.video_quality = options.get('video_quality', 18)  # High quality (lower number = better quality)
+            modules.globals.video_encoder = options.get('video_encoder', 'libx264')  # Good default encoder
+            modules.globals.execution_providers = options.get('execution_provider', ['CPUExecutionProvider'])
+        else:
+            modules.globals.many_faces = False
+            modules.globals.mouth_mask = True  # Default to enabled for better quality
+            modules.globals.video_quality = 18  # High quality setting
+            modules.globals.video_encoder = 'libx264'  # Good default encoder
             modules.globals.execution_providers = ['CPUExecutionProvider']
         
         # Initialize frame processors
@@ -103,7 +122,7 @@ def process_video(source_path, target_path, output_path, options=None):
             if not frame_processor.pre_start():
                 raise Exception(f"Failed to initialize {frame_processor.NAME}")
         
-        # Process the video using the core module
+        # Process the video using the core module with high quality settings
         modules.core.start()
         
         return True

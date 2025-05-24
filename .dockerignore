@@ -1,0 +1,56 @@
+# Node modules and frontend
+node_modules/
+web/frontend/
+web/cloudflare/
+
+# Git and development files
+.git/
+.github/
+.gitignore
+.DS_Store
+.vscode/
+
+# Documentation and scripts
+docs/
+scripts/
+test-*.js
+*.md
+!README.md
+
+# Temporary and cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.coverage
+.tox/
+
+# Virtual environment
+venv/
+env/
+
+# Build and dist
+build/
+dist/
+*.egg-info/
+
+# IDE files
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Test assets (large files)
+test-assets/
+
+# Wrangler cache
+.wrangler/ 

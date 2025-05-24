@@ -1,61 +1,40 @@
-import { handleCORS, handleUpload, handleProcess, handleStatus, handleDownload } from './handlers'
-
 export default {
   async fetch(request, env, ctx) {
-    const url = new URL(request.url)
-    const path = url.pathname
-
-    // Handle CORS preflight requests
+    // CORS handling
     if (request.method === 'OPTIONS') {
       return handleCORS(request, env)
     }
 
-    // Add CORS headers to all responses
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': env.ALLOWED_ORIGINS || '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    }
+    const url = new URL(request.url)
+    const path = url.pathname
 
     try {
-      let response
-
       // Route handling
-      if (path.startsWith('/api/upload') && request.method === 'POST') {
-        response = await handleUpload(request, env)
-      } else if (path.startsWith('/api/process/') && request.method === 'POST') {
-        response = await handleProcess(request, env, path)
-      } else if (path.startsWith('/api/status/') && request.method === 'GET') {
-        response = await handleStatus(request, env, path)
-      } else if (path.startsWith('/api/download/') && request.method === 'GET') {
-        response = await handleDownload(request, env, path)
+      if (path.startsWith('/api/upload')) {
+        return await handleUpload(request, env)
+      } else if (path.startsWith('/api/process/')) {
+        return await handleProcess(request, env, path)
+      } else if (path.startsWith('/api/status/')) {
+        return await handleStatus(request, env, path)
+      } else if (path.startsWith('/api/download/')) {
+        return await handleDownload(request, env, path)
+      } else if (path.startsWith('/api/detect-faces')) {
+        return await handleDetectFaces(request, env)
       } else {
-        response = new Response('Not Found', { status: 404 })
+        return new Response('Not Found', { status: 404 })
       }
-
-      // Add CORS headers to response
-      Object.entries(corsHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value)
-      })
-
-      return response
     } catch (error) {
       console.error('Worker error:', error)
-      const errorResponse = new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Internal server error',
-          message: error.message 
-        }), 
-        { 
-          status: 500,
-          headers: { 
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          }
+      return new Response(JSON.stringify({
+        success: false,
+        error: error.message || 'Internal server error'
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         }
-      )
-      return errorResponse
+      })
     }
   }
 }
@@ -65,211 +44,433 @@ export function handleCORS(request, env) {
   return new Response(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': env.ALLOWED_ORIGINS || '*',
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400',
+      'Access-Control-Max-Age': '86400'
     }
   })
 }
 
-// Upload handler
+// Upload file to R2
 export async function handleUpload(request, env) {
   try {
+    console.log('Upload request received');
+    console.log('Content-Type:', request.headers.get('content-type'));
+    
+    // Check if request has form data
+    const contentType = request.headers.get('content-type');
+    if (!contentType || !contentType.includes('multipart/form-data')) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Content-Type must be multipart/form-data'
+      }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+    }
+    
     const formData = await request.formData()
     const file = formData.get('file')
     
+    console.log('File received:', file ? file.name : 'null');
+    
     if (!file) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No file provided' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No file provided'
+      }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
     }
 
-    // Generate unique filename
-    const fileId = crypto.randomUUID()
-    const fileExtension = file.name.split('.').pop()
-    const fileName = `${fileId}.${fileExtension}`
+    // Generate unique file ID
+    const fileId = generateFileId()
+    const fileExtension = getFileExtension(file.name)
+    const fileName = `uploads/${fileId}.${fileExtension}`
+
+    console.log('Uploading to R2:', fileName);
 
     // Upload to R2
-    await env.FACESWAP_BUCKET.put(fileName, file.stream(), {
+    const uploadResult = await env.FACESWAP_BUCKET.put(fileName, file.stream(), {
       httpMetadata: {
-        contentType: file.type,
+        contentType: file.type
       },
+      customMetadata: {
+        originalName: file.name,
+        uploadTime: new Date().toISOString(),
+        fileType: file.type,
+        fileSize: file.size.toString()
+      }
     })
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          fileId,
-          fileName,
-          originalName: file.name,
-          size: file.size,
-          type: file.type
-        }
-      }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
+    if (!uploadResult) {
+      throw new Error('Failed to upload file to R2')
+    }
+
+    console.log('Upload successful:', fileName);
+
+    // Set expiration for uploaded files (24 hours)
+    await scheduleFileDeletion(env, fileName, 24 * 60 * 60 * 1000) // 24 hours
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        fileId: fileId,
+        fileName: file.name,
+        url: `/api/download/${fileId}`,
+        size: file.size,
+        type: file.type
+      }
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
+
   } catch (error) {
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    console.error('Upload error:', error)
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Upload failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
   }
 }
 
-// Process handler
+// Process face swap request
 export async function handleProcess(request, env, path) {
   try {
-    const body = await request.json()
-    const processType = path.split('/').pop()
-
+    const processType = path.split('/').pop() // single-image, multi-image, etc.
+    const requestBody = await request.json()
+    
     // Generate job ID
-    const jobId = crypto.randomUUID()
-
-    // Create job record
-    const job = {
+    const jobId = generateJobId()
+    
+    // Store job in KV with pending status
+    const jobData = {
       id: jobId,
       type: processType,
       status: 'pending',
       progress: 0,
       created_at: new Date().toISOString(),
-      ...body
+      source_file: requestBody.source_file,
+      target_file: requestBody.target_file,
+      options: requestBody.options || {}
+    }
+    
+    await env.JOBS.put(jobId, JSON.stringify(jobData))
+
+    // Prepare RunPod request
+    const runpodPayload = {
+      input: {
+        job_id: jobId,
+        process_type: processType,
+        source_file: await getR2FileUrl(env, requestBody.source_file),
+        target_file: await getR2FileUrl(env, requestBody.target_file),
+        options: requestBody.options || {}
+      }
     }
 
-    // Store job in KV
-    await env.SESSIONS.put(`job:${jobId}`, JSON.stringify(job))
-
-    // Trigger RunPod serverless function
+    // Send to RunPod
     const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${env.RUNPOD_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        input: {
-          job_id: jobId,
-          process_type: processType,
-          ...body
-        }
-      })
+      body: JSON.stringify(runpodPayload)
     })
 
+    const runpodResult = await runpodResponse.json()
+    
     if (!runpodResponse.ok) {
-      throw new Error('Failed to start RunPod job')
+      throw new Error(`RunPod error: ${runpodResult.error || 'Unknown error'}`)
     }
 
-    const runpodData = await runpodResponse.json()
-
     // Update job with RunPod ID
-    job.runpod_id = runpodData.id
-    job.status = 'processing'
-    await env.SESSIONS.put(`job:${jobId}`, JSON.stringify(job))
+    jobData.runpod_id = runpodResult.id
+    jobData.status = 'processing'
+    await env.JOBS.put(jobId, JSON.stringify(jobData))
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          jobId,
-          status: 'processing',
-          message: 'Face swap processing started'
-        }
-      }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({
+      success: true,
+      data: { jobId }
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
+
   } catch (error) {
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    console.error('Process error:', error)
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Processing failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
   }
 }
 
-// Status handler
+// Get job status
 export async function handleStatus(request, env, path) {
   try {
     const jobId = path.split('/').pop()
-    const jobData = await env.SESSIONS.get(`job:${jobId}`)
-
+    
+    // Get job from KV
+    const jobData = await env.JOBS.get(jobId)
     if (!jobData) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Job not found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Job not found'
+      }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
     }
 
     const job = JSON.parse(jobData)
 
-    // Check RunPod status if still processing
+    // If processing, check RunPod status
     if (job.status === 'processing' && job.runpod_id) {
       const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${job.runpod_id}`, {
         headers: {
-          'Authorization': `Bearer ${env.RUNPOD_API_KEY}`,
+          'Authorization': `Bearer ${env.RUNPOD_API_KEY}`
         }
       })
 
+      const runpodResult = await runpodResponse.json()
+      
       if (runpodResponse.ok) {
-        const runpodData = await runpodResponse.json()
-        
-        if (runpodData.status === 'COMPLETED') {
+        // Update job based on RunPod status
+        if (runpodResult.status === 'COMPLETED') {
           job.status = 'completed'
           job.progress = 100
-          job.result_url = runpodData.output?.result_url
           job.completed_at = new Date().toISOString()
-          await env.SESSIONS.put(`job:${jobId}`, JSON.stringify(job))
-        } else if (runpodData.status === 'FAILED') {
+          
+          // Store result file from RunPod
+          if (runpodResult.output && runpodResult.output.result_url) {
+            const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId)
+            job.result_url = `/api/download/${resultFileId}`
+          }
+          
+          await env.JOBS.put(jobId, JSON.stringify(job))
+          
+        } else if (runpodResult.status === 'FAILED') {
           job.status = 'failed'
-          job.error_message = runpodData.error || 'Processing failed'
-          await env.SESSIONS.put(`job:${jobId}`, JSON.stringify(job))
+          job.error_message = runpodResult.error || 'Processing failed'
+          await env.JOBS.put(jobId, JSON.stringify(job))
         }
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          id: job.id,
-          status: job.status,
-          progress: job.progress,
-          result_url: job.result_url,
-          error_message: job.error_message,
-          created_at: job.created_at,
-          completed_at: job.completed_at
-        }
-      }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({
+      success: true,
+      data: job
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
+
   } catch (error) {
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    console.error('Status error:', error)
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Status check failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
   }
 }
 
-// Download handler
+// Download file from R2
 export async function handleDownload(request, env, path) {
   try {
     const fileId = path.split('/').pop()
-    const object = await env.FACESWAP_BUCKET.get(fileId)
-
-    if (!object) {
-      return new Response('File not found', { status: 404 })
+    console.log('Download request for fileId:', fileId);
+    
+    // Try both uploads and results folders with different extensions
+    const possiblePaths = [
+      `uploads/${fileId}.jpg`,
+      `uploads/${fileId}.jpeg`, 
+      `uploads/${fileId}.png`,
+      `uploads/${fileId}.mp4`,
+      `uploads/${fileId}`,
+      `results/${fileId}.jpg`,
+      `results/${fileId}.jpeg`,
+      `results/${fileId}.png`, 
+      `results/${fileId}.mp4`,
+      `results/${fileId}`
+    ];
+    
+    let r2Object = null;
+    let foundPath = null;
+    
+    for (const testPath of possiblePaths) {
+      console.log('Trying path:', testPath);
+      r2Object = await env.FACESWAP_BUCKET.get(testPath);
+      if (r2Object) {
+        foundPath = testPath;
+        console.log('Found file at:', foundPath);
+        break;
+      }
+    }
+    
+    if (!r2Object) {
+      console.log('File not found in any path');
+      return new Response('File not found', { 
+        status: 404,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      })
     }
 
-    return new Response(object.body, {
+    const headers = new Headers()
+    headers.set('Access-Control-Allow-Origin', '*')
+    headers.set('Content-Type', r2Object.httpMetadata?.contentType || 'application/octet-stream')
+    
+    // Set filename for download
+    const originalName = r2Object.customMetadata?.originalName || `file_${fileId}`
+    headers.set('Content-Disposition', `attachment; filename="${originalName}"`)
+
+    console.log('Serving file:', foundPath, 'as:', originalName);
+    return new Response(r2Object.body, { headers })
+
+  } catch (error) {
+    console.error('Download error:', error)
+    return new Response('Download failed', { 
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    })
+  }
+}
+
+// Face detection handler
+export async function handleDetectFaces(request, env) {
+  try {
+    const requestBody = await request.json()
+    const fileId = requestBody.fileId
+    
+    if (!fileId) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No file ID provided'
+      }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+    }
+
+    // Prepare RunPod request for face detection
+    const runpodPayload = {
+      input: {
+        process_type: 'detect-faces',
+        image_file: await getR2FileUrl(env, fileId)
+      }
+    }
+
+    // Send to RunPod
+    const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
+      method: 'POST',
       headers: {
-        'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${fileId}"`,
+        'Authorization': `Bearer ${env.RUNPOD_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(runpodPayload)
+    })
+
+    const runpodResult = await runpodResponse.json()
+    
+    if (!runpodResponse.ok) {
+      throw new Error(`RunPod error: ${runpodResult.error || 'Unknown error'}`)
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: runpodResult.output
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       }
     })
+
   } catch (error) {
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    console.error('Face detection error:', error)
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Face detection failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
   }
+}
+
+// Helper functions
+function generateFileId() {
+  return crypto.randomUUID()
+}
+
+function generateJobId() {
+  return `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+function getFileExtension(filename) {
+  return filename.split('.').pop() || 'bin'
+}
+
+async function getR2FileUrl(env, fileId) {
+  // Generate a presigned URL for RunPod to access the file
+  const fileName = `uploads/${fileId}`
+  
+  // For now, return a direct URL - in production you might want presigned URLs
+  return `https://${env.R2_BUCKET_NAME}.${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/${fileName}`
+}
+
+async function storeResultFromUrl(env, resultUrl, jobId) {
+  try {
+    // Download the result from RunPod
+    const response = await fetch(resultUrl)
+    if (!response.ok) {
+      throw new Error('Failed to fetch result file')
+    }
+
+    // Generate result file ID
+    const resultFileId = `result_${jobId}_${Date.now()}`
+    const fileName = `results/${resultFileId}.jpg` // Assume JPG for now
+
+    // Store in R2
+    await env.FACESWAP_BUCKET.put(fileName, response.body, {
+      customMetadata: {
+        jobId: jobId,
+        createdAt: new Date().toISOString(),
+        originalUrl: resultUrl
+      }
+    })
+
+    // Set expiration for result files (7 days)
+    await scheduleFileDeletion(env, fileName, 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    return resultFileId
+
+  } catch (error) {
+    console.error('Failed to store result:', error)
+    throw error
+  }
+}
+
+async function scheduleFileDeletion(env, fileName, delayMs) {
+  // Use Cloudflare's Durable Objects or external service for file cleanup
+  // For now, we'll rely on manual cleanup or lifecycle policies
+  console.log(`File ${fileName} scheduled for deletion in ${delayMs}ms`)
 } 

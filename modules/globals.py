@@ -41,3 +41,32 @@ show_mouth_mask_box = False
 mask_feather_ratio = 8
 mask_down_size = 0.50
 mask_size = 1
+
+# Model paths configuration
+def get_models_dir():
+    """Get models directory path, supporting both local development and RunPod deployment"""
+    
+    # Check if we're running in RunPod environment
+    if os.path.exists('/workspace/faceswap'):
+        # RunPod environment - models are directly in workspace
+        models_dir = '/workspace/faceswap'
+    elif os.path.exists('/app/models'):
+        # Docker environment
+        models_dir = '/app/models'
+    else:
+        # Local development - use relative path
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        models_dir = os.path.join(os.path.dirname(current_dir), 'models')
+    
+    return models_dir
+
+def get_model_path(model_name):
+    """Get full path to a specific model file"""
+    models_dir = get_models_dir()
+    model_path = os.path.join(models_dir, model_name)
+    
+    # Check if model exists
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model not found: {model_path}")
+    
+    return model_path

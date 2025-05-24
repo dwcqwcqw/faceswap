@@ -56,6 +56,8 @@ export interface ProcessingOptions {
   many_faces: boolean
   mouth_mask: boolean
   keep_fps: boolean
-  video_quality: number
+  video_quality: number  // 0-51, lower = better quality
+  video_encoder: 'libx264' | 'libx265' | 'libvpx-vp9'
   execution_provider: string
+  use_face_enhancer: boolean  // Enable face enhancement for better quality
 } 

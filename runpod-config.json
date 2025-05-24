@@ -1,0 +1,136 @@
+{
+  "name": "faceswap-serverless",
+  "description": "Face Swap API based on Deep-Live-Cam",
+  "docker_image": "your-dockerhub-username/faceswap-runpod:latest",
+  "container_disk_in_gb": 25,
+  "env": {
+    "CLOUDFLARE_ACCOUNT_ID": "c7c141ce43d175e60601edc46d904553",
+    "R2_BUCKET_NAME": "faceswap-storage"
+  },
+  "secrets": [
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY"
+  ],
+  "gpu_types": [
+    "RTX4090",
+    "RTXA6000",
+    "RTX3090"
+  ],
+  "max_workers": 3,
+  "idle_timeout": 60,
+  "execution_timeout": 300,
+  "endpoint_configuration": {
+    "handler": "handler.handler",
+    "runtimes": {
+      "python": "3.10"
+    }
+  },
+  "endpoints": {
+    "single-image": {
+      "description": "Single person face swap",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {"type": "string"},
+          "source_file": {"type": "string", "description": "URL to source face image"},
+          "target_file": {"type": "string", "description": "URL to target image"},
+          "options": {
+            "type": "object",
+            "properties": {
+              "enhance_face": {"type": "boolean", "default": true},
+              "quality": {"type": "string", "enum": ["normal", "high"], "default": "high"}
+            }
+          }
+        },
+        "required": ["source_file", "target_file"]
+      }
+    },
+    "multi-image": {
+      "description": "Multi-person face swap",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {"type": "string"},
+          "source_file": {"type": "string", "description": "URL to multi-person image"},
+          "target_file": {"type": "string", "description": "URL to target image"},
+          "face_mappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "face_id": {"type": "integer"},
+                "replacement_url": {"type": "string"}
+              }
+            }
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "enhance_face": {"type": "boolean", "default": true}
+            }
+          }
+        },
+        "required": ["source_file", "target_file", "face_mappings"]
+      }
+    },
+    "video-single": {
+      "description": "Single person video face swap",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {"type": "string"},
+          "source_file": {"type": "string", "description": "URL to source face image"},
+          "target_file": {"type": "string", "description": "URL to target video"},
+          "options": {
+            "type": "object",
+            "properties": {
+              "enhance_face": {"type": "boolean", "default": false},
+              "keep_audio": {"type": "boolean", "default": true},
+              "quality": {"type": "string", "enum": ["fast", "normal", "high"], "default": "normal"}
+            }
+          }
+        },
+        "required": ["source_file", "target_file"]
+      }
+    },
+    "video-multi": {
+      "description": "Multi-person video face swap",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {"type": "string"},
+          "source_file": {"type": "string", "description": "URL to multi-person video"},
+          "target_file": {"type": "string", "description": "URL to target video"},
+          "face_mappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "face_id": {"type": "integer"},
+                "replacement_url": {"type": "string"}
+              }
+            }
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "enhance_face": {"type": "boolean", "default": false},
+              "keep_audio": {"type": "boolean", "default": true}
+            }
+          }
+        },
+        "required": ["source_file", "target_file", "face_mappings"]
+      }
+    },
+    "detect-faces": {
+      "description": "Detect faces in image or video",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_file": {"type": "string", "description": "URL to image or video file"}
+        },
+        "required": ["source_file"]
+      }
+    }
+  }
+} 

@@ -13,13 +13,20 @@ name = "faceswap-api-staging"
 binding = "FACESWAP_BUCKET"
 bucket_name = "faceswap-storage"
 
-# KV namespace for session management
+# KV namespace for job management
 [[kv_namespaces]]
-binding = "SESSIONS"
-id = "your-kv-namespace-id"
+binding = "JOBS"
+id = "07e5f7afa309412e9d7e77fe672a415a"
 
 # Environment variables
 [vars]
 RUNPOD_API_KEY = "your-runpod-api-key"
 RUNPOD_ENDPOINT_ID = "your-runpod-endpoint-id"
-ALLOWED_ORIGINS = "https://faceswap.yourdomain.com" 
+ALLOWED_ORIGINS = "*"
+# R2 Configuration
+CLOUDFLARE_ACCOUNT_ID = "c7c141ce43d175e60601edc46d904553"
+R2_BUCKET_NAME = "faceswap-storage"
+R2_ACCESS_KEY_ID = "5885b29961ce9fc2b593139d9de52f81"
+
+# Secrets (use wrangler secret put)
+# R2_SECRET_ACCESS_KEY = "a4415c670e669229db451ea7b38544c0a2e44dbe630f1f35f99f28a27593d181" 
