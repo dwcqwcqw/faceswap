@@ -258,12 +258,36 @@ export default function MultiImagePage() {
                 {/* Face preview from original image */}
                 <div className="mb-4">
                   <p className="text-sm text-gray-600 mb-2">原图中的人脸:</p>
-                  <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-gray-500 text-sm">
-                      位置: ({face.x}, {face.y}) 
-                      置信度: {(face.confidence * 100).toFixed(1)}%
-                    </span>
-                  </div>
+                  {face.preview ? (
+                    <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                      <img
+                        src={`data:image/jpeg;base64,${face.preview}`}
+                        alt={`人脸 ${index + 1}`}
+                        className="max-w-full max-h-full object-contain rounded"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <span className="text-gray-500 text-sm block">
+                          位置: ({face.x}, {face.y})
+                        </span>
+                        <span className="text-gray-500 text-sm block">
+                          大小: {face.width} × {face.height}
+                        </span>
+                        <span className="text-gray-500 text-sm block">
+                          置信度: {(face.confidence * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {face.preview && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      置信度: {(face.confidence * 100).toFixed(1)}% | 
+                      位置: ({face.x}, {face.y}) | 
+                      大小: {face.width} × {face.height}
+                    </p>
+                  )}
                 </div>
 
                 {/* Target face upload */}

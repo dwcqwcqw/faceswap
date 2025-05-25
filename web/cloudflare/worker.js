@@ -486,7 +486,7 @@ export async function handleDetectFaces(request, env) {
     } else if (runpodResult.id) {
       // Asynchronous response - poll for result
       console.log('🔄 Asynchronous response, polling for result...')
-      const pollResult = await pollRunPodResult(env, runpodResult.id, 30) // 30 second timeout
+      const pollResult = await pollRunPodResult(env, runpodResult.id, 60) // Increase to 60 second timeout
       
       if (pollResult.success) {
         return new Response(JSON.stringify({
@@ -536,8 +536,10 @@ export async function handleDetectFaces(request, env) {
 }
 
 // Helper function to poll RunPod result
-async function pollRunPodResult(env, jobId, timeoutSeconds = 30) {
-  const maxAttempts = Math.ceil(timeoutSeconds / 2) // Poll every 2 seconds
+async function pollRunPodResult(env, jobId, timeoutSeconds = 60) {
+  const maxAttempts = Math.ceil(timeoutSeconds / 3) // Poll every 3 seconds for longer jobs
+  
+  console.log(`🔄 Starting polling for job ${jobId}, max attempts: ${maxAttempts}`)
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -552,35 +554,61 @@ async function pollRunPodResult(env, jobId, timeoutSeconds = 30) {
       })
 
       if (!response.ok) {
-        console.log(`⚠️ Polling failed with HTTP ${response.status}`)
-        continue
+        console.log(`⚠️ Polling failed with HTTP ${response.status}: ${response.statusText}`)
+        const errorText = await response.text()
+        console.log(`⚠️ Error response: ${errorText}`)
+        
+        // Don't fail immediately on HTTP errors, continue polling
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
+          continue
+        } else {
+          return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+        }
       }
 
       const result = await response.json()
       console.log(`📊 Job ${jobId} status: ${result.status}`)
+      console.log(`📋 Full response:`, JSON.stringify(result, null, 2))
       
       if (result.status === 'COMPLETED') {
         console.log('✅ Job completed successfully')
-        return { success: true, output: result.output }
+        if (result.output) {
+          return { success: true, output: result.output }
+        } else {
+          console.log('⚠️ Job completed but no output found')
+          return { success: false, error: 'Job completed but no output found' }
+        }
       } else if (result.status === 'FAILED') {
         console.log('❌ Job failed')
-        return { success: false, error: result.error || 'Job failed' }
-      } else {
+        const errorMsg = result.error || result.output?.error || 'Job failed without specific error'
+        return { success: false, error: errorMsg }
+      } else if (result.status === 'IN_PROGRESS' || result.status === 'IN_QUEUE') {
+        console.log(`⏳ Job still ${result.status.toLowerCase()}, continuing to poll...`)
         // Still running, wait before next attempt
         if (attempt < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
+          await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
+        }
+      } else {
+        console.log(`🤔 Unknown status: ${result.status}`)
+        // Unknown status, continue polling
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
         }
       }
 
     } catch (error) {
       console.log(`⚠️ Polling error on attempt ${attempt}: ${error.message}`)
       if (attempt < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
+        await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
+      } else {
+        return { success: false, error: `Polling failed: ${error.message}` }
       }
     }
   }
   
-  return { success: false, error: 'Polling timeout' }
+  console.log(`⏰ Polling timeout after ${maxAttempts} attempts`)
+  return { success: false, error: 'Polling timeout - job may still be processing' }
 }
 
 // Helper functions
@@ -679,3 +707,5 @@ async function scheduleFileDeletion(env, fileName, delayMs) {
   // For now, we'll rely on manual cleanup or R2 lifecycle policies
   console.log(`🗑️ File ${fileName} scheduled for deletion in ${delayMs}ms`)
 }
+
+

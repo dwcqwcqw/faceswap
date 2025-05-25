@@ -6,6 +6,7 @@ export interface Face {
   height: number
   confidence: number
   embedding?: number[]
+  preview?: string  // Base64 encoded face image
 }
 
 export interface DetectedFaces {

@@ -437,7 +437,7 @@ async function handleDetectFaces(request, env) {
       });
     } else if (runpodResult.id) {
       console.log("\u{1F504} Asynchronous response, polling for result...");
-      const pollResult = await pollRunPodResult(env, runpodResult.id, 30);
+      const pollResult = await pollRunPodResult(env, runpodResult.id, 60);
       if (pollResult.success) {
         return new Response(JSON.stringify({
           success: true,
@@ -483,8 +483,9 @@ async function handleDetectFaces(request, env) {
   }
 }
 __name(handleDetectFaces, "handleDetectFaces");
-async function pollRunPodResult(env, jobId, timeoutSeconds = 30) {
-  const maxAttempts = Math.ceil(timeoutSeconds / 2);
+async function pollRunPodResult(env, jobId, timeoutSeconds = 60) {
+  const maxAttempts = Math.ceil(timeoutSeconds / 3);
+  console.log(`\u{1F504} Starting polling for job ${jobId}, max attempts: ${maxAttempts}`);
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       console.log(`\u{1F504} Polling attempt ${attempt}/${maxAttempts} for job ${jobId}`);
@@ -496,30 +497,53 @@ async function pollRunPodResult(env, jobId, timeoutSeconds = 30) {
         }
       });
       if (!response.ok) {
-        console.log(`\u26A0\uFE0F Polling failed with HTTP ${response.status}`);
-        continue;
+        console.log(`\u26A0\uFE0F Polling failed with HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.log(`\u26A0\uFE0F Error response: ${errorText}`);
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 3e3));
+          continue;
+        } else {
+          return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
+        }
       }
       const result = await response.json();
       console.log(`\u{1F4CA} Job ${jobId} status: ${result.status}`);
+      console.log(`\u{1F4CB} Full response:`, JSON.stringify(result, null, 2));
       if (result.status === "COMPLETED") {
         console.log("\u2705 Job completed successfully");
-        return { success: true, output: result.output };
+        if (result.output) {
+          return { success: true, output: result.output };
+        } else {
+          console.log("\u26A0\uFE0F Job completed but no output found");
+          return { success: false, error: "Job completed but no output found" };
+        }
       } else if (result.status === "FAILED") {
         console.log("\u274C Job failed");
-        return { success: false, error: result.error || "Job failed" };
-      } else {
+        const errorMsg = result.error || result.output?.error || "Job failed without specific error";
+        return { success: false, error: errorMsg };
+      } else if (result.status === "IN_PROGRESS" || result.status === "IN_QUEUE") {
+        console.log(`\u23F3 Job still ${result.status.toLowerCase()}, continuing to poll...`);
         if (attempt < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 2e3));
+          await new Promise((resolve) => setTimeout(resolve, 3e3));
+        }
+      } else {
+        console.log(`\u{1F914} Unknown status: ${result.status}`);
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 3e3));
         }
       }
     } catch (error) {
       console.log(`\u26A0\uFE0F Polling error on attempt ${attempt}: ${error.message}`);
       if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 2e3));
+        await new Promise((resolve) => setTimeout(resolve, 3e3));
+      } else {
+        return { success: false, error: `Polling failed: ${error.message}` };
       }
     }
   }
-  return { success: false, error: "Polling timeout" };
+  console.log(`\u23F0 Polling timeout after ${maxAttempts} attempts`);
+  return { success: false, error: "Polling timeout - job may still be processing" };
 }
 __name(pollRunPodResult, "pollRunPodResult");
 function generateFileId() {

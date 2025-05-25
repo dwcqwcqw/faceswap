@@ -172,8 +172,27 @@ def download_image_from_url(url):
             response = requests.get(url, timeout=30)
             response.raise_for_status()
             
+            # Log response headers for debugging
+            content_type = response.headers.get('content-type', '')
+            logger.info(f"📋 Response content-type: {content_type}")
+            logger.info(f"📋 Response size: {len(response.content)} bytes")
+            
+            # Check if it's a valid image format
+            if 'svg' in content_type.lower():
+                logger.error("❌ SVG format is not supported for face detection")
+                return None
+            
             # Convert to PIL Image
-            image = Image.open(BytesIO(response.content))
+            try:
+                image = Image.open(BytesIO(response.content))
+                logger.info(f"📐 PIL Image format: {image.format}, mode: {image.mode}, size: {image.size}")
+            except Exception as e:
+                logger.error(f"❌ Failed to open image with PIL: {e}")
+                # Try to detect file format from first few bytes
+                if len(response.content) > 10:
+                    header = response.content[:10]
+                    logger.error(f"❌ File header: {header.hex()}")
+                return None
             
             # Convert to OpenCV format (BGR)
             image_array = np.array(image)
@@ -550,7 +569,7 @@ def process_video_swap(source_image_data, target_video_data):
         return {"error": str(e)}
 
 def process_detect_faces_from_url(image_url):
-    """Detect faces in image from URL - Enhanced multi-face detection"""
+    """Detect faces in image from URL - Enhanced multi-face detection with face previews"""
     try:
         logger.info(f"🔍 Starting face detection from URL: {image_url}")
         
@@ -576,7 +595,7 @@ def process_detect_faces_from_url(image_url):
         
         logger.info(f"✅ Detected {len(faces)} face(s)")
         
-        # Convert faces to API format
+        # Convert faces to API format with face previews
         detected_faces = []
         for i, face in enumerate(faces):
             try:
@@ -589,6 +608,17 @@ def process_detect_faces_from_url(image_url):
                     'height': int(face.bbox[3] - face.bbox[1]) if hasattr(face, 'bbox') else 0,
                     'confidence': float(face.det_score) if hasattr(face, 'det_score') else 0.9
                 }
+                
+                # Extract and encode face image
+                try:
+                    face_image = extract_face_image(image_frame, face)
+                    if face_image is not None:
+                        face_info['preview'] = face_image
+                        logger.info(f"✅ Face {i+1} preview extracted successfully")
+                    else:
+                        logger.warning(f"⚠️ Failed to extract preview for face {i+1}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Error extracting face image {i}: {e}")
                 
                 # Add embedding for face matching (optional)
                 if hasattr(face, 'embedding'):
@@ -618,6 +648,51 @@ def process_detect_faces_from_url(image_url):
             "total_faces": 0,
             "image_path": image_url if 'image_url' in locals() else ""
         }
+
+def extract_face_image(image_frame, face):
+    """Extract face region from image and return as base64 encoded JPEG"""
+    try:
+        # Get face bounding box
+        if not hasattr(face, 'bbox'):
+            return None
+            
+        x1, y1, x2, y2 = face.bbox
+        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        
+        # Add padding around face
+        padding = 20
+        height, width = image_frame.shape[:2]
+        
+        x1 = max(0, x1 - padding)
+        y1 = max(0, y1 - padding)
+        x2 = min(width, x2 + padding)
+        y2 = min(height, y2 + padding)
+        
+        # Extract face region
+        face_region = image_frame[y1:y2, x1:x2]
+        
+        if face_region.size == 0:
+            return None
+        
+        # Convert to RGB for PIL
+        face_rgb = cv2.cvtColor(face_region, cv2.COLOR_BGR2RGB)
+        
+        # Convert to PIL Image
+        face_pil = Image.fromarray(face_rgb)
+        
+        # Resize to standard size for preview
+        face_pil = face_pil.resize((150, 150), Image.Resampling.LANCZOS)
+        
+        # Encode to base64 JPEG
+        buffer = BytesIO()
+        face_pil.save(buffer, format='JPEG', quality=85)
+        face_base64 = base64.b64encode(buffer.getvalue()).decode()
+        
+        return face_base64
+        
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to extract face image: {e}")
+        return None
 
 def process_multi_image_swap_from_urls(target_url, face_mappings):
     """Process multi-person face swap with individual face mappings"""
