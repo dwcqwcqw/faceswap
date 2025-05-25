@@ -1,5 +1,84 @@
 # 🔧 最新错误修复总结
 
+### 2025-01-25 - Enhanced Model Path Detection and Auto-Download
+
+#### Issue: Model file exists but not detected: `inswapper_128_fp16.onnx should exist`
+
+**Problem**: User confirmed that `inswapper_128_fp16.onnx` exists in `/workspace/faceswap/` but the system couldn't find it.
+
+**Root Cause Analysis**: 
+- Model detection logic was basic and didn't provide detailed debugging information
+- No comprehensive file system checks (existence, file type, permissions)
+- Missing automatic model download fallback
+- No visibility into why specific paths failed
+
+**Solution Implemented**:
+
+1. **Enhanced Model Detection in `face_swapper.py`**:
+   ```python
+   # Added comprehensive debugging
+   print(f"🔍 Searching for face swapper model...")
+   print(f"   Primary models_dir: {models_dir}")
+   print(f"   Primary exists: {os.path.exists(model_path)}")
+   
+   # Enhanced file system checks
+   exists = os.path.exists(alt_path)
+   is_file = os.path.isfile(alt_path) if exists else False  
+   readable = os.access(alt_path, os.R_OK) if exists else False
+   ```
+
+2. **Extended Search Paths**:
+   - Added current working directory and relative paths
+   - Added `/workspace/inswapper_128_fp16.onnx` (direct workspace)
+   - Added directory listing for `/workspace/faceswap/` to debug contents
+
+3. **Automatic Model Download Script** (`runpod/download_missing_models.py`):
+   ```python
+   def ensure_models_available():
+       """Download missing models to /workspace/faceswap"""
+       models = {
+           "inswapper_128_fp16.onnx": {
+               "url": "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx"
+           }
+       }
+   ```
+
+4. **Handler Integration**:
+   - Updated `handler_serverless.py` to call model download check at startup
+   - Ensures models are available before processing requests
+   - Fallback to download if workspace models are missing or corrupted
+
+5. **Debug Testing Tool** (`test_model_detection.py`):
+   - Standalone script to test model detection logic
+   - Comprehensive path checking and file system diagnostics
+   - Can be run independently to debug model issues
+
+**Files Modified**:
+- `modules/processors/frame/face_swapper.py` - Enhanced detection with detailed logging
+- `runpod/download_missing_models.py` - New automatic download script 
+- `runpod/handler_serverless.py` - Integrated model availability check
+- `test_model_detection.py` - New debugging tool
+
+**Expected Results**:
+- ✅ **Detailed Diagnostics**: Shows exactly why each path succeeds or fails
+- ✅ **Automatic Recovery**: Downloads missing models automatically
+- ✅ **Better Error Messages**: Clear guidance on what to do if models missing
+- ✅ **Comprehensive Search**: Checks all possible model locations
+- ✅ **Debug Tooling**: Easy to test and troubleshoot model issues
+
+**Testing**:
+```bash
+# Test model detection (in RunPod container)
+python test_model_detection.py
+
+# Manual model download
+python runpod/download_missing_models.py
+
+# Check the enhanced debug output in processing logs
+```
+
+**Status**: ✅ Deployed - Enhanced detection with automatic fallback
+
 ## 📋 错误修复历程
 
 ### 🚨 第一轮错误 (构建失败)
@@ -308,7 +387,7 @@ POST http://localhost:8787/api/upload 500 (Internal Server Error)
 **Benefits**:
 - 🚀 **Instant Setup**: No complex backend configuration needed
 - 🧪 **UI Testing**: Complete interface testing without API dependencies  
-- 🔄 **Auto Fallback**: Graceful degradation when APIs unavailable
+- �� **Auto Fallback**: Graceful degradation when APIs unavailable
 - 📚 **Documentation**: Clear development workflow guide
 
 ---
