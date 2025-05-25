@@ -397,10 +397,28 @@ export async function handleDownload(request, env, path) {
     headers.set('Content-Type', r2Object.httpMetadata?.contentType || 'application/octet-stream')
     
     // Set filename for download
-    const originalName = r2Object.customMetadata?.originalName || `file_${fileId}`
-    headers.set('Content-Disposition', `attachment; filename="${originalName}"`)
+    let downloadFilename;
+    
+    if (foundPath.startsWith('results/')) {
+      // For result files, create a descriptive filename
+      const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      downloadFilename = `face_swap_result_${timestamp}.jpg`;
+    } else {
+      // For uploaded files, use original name or generate one with extension
+      const originalName = r2Object.customMetadata?.originalName;
+      if (originalName) {
+        downloadFilename = originalName;
+      } else {
+        // Extract extension from the found path
+        const pathParts = foundPath.split('.');
+        const extension = pathParts.length > 1 ? pathParts.pop() : 'jpg';
+        downloadFilename = `file_${fileId}.${extension}`;
+      }
+    }
+    
+    headers.set('Content-Disposition', `attachment; filename="${downloadFilename}"`)
 
-    console.log('Serving file:', foundPath, 'as:', originalName);
+    console.log('Serving file:', foundPath, 'as:', downloadFilename);
     return new Response(r2Object.body, { headers })
 
   } catch (error) {
@@ -551,14 +569,11 @@ async function storeResultFromBase64(env, base64Data, jobId) {
       customMetadata: {
         jobId: jobId,
         createdAt: new Date().toISOString(),
-        originalType: 'base64_result'
+        type: 'result'
       }
     })
 
-    console.log(`✅ Result stored successfully: ${fileName}`);
-
-    // Set expiration for result files (7 days)
-    await scheduleFileDeletion(env, fileName, 7 * 24 * 60 * 60 * 1000) // 7 days
+    console.log(`💾 Result stored successfully`);
 
     return resultFileId
 
@@ -567,9 +582,3 @@ async function storeResultFromBase64(env, base64Data, jobId) {
     throw error
   }
 }
-
-async function scheduleFileDeletion(env, fileName, delayMs) {
-  // Use Cloudflare's Durable Objects or external service for file cleanup
-  // For now, we'll rely on manual cleanup or lifecycle policies
-  console.log(`File ${fileName} scheduled for deletion in ${delayMs}ms`)
-} 

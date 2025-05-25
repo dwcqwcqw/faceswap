@@ -67,7 +67,7 @@ def ensure_models_available():
             "description": "Face swapper model"
         },
         "GFPGANv1.4.pth": {
-            "url": "https://huggingface.co/hacksider/deep-live-cam/resolve/main/GFPGANv1.4.pth", 
+            "url": "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth", 
             "description": "Face enhancer model"
         }
     }

@@ -228,46 +228,73 @@ __name(handleProcess, "handleProcess");
 async function handleStatus(request, env, path) {
   try {
     const jobId = path.split("/").pop();
+    console.log(`\u{1F4CB} Checking status for job: ${jobId}`);
     const jobData = await env.JOBS.get(jobId);
     if (!jobData) {
+      console.log(`\u274C Job not found: ${jobId}`);
       return new Response(JSON.stringify({
         success: false,
         error: "Job not found"
       }), { status: 404, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
     }
     const job = JSON.parse(jobData);
+    console.log(`\u{1F50D} Job status: ${job.status}, RunPod ID: ${job.runpod_id}`);
     if (job.status === "processing" && job.runpod_id) {
+      console.log(`\u{1F504} Checking RunPod status for: ${job.runpod_id}`);
       const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${job.runpod_id}`, {
         headers: {
           "Authorization": `Bearer ${env.RUNPOD_TOKEN}`
         }
       });
-      const runpodResult = await runpodResponse.json();
-      if (runpodResponse.ok) {
+      if (!runpodResponse.ok) {
+        console.log(`\u26A0\uFE0F RunPod API error: ${runpodResponse.status} ${runpodResponse.statusText}`);
+      } else {
+        const runpodResult = await runpodResponse.json();
+        console.log(`\u{1F4CA} RunPod result:`, JSON.stringify(runpodResult, null, 2));
         if (runpodResult.status === "COMPLETED") {
+          console.log(`\u2705 RunPod job completed, processing result...`);
           job.status = "completed";
           job.progress = 100;
           job.completed_at = (/* @__PURE__ */ new Date()).toISOString();
           if (runpodResult.output) {
-            if (runpodResult.output.result_url) {
-              const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId);
-              job.result_url = `/api/download/${resultFileId}`;
-            } else if (runpodResult.output.result) {
-              const resultFileId = await storeResultFromBase64(env, runpodResult.output.result, jobId);
-              job.result_url = `/api/download/${resultFileId}`;
-            } else if (typeof runpodResult.output === "string") {
-              const resultFileId = await storeResultFromBase64(env, runpodResult.output, jobId);
-              job.result_url = `/api/download/${resultFileId}`;
+            console.log(`\u{1F50D} Processing RunPod output...`);
+            try {
+              if (runpodResult.output.result_url) {
+                console.log(`\u{1F4CE} Found result_url format: ${runpodResult.output.result_url}`);
+                const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId);
+                job.result_url = `/api/download/${resultFileId}`;
+              } else if (runpodResult.output.result) {
+                console.log(`\u{1F4C4} Found base64 result format (${runpodResult.output.result.length} chars)`);
+                const resultFileId = await storeResultFromBase64(env, runpodResult.output.result, jobId);
+                job.result_url = `/api/download/${resultFileId}`;
+              } else if (typeof runpodResult.output === "string") {
+                console.log(`\u{1F4C4} Found direct base64 format (${runpodResult.output.length} chars)`);
+                const resultFileId = await storeResultFromBase64(env, runpodResult.output, jobId);
+                job.result_url = `/api/download/${resultFileId}`;
+              } else {
+                console.log(`\u26A0\uFE0F Unknown RunPod output format:`, Object.keys(runpodResult.output));
+              }
+            } catch (resultError) {
+              console.error("\u274C Error processing result:", resultError);
+              job.status = "failed";
+              job.error_message = `Result processing failed: ${resultError.message}`;
             }
+          } else {
+            console.log(`\u26A0\uFE0F No output in RunPod result`);
           }
           await env.JOBS.put(jobId, JSON.stringify(job));
+          console.log(`\u{1F4BE} Job updated with new status: ${job.status}`);
         } else if (runpodResult.status === "FAILED") {
+          console.log(`\u274C RunPod job failed: ${runpodResult.error || "Unknown error"}`);
           job.status = "failed";
           job.error_message = runpodResult.error || "Processing failed";
           await env.JOBS.put(jobId, JSON.stringify(job));
+        } else {
+          console.log(`\u{1F504} RunPod job still in progress: ${runpodResult.status}`);
         }
       }
     }
+    console.log(`\u{1F4E4} Returning job status: ${job.status}`);
     return new Response(JSON.stringify({
       success: true,
       data: job
@@ -278,7 +305,7 @@ async function handleStatus(request, env, path) {
       }
     });
   } catch (error) {
-    console.error("Status error:", error);
+    console.error("\u274C Status error:", error);
     return new Response(JSON.stringify({
       success: false,
       error: error.message || "Status check failed"
@@ -341,9 +368,22 @@ async function handleDownload(request, env, path) {
     const headers = new Headers();
     headers.set("Access-Control-Allow-Origin", "*");
     headers.set("Content-Type", r2Object.httpMetadata?.contentType || "application/octet-stream");
-    const originalName = r2Object.customMetadata?.originalName || `file_${fileId}`;
-    headers.set("Content-Disposition", `attachment; filename="${originalName}"`);
-    console.log("Serving file:", foundPath, "as:", originalName);
+    let downloadFilename;
+    if (foundPath.startsWith("results/")) {
+      const timestamp = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      downloadFilename = `face_swap_result_${timestamp}.jpg`;
+    } else {
+      const originalName = r2Object.customMetadata?.originalName;
+      if (originalName) {
+        downloadFilename = originalName;
+      } else {
+        const pathParts = foundPath.split(".");
+        const extension = pathParts.length > 1 ? pathParts.pop() : "jpg";
+        downloadFilename = `file_${fileId}.${extension}`;
+      }
+    }
+    headers.set("Content-Disposition", `attachment; filename="${downloadFilename}"`);
+    console.log("Serving file:", foundPath, "as:", downloadFilename);
     return new Response(r2Object.body, { headers });
   } catch (error) {
     console.error("Download error:", error);
@@ -447,17 +487,26 @@ async function storeResultFromUrl(env, resultUrl, jobId) {
 __name(storeResultFromUrl, "storeResultFromUrl");
 async function storeResultFromBase64(env, base64Data, jobId) {
   try {
+    console.log(`\u{1F504} Storing base64 result for job ${jobId}...`);
     const resultFileId = `result_${jobId}_${Date.now()}`;
     const fileName = `results/${resultFileId}.jpg`;
-    const buffer = Buffer.from(base64Data, "base64");
-    await env.FACESWAP_BUCKET.put(fileName, buffer, {
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    console.log(`\u{1F4BE} Storing result file: ${fileName} (${bytes.length} bytes)`);
+    await env.FACESWAP_BUCKET.put(fileName, bytes, {
+      httpMetadata: {
+        contentType: "image/jpeg"
+      },
       customMetadata: {
         jobId,
         createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-        base64Data
+        type: "result"
       }
     });
-    await scheduleFileDeletion(env, fileName, 7 * 24 * 60 * 60 * 1e3);
+    console.log(`\u{1F4BE} Result stored successfully`);
     return resultFileId;
   } catch (error) {
     console.error("Failed to store result:", error);
@@ -465,10 +514,6 @@ async function storeResultFromBase64(env, base64Data, jobId) {
   }
 }
 __name(storeResultFromBase64, "storeResultFromBase64");
-async function scheduleFileDeletion(env, fileName, delayMs) {
-  console.log(`File ${fileName} scheduled for deletion in ${delayMs}ms`);
-}
-__name(scheduleFileDeletion, "scheduleFileDeletion");
 
 // ../../../../../../usr/local/lib/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {

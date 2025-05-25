@@ -226,6 +226,8 @@ def process_image_swap_from_urls(source_url, target_url):
             return {"error": "Failed to download target image after retries. The file may not exist or may still be uploading."}
         
         logger.info("✅ Both images downloaded successfully")
+        logger.info(f"📐 Source image shape: {source_frame.shape}")
+        logger.info(f"📐 Target image shape: {target_frame.shape}")
         
         # Get source face
         logger.info("🔍 Detecting face in source image...")
@@ -243,20 +245,58 @@ def process_image_swap_from_urls(source_url, target_url):
         
         logger.info("✅ Target face detected successfully")
         
-        # Swap face
-        logger.info("🔄 Starting face swap...")
+        # Configure enhancement settings
+        logger.info("⚙️ Configuring face enhancement settings...")
+        modules.globals.use_face_enhancer = True  # Enable face enhancer
+        modules.globals.mouth_mask = True         # Enable mouth mask for better blending
+        modules.globals.color_correction = True  # Enable color correction
+        
+        # Swap face with enhanced processing
+        logger.info("🔄 Starting enhanced face swap...")
         result_frame = swap_face(source_face, target_face, target_frame)
         logger.info("✅ Face swap completed")
         
-        # Convert back to PIL and encode to base64
+        # Apply face enhancement if available
+        try:
+            logger.info("🎨 Applying face enhancement...")
+            
+            # Try to import and use face enhancer
+            from modules.processors.frame.face_enhancer import enhance_face, get_face_enhancer
+            
+            # Enhance the result
+            enhanced_frame = enhance_face(target_face, result_frame)
+            if enhanced_frame is not None:
+                result_frame = enhanced_frame
+                logger.info("✅ Face enhancement applied successfully")
+            else:
+                logger.warning("⚠️ Face enhancement failed, using original result")
+                
+        except ImportError:
+            logger.warning("⚠️ Face enhancer module not available")
+        except Exception as e:
+            logger.warning(f"⚠️ Face enhancement failed: {e}")
+        
+        # Convert back to PIL with high quality settings
+        logger.info("📸 Converting result to high quality image...")
         result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
         
-        # Encode to base64
+        # Resize if the image is too small (upscale for better quality)
+        width, height = result_image.size
+        if width < 512 or height < 512:
+            # Calculate new size maintaining aspect ratio
+            scale_factor = max(512 / width, 512 / height)
+            new_width = int(width * scale_factor)
+            new_height = int(height * scale_factor)
+            
+            logger.info(f"🔍 Upscaling image from {width}x{height} to {new_width}x{new_height}")
+            result_image = result_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Encode to base64 with high quality JPEG
         buffer = BytesIO()
-        result_image.save(buffer, format='PNG')
+        result_image.save(buffer, format='JPEG', quality=95, optimize=True)
         result_data = base64.b64encode(buffer.getvalue()).decode()
         
-        logger.info("✅ Result image encoded successfully")
+        logger.info("✅ High quality result image encoded successfully")
         return {"result": result_data}
         
     except Exception as e:
@@ -274,6 +314,9 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         source_frame = cv2.cvtColor(np.array(source_image), cv2.COLOR_RGB2BGR)
         target_frame = cv2.cvtColor(np.array(target_image), cv2.COLOR_RGB2BGR)
         
+        logger.info(f"📐 Source image shape: {source_frame.shape}")
+        logger.info(f"📐 Target image shape: {target_frame.shape}")
+        
         # Get source face
         source_face = get_one_face(source_frame)
         if source_face is None:
@@ -284,17 +327,58 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         if target_face is None:
             return {"error": "No face detected in target image"}
         
-        # Swap face
-        result_frame = swap_face(source_face, target_face, target_frame)
+        # Configure enhancement settings
+        logger.info("⚙️ Configuring face enhancement settings...")
+        modules.globals.use_face_enhancer = True  # Enable face enhancer
+        modules.globals.mouth_mask = True         # Enable mouth mask for better blending
+        modules.globals.color_correction = True  # Enable color correction
         
-        # Convert back to PIL and encode
+        # Swap face with enhanced processing
+        logger.info("🔄 Starting enhanced face swap...")
+        result_frame = swap_face(source_face, target_face, target_frame)
+        logger.info("✅ Face swap completed")
+        
+        # Apply face enhancement if available
+        try:
+            logger.info("🎨 Applying face enhancement...")
+            
+            # Try to import and use face enhancer
+            from modules.processors.frame.face_enhancer import enhance_face, get_face_enhancer
+            
+            # Enhance the result
+            enhanced_frame = enhance_face(target_face, result_frame)
+            if enhanced_frame is not None:
+                result_frame = enhanced_frame
+                logger.info("✅ Face enhancement applied successfully")
+            else:
+                logger.warning("⚠️ Face enhancement failed, using original result")
+                
+        except ImportError:
+            logger.warning("⚠️ Face enhancer module not available")
+        except Exception as e:
+            logger.warning(f"⚠️ Face enhancement failed: {e}")
+        
+        # Convert back to PIL with high quality settings
+        logger.info("📸 Converting result to high quality image...")
         result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
         
-        # Encode to base64
+        # Resize if the image is too small (upscale for better quality)
+        width, height = result_image.size
+        if width < 512 or height < 512:
+            # Calculate new size maintaining aspect ratio
+            scale_factor = max(512 / width, 512 / height)
+            new_width = int(width * scale_factor)
+            new_height = int(height * scale_factor)
+            
+            logger.info(f"🔍 Upscaling image from {width}x{height} to {new_width}x{new_height}")
+            result_image = result_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Encode to base64 with high quality JPEG
         buffer = BytesIO()
-        result_image.save(buffer, format='PNG')
+        result_image.save(buffer, format='JPEG', quality=95, optimize=True)
         result_data = base64.b64encode(buffer.getvalue()).decode()
         
+        logger.info("✅ High quality result image encoded successfully")
         return {"result": result_data}
         
     except Exception as e:
