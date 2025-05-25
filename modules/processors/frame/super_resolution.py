@@ -29,13 +29,122 @@ THREAD_SEMAPHORE = threading.Semaphore()
 THREAD_LOCK = threading.Lock()
 NAME = "DLC.SUPER-RESOLUTION"
 
-# Use the centralized model directory configuration
-models_dir = modules.globals.get_models_dir()
+def get_models_directory():
+    """Get models directory with fallback options"""
+    try:
+        # Try to get from modules.globals first
+        models_dir = modules.globals.get_models_dir()
+        if models_dir and os.path.exists(models_dir):
+            return models_dir
+    except:
+        pass
+    
+    # Fallback options for RunPod environment
+    fallback_paths = [
+        '/workspace/faceswap/models',
+        '/workspace/faceswap',
+        '/app/models',
+        '/workspace/models'
+    ]
+    
+    for path in fallback_paths:
+        if os.path.exists(path):
+            logger.info(f"🔍 Using fallback models directory: {path}")
+            return path
+    
+    # Create default directory
+    default_dir = '/app/models'
+    os.makedirs(default_dir, exist_ok=True)
+    logger.info(f"🔍 Created default models directory: {default_dir}")
+    return default_dir
+
+
+def find_model_file(model_name: str) -> Optional[str]:
+    """Find model file in multiple possible locations"""
+    search_paths = [
+        # Primary models directory
+        get_models_directory(),
+        # Workspace paths
+        '/workspace/faceswap/models',
+        '/workspace/faceswap',
+        '/workspace/models',
+        # App paths
+        '/app/models',
+        # Current directory paths
+        './models',
+        '.'
+    ]
+    
+    for search_path in search_paths:
+        if not os.path.exists(search_path):
+            continue
+            
+        model_path = os.path.join(search_path, model_name)
+        if os.path.exists(model_path) and os.path.isfile(model_path):
+            file_size = os.path.getsize(model_path)
+            if file_size > 1024 * 1024:  # At least 1MB
+                logger.info(f"✅ Found {model_name} at: {model_path} ({file_size} bytes)")
+                return model_path
+            else:
+                logger.warning(f"⚠️ Found {model_name} but file too small: {model_path} ({file_size} bytes)")
+    
+    logger.warning(f"⚠️ Model {model_name} not found in any search location")
+    return None
+
+
+def download_super_resolution_model(model_name: str, destination_path: str) -> bool:
+    """Download super resolution model if missing"""
+    model_urls = {
+        'RealESRGAN_x4plus.pth': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth',
+        'RealESRGAN_x2plus.pth': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth'
+    }
+    
+    if model_name not in model_urls:
+        logger.error(f"❌ Unknown model: {model_name}")
+        return False
+    
+    try:
+        import requests
+        
+        url = model_urls[model_name]
+        logger.info(f"📥 Downloading {model_name} from: {url}")
+        
+        # Create directory if needed
+        os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+        
+        # Download with progress
+        response = requests.get(url, stream=True, timeout=60)
+        response.raise_for_status()
+        
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded = 0
+        
+        with open(destination_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        progress = (downloaded / total_size) * 100
+                        if downloaded % (1024 * 1024) == 0:  # Log every MB
+                            logger.info(f"   Progress: {progress:.1f}% ({downloaded // (1024*1024)}MB/{total_size // (1024*1024)}MB)")
+        
+        # Verify download
+        if os.path.exists(destination_path) and os.path.getsize(destination_path) > 1024 * 1024:
+            logger.info(f"✅ Successfully downloaded {model_name}")
+            return True
+        else:
+            logger.error(f"❌ Download verification failed for {model_name}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Failed to download {model_name}: {e}")
+        return False
 
 
 def pre_check() -> bool:
     """Pre-check for super resolution model availability"""
-    download_directory_path = models_dir
+    download_directory_path = get_models_directory()
     conditional_download(
         download_directory_path,
         [
@@ -94,12 +203,24 @@ def get_super_resolution_model(scale_factor: int = 4):
                     model_name = 'RealESRGAN_x4plus.pth'
                     netscale = 4
                 
-                model_path = os.path.join(models_dir, model_name)
+                # Search for model in multiple locations
+                model_path = find_model_file(model_name)
                 
                 # Check if model exists
-                if not os.path.exists(model_path):
-                    logger.error(f"❌ Super resolution model not found: {model_path}")
-                    return None
+                if not model_path or not os.path.exists(model_path):
+                    logger.error(f"❌ Super resolution model not found: {model_name}")
+                    logger.info("💡 Attempting to download model...")
+                    
+                    # Try to download missing model
+                    models_dir = get_models_directory()
+                    download_path = os.path.join(models_dir, model_name)
+                    
+                    if download_super_resolution_model(model_name, download_path):
+                        model_path = download_path
+                        logger.info(f"✅ Model downloaded successfully: {model_path}")
+                    else:
+                        logger.error(f"❌ Failed to download model: {model_name}")
+                        return None
                 
                 logger.info(f"🔍 Loading super resolution model: {model_name}")
                 

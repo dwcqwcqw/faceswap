@@ -157,6 +157,29 @@ def download_models():
                         shutil.copy2(model_path, target_path)
                         logger.info(f"📋 Copied {model_name} from workspace")
         
+        # Also check for super resolution models
+        sr_models_workspace = [
+            '/workspace/faceswap/RealESRGAN_x4plus.pth', 
+            '/workspace/faceswap/RealESRGAN_x2plus.pth'
+        ]
+        
+        for model_path in sr_models_workspace:
+            if os.path.exists(model_path):
+                model_name = os.path.basename(model_path)
+                workspace_found.append(model_name)
+                logger.info(f"✅ Found workspace SR model: {model_path}")
+                
+                # Create symlink or copy to models directory
+                target_path = os.path.join(models_dir, model_name)
+                if not os.path.exists(target_path):
+                    try:
+                        os.symlink(model_path, target_path)
+                        logger.info(f"🔗 Linked {model_name} from workspace")
+                    except:
+                        import shutil
+                        shutil.copy2(model_path, target_path)
+                        logger.info(f"📋 Copied {model_name} from workspace")
+        
         if workspace_found:
             logger.info(f"✅ Found {len(workspace_found)} models in workspace: {workspace_found}")
             # Update environment variable
