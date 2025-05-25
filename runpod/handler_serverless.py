@@ -30,6 +30,15 @@ sys.path.insert(0, '/app/runpod')
 os.environ['DISPLAY'] = ''
 os.environ['HEADLESS'] = '1'
 
+# Initialize models before importing face swap modules
+try:
+    from init_models import init_models
+    models_dir = init_models()
+    logger.info(f"🎯 Models initialization completed: {models_dir}")
+except Exception as e:
+    logger.warning(f"⚠️ Model initialization error: {e}")
+    logger.info("🔄 Will attempt model setup during request processing")
+
 # Import face swap functionality without GUI modules
 try:
     # Import core modules (avoid UI modules)
@@ -75,22 +84,61 @@ def download_models():
         # If essential models are found, proceed without downloading additional ones
         if all_found:
             logger.info("✅ Essential models found, ready for face swapping")
+            # Update environment variable to ensure consistent model directory access
+            os.environ['MODELS_DIR'] = models_dir
             return True
         
         # Try to download models using the download script if available
         try:
             from download_models import check_and_download_models
-            models_dir = check_and_download_models()
-            logger.info(f"✅ Models ready in: {models_dir}")
+            actual_models_dir = check_and_download_models()
+            logger.info(f"✅ Models ready in: {actual_models_dir}")
+            
+            # Update environment variable and modules.globals to use the actual models directory
+            os.environ['MODELS_DIR'] = actual_models_dir
+            
+            # Force refresh of models directory in modules.globals
+            import importlib
+            importlib.reload(modules.globals)
+            
             return True
         except ImportError:
             logger.warning("⚠️ Model download script not found")
         except Exception as e:
             logger.error(f"❌ Model download script failed: {e}")
         
+        # Try to check if models exist in workspace/faceswap directly
+        workspace_models = ['/workspace/faceswap/inswapper_128_fp16.onnx', '/workspace/faceswap/GFPGANv1.4.pth']
+        workspace_found = []
+        
+        for model_path in workspace_models:
+            if os.path.exists(model_path):
+                model_name = os.path.basename(model_path)
+                workspace_found.append(model_name)
+                logger.info(f"✅ Found workspace model: {model_path}")
+                
+                # Create symlink or copy to models directory
+                target_path = os.path.join(models_dir, model_name)
+                if not os.path.exists(target_path):
+                    try:
+                        os.symlink(model_path, target_path)
+                        logger.info(f"🔗 Linked {model_name} from workspace")
+                    except:
+                        import shutil
+                        shutil.copy2(model_path, target_path)
+                        logger.info(f"📋 Copied {model_name} from workspace")
+        
+        if workspace_found:
+            logger.info(f"✅ Found {len(workspace_found)} models in workspace: {workspace_found}")
+            # Update environment variable
+            os.environ['MODELS_DIR'] = models_dir
+            return True
+        
         # If we reach here, some models are missing but we can try to proceed
         logger.warning("⚠️ Some models may be missing, but attempting to proceed")
         logger.info("💡 Face swapping may work if essential models are mounted in workspace")
+        # Still update environment variable
+        os.environ['MODELS_DIR'] = models_dir
         return True
         
     except Exception as e:

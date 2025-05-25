@@ -127,7 +127,7 @@ def check_and_download_models():
     # Required models with their download URLs
     models = {
         'inswapper_128_fp16.onnx': {
-            'url': 'https://huggingface.co/deepinsight/inswapper/resolve/main/inswapper_128.onnx',
+            'url': 'https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx',
             'description': 'Face Swapper Model (inswapper)'
         },
         'GFPGANv1.4.pth': {

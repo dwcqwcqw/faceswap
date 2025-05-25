@@ -60,10 +60,44 @@ def get_face_swapper() -> Any:
 
     with THREAD_LOCK:
         if FACE_SWAPPER is None:
+            # Get models directory dynamically at runtime
+            models_dir = modules.globals.get_models_dir()
             model_path = os.path.join(models_dir, "inswapper_128_fp16.onnx")
-            FACE_SWAPPER = insightface.model_zoo.get_model(
-                model_path, providers=modules.globals.execution_providers
-            )
+            
+            # Check if model file exists and provide helpful error message
+            if not os.path.exists(model_path):
+                # Try alternative locations
+                alternative_paths = [
+                    '/workspace/faceswap/inswapper_128_fp16.onnx',
+                    '/workspace/models/inswapper_128_fp16.onnx',
+                    '/app/models/inswapper_128_fp16.onnx',
+                    '/runpod-volume/models/inswapper_128_fp16.onnx'
+                ]
+                
+                for alt_path in alternative_paths:
+                    if os.path.exists(alt_path):
+                        model_path = alt_path
+                        print(f"✅ Found model at alternative path: {model_path}")
+                        break
+                else:
+                    # Model not found anywhere
+                    raise FileNotFoundError(
+                        f"❌ Face swapper model not found. Searched paths:\n"
+                        f"  Primary: {model_path}\n" +
+                        "\n".join(f"  Alternative: {path}" for path in alternative_paths) +
+                        f"\n\n💡 Please ensure inswapper_128_fp16.onnx is available in one of these locations.\n"
+                        f"   You can download it from:\n"
+                        f"   https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx"
+                    )
+            
+            try:
+                FACE_SWAPPER = insightface.model_zoo.get_model(
+                    model_path, providers=modules.globals.execution_providers
+                )
+                print(f"✅ Face swapper model loaded successfully from: {model_path}")
+            except Exception as e:
+                raise RuntimeError(f"❌ Failed to load face swapper model from {model_path}: {str(e)}")
+                
     return FACE_SWAPPER
 
 
