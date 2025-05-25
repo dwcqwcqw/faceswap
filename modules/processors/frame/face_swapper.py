@@ -64,9 +64,14 @@ def get_face_swapper() -> Any:
             models_dir = modules.globals.get_models_dir()
             model_path = os.path.join(models_dir, "inswapper_128_fp16.onnx")
             
+            print(f"🔍 Searching for face swapper model...")
+            print(f"   Primary models_dir: {models_dir}")
+            print(f"   Primary model_path: {model_path}")
+            print(f"   Primary exists: {os.path.exists(model_path)}")
+            
             # Check if model file exists and provide helpful error message
             if not os.path.exists(model_path):
-                # Try alternative locations
+                # Try alternative locations with detailed checking
                 alternative_paths = [
                     '/workspace/faceswap/inswapper_128_fp16.onnx',
                     '/workspace/models/inswapper_128_fp16.onnx',
@@ -74,23 +79,60 @@ def get_face_swapper() -> Any:
                     '/runpod-volume/models/inswapper_128_fp16.onnx'
                 ]
                 
-                for alt_path in alternative_paths:
-                    if os.path.exists(alt_path):
+                print(f"   Primary path not found, checking alternatives...")
+                
+                for i, alt_path in enumerate(alternative_paths):
+                    exists = os.path.exists(alt_path)
+                    is_file = os.path.isfile(alt_path) if exists else False
+                    readable = os.access(alt_path, os.R_OK) if exists else False
+                    
+                    print(f"   Alternative {i+1}: {alt_path}")
+                    print(f"     exists: {exists}, is_file: {is_file}, readable: {readable}")
+                    
+                    if exists and is_file and readable:
                         model_path = alt_path
                         print(f"✅ Found model at alternative path: {model_path}")
                         break
                 else:
-                    # Model not found anywhere
-                    raise FileNotFoundError(
-                        f"❌ Face swapper model not found. Searched paths:\n"
-                        f"  Primary: {model_path}\n" +
-                        "\n".join(f"  Alternative: {path}" for path in alternative_paths) +
-                        f"\n\n💡 Please ensure inswapper_128_fp16.onnx is available in one of these locations.\n"
-                        f"   You can download it from:\n"
-                        f"   https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx"
-                    )
+                    # Also check current working directory and common paths
+                    additional_paths = [
+                        'inswapper_128_fp16.onnx',  # current directory
+                        './inswapper_128_fp16.onnx',
+                        '../inswapper_128_fp16.onnx',
+                        '/workspace/inswapper_128_fp16.onnx',
+                        os.path.join(os.getcwd(), 'inswapper_128_fp16.onnx')
+                    ]
+                    
+                    print(f"   Checking additional paths...")
+                    for i, add_path in enumerate(additional_paths):
+                        exists = os.path.exists(add_path)
+                        print(f"   Additional {i+1}: {add_path} -> exists: {exists}")
+                        if exists and os.path.isfile(add_path):
+                            model_path = add_path
+                            print(f"✅ Found model at additional path: {model_path}")
+                            break
+                    else:
+                        # List what's actually in /workspace/faceswap/ to help debug
+                        workspace_dir = '/workspace/faceswap'
+                        if os.path.exists(workspace_dir):
+                            try:
+                                files = os.listdir(workspace_dir)
+                                print(f"   Files in {workspace_dir}: {files}")
+                            except Exception as e:
+                                print(f"   Error listing {workspace_dir}: {e}")
+                        
+                        # Model not found anywhere
+                        raise FileNotFoundError(
+                            f"❌ Face swapper model not found. Searched paths:\n"
+                            f"  Primary: {model_path}\n" +
+                            "\n".join(f"  Alternative: {path}" for path in alternative_paths) +
+                            f"\n\n💡 Please ensure inswapper_128_fp16.onnx is available in one of these locations.\n"
+                            f"   You can download it from:\n"
+                            f"   https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx"
+                        )
             
             try:
+                print(f"🔄 Loading face swapper model from: {model_path}")
                 FACE_SWAPPER = insightface.model_zoo.get_model(
                     model_path, providers=modules.globals.execution_providers
                 )
