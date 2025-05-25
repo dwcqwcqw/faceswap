@@ -255,6 +255,11 @@ def download_image_from_url(url):
             logger.info(f"📋 Response content-type: {content_type}")
             logger.info(f"📋 Response size: {len(response.content)} bytes")
             
+            # Check if it's a video file
+            if 'video' in content_type.lower():
+                logger.error("❌ Video file detected in image download function. Use download_video_from_url instead.")
+                return None
+            
             # Check if it's a valid image format
             if 'svg' in content_type.lower():
                 logger.error("❌ SVG format is not supported for face detection")
@@ -309,6 +314,57 @@ def download_image_from_url(url):
                 return None
     
     return None
+
+def download_video_from_url(url):
+    """Download video from URL and save to temporary file"""
+    
+    try:
+        logger.info(f"🎬 Downloading video from: {url}")
+        
+        response = requests.get(url, timeout=60, stream=True)
+        response.raise_for_status()
+        
+        # Log response headers for debugging
+        content_type = response.headers.get('content-type', '')
+        content_length = response.headers.get('content-length', 'Unknown')
+        logger.info(f"📋 Video content-type: {content_type}")
+        logger.info(f"📋 Video size: {content_length} bytes")
+        
+        # Check if it's actually a video file
+        if 'video' not in content_type.lower():
+            logger.error(f"❌ Expected video file, got: {content_type}")
+            return None
+        
+        # Create temporary file for video
+        temp_video = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        
+        # Download video with progress logging
+        downloaded = 0
+        total_size = int(content_length) if content_length != 'Unknown' else 0
+        
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                temp_video.write(chunk)
+                downloaded += len(chunk)
+                if total_size > 0 and downloaded % (1024 * 1024) == 0:  # Log every MB
+                    progress = (downloaded / total_size) * 100
+                    logger.info(f"   📥 Video download progress: {progress:.1f}% ({downloaded // (1024*1024)}MB/{total_size // (1024*1024)}MB)")
+        
+        temp_video.close()
+        
+        # Verify video file
+        if os.path.exists(temp_video.name) and os.path.getsize(temp_video.name) > 1024:
+            logger.info(f"✅ Video downloaded successfully: {temp_video.name}")
+            return temp_video.name
+        else:
+            logger.error("❌ Video download verification failed")
+            if os.path.exists(temp_video.name):
+                os.unlink(temp_video.name)
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ Failed to download video: {e}")
+        return None
 
 def process_image_swap_from_urls(source_url, target_url):
     """Process face swap with image URLs - Enhanced with multi-round optimization"""
@@ -723,14 +779,162 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         return {"error": str(e)}
 
 def process_video_swap(source_image_data, target_video_data):
-    """Process video face swap"""
+    """Process video face swap with enhanced quality"""
     try:
-        # This is a placeholder for video processing
-        # In a real implementation, you'd process the video frame by frame
-        return {"error": "Video processing not implemented yet"}
+        logger.info("🎬 Starting video face swap processing...")
+        
+        # Handle source image (could be URL or base64)
+        if source_image_data.startswith('http'):
+            logger.info("📡 Downloading source image from URL...")
+            source_frame = download_image_from_url(source_image_data)
+            if source_frame is None:
+                return {"error": "Failed to download source image"}
+        else:
+            logger.info("📄 Processing source image from base64...")
+            try:
+                source_image = Image.open(BytesIO(base64.b64decode(source_image_data)))
+                source_frame = cv2.cvtColor(np.array(source_image), cv2.COLOR_RGB2BGR)
+            except Exception as e:
+                return {"error": f"Failed to decode source image: {str(e)}"}
+        
+        # Handle target video (could be URL or base64)
+        if target_video_data.startswith('http'):
+            logger.info("🎬 Downloading target video from URL...")
+            target_video_path = download_video_from_url(target_video_data)
+            if target_video_path is None:
+                return {"error": "Failed to download target video"}
+        else:
+            logger.info("📄 Processing target video from base64...")
+            try:
+                # Decode base64 video and save to temp file
+                video_data = base64.b64decode(target_video_data)
+                temp_video = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+                temp_video.write(video_data)
+                temp_video.close()
+                target_video_path = temp_video.name
+            except Exception as e:
+                return {"error": f"Failed to decode target video: {str(e)}"}
+        
+        logger.info(f"📐 Source image shape: {source_frame.shape}")
+        logger.info(f"🎬 Target video path: {target_video_path}")
+        
+        # Get source face
+        logger.info("🔍 Detecting face in source image...")
+        source_face = get_one_face(source_frame)
+        if source_face is None:
+            return {"error": "No face detected in source image"}
+        
+        logger.info("✅ Source face detected successfully")
+        
+        # Open video file
+        cap = cv2.VideoCapture(target_video_path)
+        if not cap.isOpened():
+            return {"error": "Failed to open target video"}
+        
+        # Get video properties
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        logger.info(f"🎬 Video properties: {frame_width}x{frame_height}, {fps} FPS, {frame_count} frames")
+        
+        # Create output video file
+        output_video = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        output_video.close()
+        
+        # Setup video writer
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_video.name, fourcc, fps, (frame_width, frame_height))
+        
+        # Configure enhancement settings
+        modules.globals.use_face_enhancer = True
+        modules.globals.mouth_mask = True
+        modules.globals.color_correction = True
+        
+        # Process video frame by frame
+        processed_frames = 0
+        successful_swaps = 0
+        
+        logger.info("🚀 Starting frame-by-frame processing...")
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            try:
+                # Detect face in current frame
+                target_face = get_one_face(frame)
+                
+                if target_face is not None:
+                    # Perform face swap
+                    swapped_frame = swap_face(source_face, target_face, frame)
+                    
+                    # Apply enhancement if available
+                    try:
+                        from modules.processors.frame.face_enhancer import enhance_face
+                        enhanced_frame = enhance_face(swapped_frame)
+                        if enhanced_frame is not None:
+                            # Conservative blending for video stability
+                            swapped_frame = cv2.addWeighted(swapped_frame, 0.7, enhanced_frame, 0.3, 0)
+                    except ImportError:
+                        pass
+                    except Exception as e:
+                        logger.warning(f"⚠️ Frame enhancement failed: {e}")
+                    
+                    out.write(swapped_frame)
+                    successful_swaps += 1
+                else:
+                    # No face detected, write original frame
+                    out.write(frame)
+                
+                processed_frames += 1
+                
+                # Log progress every 30 frames (roughly every second at 30fps)
+                if processed_frames % 30 == 0:
+                    progress = (processed_frames / frame_count) * 100
+                    logger.info(f"📹 Processing progress: {progress:.1f}% ({processed_frames}/{frame_count} frames, {successful_swaps} swaps)")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Error processing frame {processed_frames}: {e}")
+                # Write original frame on error
+                out.write(frame)
+                processed_frames += 1
+        
+        # Cleanup
+        cap.release()
+        out.release()
+        
+        logger.info(f"✅ Video processing completed: {processed_frames} frames processed, {successful_swaps} successful face swaps")
+        
+        # Read the output video and encode to base64
+        with open(output_video.name, 'rb') as f:
+            video_data = f.read()
+        
+        result_data = base64.b64encode(video_data).decode()
+        
+        # Cleanup temporary files
+        try:
+            if target_video_path != target_video_data:  # Only delete if it's a temp file
+                os.unlink(target_video_path)
+            os.unlink(output_video.name)
+        except:
+            pass
+        
+        logger.info("✅ Video face swap completed successfully")
+        return {
+            "result": result_data,
+            "total_frames": processed_frames,
+            "successful_swaps": successful_swaps,
+            "fps": fps,
+            "resolution": f"{frame_width}x{frame_height}",
+            "processing_type": "video"
+        }
+        
     except Exception as e:
-        logger.error(f"❌ Video processing failed: {e}")
-        return {"error": str(e)}
+        logger.error(f"❌ Video face swap failed: {e}")
+        return {"error": f"Video processing failed: {str(e)}"}
 
 def process_detect_faces_from_url(image_url):
     """Detect faces in image from URL - Enhanced multi-face detection with face previews"""
@@ -1229,6 +1433,28 @@ def handler(event):
                 logger.info("📡 Processing URLs from Cloudflare Worker")
                 source_url = input_data.get("source_file")
                 target_url = input_data.get("target_file")
+                
+                # Smart detection: check if either file is a video based on content-type
+                try:
+                    # Quick HEAD request to check content types
+                    source_response = requests.head(source_url, timeout=10)
+                    target_response = requests.head(target_url, timeout=10)
+                    
+                    source_type = source_response.headers.get('content-type', '').lower()
+                    target_type = target_response.headers.get('content-type', '').lower()
+                    
+                    logger.info(f"📋 Source content-type: {source_type}")
+                    logger.info(f"📋 Target content-type: {target_type}")
+                    
+                    # Check if this is actually a video swap request
+                    if 'video' in target_type and 'image' in source_type:
+                        logger.info("🎬 Detected image-to-video swap, routing to video processing...")
+                        return process_video_swap(source_url, target_url)
+                    elif 'video' in source_type:
+                        return {"error": "Video as source is not supported. Please use an image as source and video as target."}
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not check content types: {e}, proceeding with image processing...")
                 
                 return process_image_swap_from_urls(source_url, target_url)
             
