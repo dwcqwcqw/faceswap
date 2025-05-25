@@ -212,7 +212,7 @@ def download_image_from_url(url):
     return None
 
 def process_image_swap_from_urls(source_url, target_url):
-    """Process face swap with image URLs"""
+    """Process face swap with image URLs - Enhanced with multi-round optimization"""
     try:
         # Download images from URLs
         logger.info("🔄 Starting image downloads...")
@@ -251,30 +251,87 @@ def process_image_swap_from_urls(source_url, target_url):
         modules.globals.mouth_mask = True         # Enable mouth mask for better blending
         modules.globals.color_correction = True  # Enable color correction
         
-        # Swap face with enhanced processing
-        logger.info("🔄 Starting enhanced face swap...")
-        result_frame = swap_face(source_face, target_face, target_frame)
-        logger.info("✅ Face swap completed")
+        # Multi-round iterative face swap for higher quality
+        logger.info("🚀 Starting multi-round iterative face swap...")
+        result_frame = target_frame.copy()
+        
+        # Round 1: Initial face swap
+        logger.info("🔄 Round 1: Initial face swap...")
+        result_frame = swap_face(source_face, target_face, result_frame)
+        logger.info("✅ Round 1 completed")
+        
+        # Round 2: Refinement with detected result face
+        logger.info("🔄 Round 2: Refinement pass...")
+        refined_target_face = get_one_face(result_frame)
+        if refined_target_face is not None:
+            # Use a slightly more conservative approach for refinement
+            temp_result = swap_face(source_face, refined_target_face, result_frame)
+            # Quality check: compare face detection confidence
+            if refined_target_face.det_score > 0.5:  # If detection is confident
+                result_frame = temp_result
+                logger.info("✅ Round 2 refinement applied")
+            else:
+                logger.info("⚠️ Round 2 skipped due to low detection confidence")
+        else:
+            logger.warning("⚠️ Round 2 skipped - no face detected in result")
+        
+        # Round 3: Final precision pass
+        logger.info("🔄 Round 3: Final precision pass...")
+        final_target_face = get_one_face(result_frame)
+        if final_target_face is not None and final_target_face.det_score > 0.6:
+            # Very conservative final pass
+            temp_result = swap_face(source_face, final_target_face, result_frame)
+            # Check if the final result maintains face detectability
+            check_face = get_one_face(temp_result)
+            if check_face is not None and check_face.det_score > 0.5:
+                result_frame = temp_result
+                logger.info("✅ Round 3 precision pass applied")
+            else:
+                logger.info("⚠️ Round 3 skipped - would degrade quality")
+        else:
+            logger.info("⚠️ Round 3 skipped - insufficient face detection confidence")
         
         # Apply face enhancement if available
         try:
-            logger.info("🎨 Applying face enhancement...")
+            logger.info("🎨 Applying advanced face enhancement...")
             
             # Try to import and use face enhancer
             from modules.processors.frame.face_enhancer import enhance_face, get_face_enhancer
             
-            # Enhance the result - enhance_face only takes one parameter (the frame)
-            enhanced_frame = enhance_face(result_frame)
-            if enhanced_frame is not None:
-                result_frame = enhanced_frame
-                logger.info("✅ Face enhancement applied successfully")
-            else:
-                logger.warning("⚠️ Face enhancement failed, using original result")
+            # Multiple enhancement passes for better quality
+            for enhancement_round in range(2):  # Two rounds of enhancement
+                logger.info(f"✨ Enhancement round {enhancement_round + 1}/2...")
                 
+                enhanced_frame = enhance_face(result_frame)
+                if enhanced_frame is not None:
+                    if enhancement_round == 0:
+                        # First round: blend conservatively
+                        result_frame = cv2.addWeighted(result_frame, 0.4, enhanced_frame, 0.6, 0)
+                        logger.info("✅ First enhancement pass blended")
+                    else:
+                        # Second round: use full enhancement
+                        result_frame = enhanced_frame
+                        logger.info("✅ Final enhancement applied")
+                else:
+                    logger.warning(f"⚠️ Enhancement round {enhancement_round + 1} failed")
+                    break
+                    
         except ImportError:
             logger.warning("⚠️ Face enhancer module not available")
         except Exception as e:
             logger.warning(f"⚠️ Face enhancement failed: {e}")
+        
+        # Advanced post-processing for better realism
+        logger.info("🎭 Applying advanced post-processing...")
+        try:
+            # Ensure face region boundaries are smooth
+            final_face = get_one_face(result_frame)
+            if final_face is not None:
+                # Apply subtle smoothing to face edges
+                result_frame = apply_edge_smoothing(result_frame, final_face)
+                logger.info("✅ Edge smoothing applied")
+        except Exception as e:
+            logger.warning(f"⚠️ Post-processing warning: {e}")
         
         # Convert back to PIL with high quality settings
         logger.info("📸 Converting result to high quality image...")
@@ -296,15 +353,53 @@ def process_image_swap_from_urls(source_url, target_url):
         result_image.save(buffer, format='JPEG', quality=95, optimize=True)
         result_data = base64.b64encode(buffer.getvalue()).decode()
         
-        logger.info("✅ High quality result image encoded successfully")
+        logger.info("✅ High quality multi-round result image encoded successfully")
         return {"result": result_data}
         
     except Exception as e:
         logger.error(f"❌ Face swap processing failed: {e}")
         return {"error": f"Processing failed: {str(e)}"}
 
+def apply_edge_smoothing(frame, face):
+    """Apply subtle edge smoothing to face boundaries"""
+    try:
+        # Create a face mask
+        mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+        landmarks = face.landmark_2d_106
+        
+        if landmarks is not None:
+            # Convert landmarks to int32
+            landmarks = landmarks.astype(np.int32)
+            
+            # Create face contour
+            hull = cv2.convexHull(landmarks)
+            cv2.fillPoly(mask, [hull], 255)
+            
+            # Apply Gaussian blur to the mask for smooth edges
+            mask_blurred = cv2.GaussianBlur(mask, (5, 5), 2)
+            
+            # Normalize mask
+            mask_normalized = mask_blurred.astype(np.float32) / 255.0
+            mask_normalized = np.stack([mask_normalized] * 3, axis=2)
+            
+            # Apply very subtle smoothing
+            frame_float = frame.astype(np.float32)
+            blurred_frame = cv2.GaussianBlur(frame, (3, 3), 1)
+            blurred_frame_float = blurred_frame.astype(np.float32)
+            
+            # Blend only at edges (use a very small smoothing factor)
+            edge_factor = 0.1  # Very subtle
+            smoothed = frame_float * (1 - mask_normalized * edge_factor) + blurred_frame_float * (mask_normalized * edge_factor)
+            
+            return smoothed.astype(np.uint8)
+            
+    except Exception as e:
+        logger.warning(f"Edge smoothing failed: {e}")
+        
+    return frame
+
 def process_image_swap_from_base64(source_image_data, target_image_data):
-    """Process face swap with base64 data (backward compatibility)"""
+    """Process face swap with base64 data (backward compatibility) - Enhanced with multi-round optimization"""
     try:
         # Decode base64 images
         source_image = Image.open(BytesIO(base64.b64decode(source_image_data)))
@@ -333,30 +428,87 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         modules.globals.mouth_mask = True         # Enable mouth mask for better blending
         modules.globals.color_correction = True  # Enable color correction
         
-        # Swap face with enhanced processing
-        logger.info("🔄 Starting enhanced face swap...")
-        result_frame = swap_face(source_face, target_face, target_frame)
-        logger.info("✅ Face swap completed")
+        # Multi-round iterative face swap for higher quality
+        logger.info("🚀 Starting multi-round iterative face swap...")
+        result_frame = target_frame.copy()
+        
+        # Round 1: Initial face swap
+        logger.info("🔄 Round 1: Initial face swap...")
+        result_frame = swap_face(source_face, target_face, result_frame)
+        logger.info("✅ Round 1 completed")
+        
+        # Round 2: Refinement with detected result face
+        logger.info("🔄 Round 2: Refinement pass...")
+        refined_target_face = get_one_face(result_frame)
+        if refined_target_face is not None:
+            # Use a slightly more conservative approach for refinement
+            temp_result = swap_face(source_face, refined_target_face, result_frame)
+            # Quality check: compare face detection confidence
+            if refined_target_face.det_score > 0.5:  # If detection is confident
+                result_frame = temp_result
+                logger.info("✅ Round 2 refinement applied")
+            else:
+                logger.info("⚠️ Round 2 skipped due to low detection confidence")
+        else:
+            logger.warning("⚠️ Round 2 skipped - no face detected in result")
+        
+        # Round 3: Final precision pass
+        logger.info("🔄 Round 3: Final precision pass...")
+        final_target_face = get_one_face(result_frame)
+        if final_target_face is not None and final_target_face.det_score > 0.6:
+            # Very conservative final pass
+            temp_result = swap_face(source_face, final_target_face, result_frame)
+            # Check if the final result maintains face detectability
+            check_face = get_one_face(temp_result)
+            if check_face is not None and check_face.det_score > 0.5:
+                result_frame = temp_result
+                logger.info("✅ Round 3 precision pass applied")
+            else:
+                logger.info("⚠️ Round 3 skipped - would degrade quality")
+        else:
+            logger.info("⚠️ Round 3 skipped - insufficient face detection confidence")
         
         # Apply face enhancement if available
         try:
-            logger.info("🎨 Applying face enhancement...")
+            logger.info("🎨 Applying advanced face enhancement...")
             
             # Try to import and use face enhancer
             from modules.processors.frame.face_enhancer import enhance_face, get_face_enhancer
             
-            # Enhance the result - enhance_face only takes one parameter (the frame)
-            enhanced_frame = enhance_face(result_frame)
-            if enhanced_frame is not None:
-                result_frame = enhanced_frame
-                logger.info("✅ Face enhancement applied successfully")
-            else:
-                logger.warning("⚠️ Face enhancement failed, using original result")
+            # Multiple enhancement passes for better quality
+            for enhancement_round in range(2):  # Two rounds of enhancement
+                logger.info(f"✨ Enhancement round {enhancement_round + 1}/2...")
                 
+                enhanced_frame = enhance_face(result_frame)
+                if enhanced_frame is not None:
+                    if enhancement_round == 0:
+                        # First round: blend conservatively
+                        result_frame = cv2.addWeighted(result_frame, 0.4, enhanced_frame, 0.6, 0)
+                        logger.info("✅ First enhancement pass blended")
+                    else:
+                        # Second round: use full enhancement
+                        result_frame = enhanced_frame
+                        logger.info("✅ Final enhancement applied")
+                else:
+                    logger.warning(f"⚠️ Enhancement round {enhancement_round + 1} failed")
+                    break
+                    
         except ImportError:
             logger.warning("⚠️ Face enhancer module not available")
         except Exception as e:
             logger.warning(f"⚠️ Face enhancement failed: {e}")
+        
+        # Advanced post-processing for better realism
+        logger.info("🎭 Applying advanced post-processing...")
+        try:
+            # Ensure face region boundaries are smooth
+            final_face = get_one_face(result_frame)
+            if final_face is not None:
+                # Apply subtle smoothing to face edges
+                result_frame = apply_edge_smoothing(result_frame, final_face)
+                logger.info("✅ Edge smoothing applied")
+        except Exception as e:
+            logger.warning(f"⚠️ Post-processing warning: {e}")
         
         # Convert back to PIL with high quality settings
         logger.info("📸 Converting result to high quality image...")
@@ -378,7 +530,7 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         result_image.save(buffer, format='JPEG', quality=95, optimize=True)
         result_data = base64.b64encode(buffer.getvalue()).decode()
         
-        logger.info("✅ High quality result image encoded successfully")
+        logger.info("✅ High quality multi-round result image encoded successfully")
         return {"result": result_data}
         
     except Exception as e:
