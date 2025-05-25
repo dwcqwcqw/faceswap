@@ -57,6 +57,18 @@ try:
     from modules.processors.frame.face_swapper import process_frame
     import modules.globals
     
+    # Import super resolution module
+    try:
+        from modules.processors.frame.super_resolution import enhance_resolution
+        logger.info("✅ Super resolution module imported successfully")
+        SR_AVAILABLE = True
+    except ImportError as e:
+        logger.warning(f"⚠️ Super resolution module not available: {e}")
+        SR_AVAILABLE = False
+        def enhance_resolution(frame, scale_factor=4, max_size=2048):
+            """Fallback function when super resolution is not available"""
+            return frame
+    
     logger.info("✅ Core modules imported successfully")
     
 except ImportError as e:
@@ -68,6 +80,9 @@ except ImportError as e:
         return []
     def swap_face(source_face, target_face, frame):
         return frame
+    def enhance_resolution(frame, scale_factor=4, max_size=2048):
+        return frame
+    SR_AVAILABLE = False
 
 def download_models():
     """Download required models if not present"""
@@ -81,7 +96,9 @@ def download_models():
         # Check essential models
         essential_models = {
             'inswapper_128_fp16.onnx': 'Face swapper model',
-            'GFPGANv1.4.pth': 'Face enhancer model'
+            'GFPGANv1.4.pth': 'Face enhancer model',
+            'RealESRGAN_x4plus.pth': 'Super resolution model (4x)',
+            'RealESRGAN_x2plus.pth': 'Super resolution model (2x)'
         }
         
         all_found = True
@@ -354,8 +371,48 @@ def process_image_swap_from_urls(source_url, target_url):
         except Exception as e:
             logger.warning(f"⚠️ Post-processing warning: {e}")
         
-        # Convert back to PIL with high quality settings
-        logger.info("📸 Converting result to high quality image...")
+        # Apply AI Super Resolution for ultra-high quality output
+        logger.info("🔍 Applying AI Super Resolution for ultra-high quality...")
+        try:
+            if SR_AVAILABLE:
+                # Determine optimal scale factor based on input size
+                height, width = result_frame.shape[:2]
+                
+                # Use 4x for small images, 2x for medium images, skip for very large images
+                if max(width, height) < 512:
+                    scale_factor = 4
+                    logger.info(f"📐 Using 4x super resolution (input: {width}x{height})")
+                elif max(width, height) < 1024:
+                    scale_factor = 2 
+                    logger.info(f"📐 Using 2x super resolution (input: {width}x{height})")
+                else:
+                    scale_factor = 1  # Skip super resolution for already large images
+                    logger.info(f"📐 Skipping super resolution (input already large: {width}x{height})")
+                
+                if scale_factor > 1:
+                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=3072)
+                    if enhanced_frame is not None:
+                        result_frame = enhanced_frame
+                        final_height, final_width = result_frame.shape[:2]
+                        logger.info(f"✅ AI Super Resolution completed: {final_width}x{final_height}")
+                    else:
+                        logger.warning("⚠️ Super resolution failed, using original")
+            else:
+                logger.info("⚠️ Super resolution not available, using traditional upscaling...")
+                # Fallback to traditional high-quality upscaling
+                height, width = result_frame.shape[:2]
+                if max(width, height) < 768:
+                    scale = min(2.0, 1536 / max(width, height))  # Target at least 1536px
+                    new_width = int(width * scale)
+                    new_height = int(height * scale)
+                    result_frame = cv2.resize(result_frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                    logger.info(f"✅ Traditional upscaling: {new_width}x{new_height}")
+                    
+        except Exception as e:
+            logger.warning(f"⚠️ Super resolution failed: {e}")
+        
+        # Convert back to PIL with ultra-high quality settings
+        logger.info("📸 Converting result to ultra-high quality image...")
         result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
         
         # Resize if the image is too small (upscale for better quality)
@@ -374,7 +431,7 @@ def process_image_swap_from_urls(source_url, target_url):
         result_image.save(buffer, format='JPEG', quality=95, optimize=True)
         result_data = base64.b64encode(buffer.getvalue()).decode()
         
-        logger.info("✅ High quality multi-round result image encoded successfully")
+        logger.info("✅ Ultra-high quality multi-round result image encoded successfully")
         return {"result": result_data}
         
     except Exception as e:
@@ -531,8 +588,48 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         except Exception as e:
             logger.warning(f"⚠️ Post-processing warning: {e}")
         
-        # Convert back to PIL with high quality settings
-        logger.info("📸 Converting result to high quality image...")
+        # Apply AI Super Resolution for ultra-high quality output
+        logger.info("🔍 Applying AI Super Resolution for ultra-high quality...")
+        try:
+            if SR_AVAILABLE:
+                # Determine optimal scale factor based on input size
+                height, width = result_frame.shape[:2]
+                
+                # Use 4x for small images, 2x for medium images, skip for very large images
+                if max(width, height) < 512:
+                    scale_factor = 4
+                    logger.info(f"📐 Using 4x super resolution (input: {width}x{height})")
+                elif max(width, height) < 1024:
+                    scale_factor = 2 
+                    logger.info(f"📐 Using 2x super resolution (input: {width}x{height})")
+                else:
+                    scale_factor = 1  # Skip super resolution for already large images
+                    logger.info(f"📐 Skipping super resolution (input already large: {width}x{height})")
+                
+                if scale_factor > 1:
+                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=3072)
+                    if enhanced_frame is not None:
+                        result_frame = enhanced_frame
+                        final_height, final_width = result_frame.shape[:2]
+                        logger.info(f"✅ AI Super Resolution completed: {final_width}x{final_height}")
+                    else:
+                        logger.warning("⚠️ Super resolution failed, using original")
+            else:
+                logger.info("⚠️ Super resolution not available, using traditional upscaling...")
+                # Fallback to traditional high-quality upscaling
+                height, width = result_frame.shape[:2]
+                if max(width, height) < 768:
+                    scale = min(2.0, 1536 / max(width, height))  # Target at least 1536px
+                    new_width = int(width * scale)
+                    new_height = int(height * scale)
+                    result_frame = cv2.resize(result_frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                    logger.info(f"✅ Traditional upscaling: {new_width}x{new_height}")
+                    
+        except Exception as e:
+            logger.warning(f"⚠️ Super resolution failed: {e}")
+        
+        # Convert back to PIL with ultra-high quality settings
+        logger.info("📸 Converting result to ultra-high quality image...")
         result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
         
         # Resize if the image is too small (upscale for better quality)
@@ -551,7 +648,7 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         result_image.save(buffer, format='JPEG', quality=95, optimize=True)
         result_data = base64.b64encode(buffer.getvalue()).decode()
         
-        logger.info("✅ High quality multi-round result image encoded successfully")
+        logger.info("✅ Ultra-high quality multi-round result image encoded successfully")
         return {"result": result_data}
         
     except Exception as e:
@@ -924,6 +1021,46 @@ def process_multi_image_swap_from_urls(target_url, face_mappings):
                 logger.info(f"✅ Edge smoothing applied to {edge_smoothing_count} faces")
         except Exception as e:
             logger.warning(f"⚠️ Post-processing warning: {e}")
+        
+        # Apply AI Super Resolution for ultra-high quality multi-person output
+        logger.info("🔍 Applying AI Super Resolution for ultra-high quality multi-person output...")
+        try:
+            if SR_AVAILABLE:
+                # Determine optimal scale factor based on input size
+                height, width = result_frame.shape[:2]
+                
+                # Use more conservative scaling for multi-person images (they're often larger)
+                if max(width, height) < 512:
+                    scale_factor = 4
+                    logger.info(f"📐 Using 4x super resolution (multi-person input: {width}x{height})")
+                elif max(width, height) < 768:
+                    scale_factor = 2 
+                    logger.info(f"📐 Using 2x super resolution (multi-person input: {width}x{height})")
+                else:
+                    scale_factor = 1  # Skip super resolution for already large multi-person images
+                    logger.info(f"📐 Skipping super resolution (multi-person input already large: {width}x{height})")
+                
+                if scale_factor > 1:
+                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=4096)  # Higher max for multi-person
+                    if enhanced_frame is not None:
+                        result_frame = enhanced_frame
+                        final_height, final_width = result_frame.shape[:2]
+                        logger.info(f"✅ AI Super Resolution completed for multi-person: {final_width}x{final_height}")
+                    else:
+                        logger.warning("⚠️ Super resolution failed, using original")
+            else:
+                logger.info("⚠️ Super resolution not available, using traditional upscaling...")
+                # Fallback to traditional high-quality upscaling
+                height, width = result_frame.shape[:2]
+                if max(width, height) < 1024:  # More conservative for multi-person
+                    scale = min(1.5, 2048 / max(width, height))  # Target at least 2048px for multi-person
+                    new_width = int(width * scale)
+                    new_height = int(height * scale)
+                    result_frame = cv2.resize(result_frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                    logger.info(f"✅ Traditional upscaling for multi-person: {new_width}x{new_height}")
+                    
+        except Exception as e:
+            logger.warning(f"⚠️ Super resolution failed: {e}")
         
         # Convert to ultra-high quality image
         logger.info("📸 Converting result to ultra-high quality image...")

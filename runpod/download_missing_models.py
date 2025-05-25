@@ -69,6 +69,14 @@ def ensure_models_available():
         "GFPGANv1.4.pth": {
             "url": "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth", 
             "description": "Face enhancer model"
+        },
+        "RealESRGAN_x4plus.pth": {
+            "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
+            "description": "Super resolution model (4x upscale)"
+        },
+        "RealESRGAN_x2plus.pth": {
+            "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth",
+            "description": "Super resolution model (2x upscale)"
         }
     }
     

@@ -134,6 +134,14 @@ def check_and_download_models():
             'url': 'https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth',
             'description': 'Face Enhancer Model (GFPGAN)'
         },
+        'RealESRGAN_x4plus.pth': {
+            'url': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth',
+            'description': 'Super Resolution Model (Real-ESRGAN 4x)'
+        },
+        'RealESRGAN_x2plus.pth': {
+            'url': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth', 
+            'description': 'Super Resolution Model (Real-ESRGAN 2x)'
+        },
         '79999_iter.pth': {
             'url': 'https://huggingface.co/ManyOtherFunctions/face-parse-bisent/resolve/main/79999_iter.pth',
             'description': 'Face Parsing Model'

@@ -15,6 +15,17 @@ This directory should contain the following model files for the face swap applic
 - **Size**: ~332MB
 - **Download**: [Hugging Face](https://huggingface.co/hacksider/deep-live-cam/resolve/main/GFPGANv1.4.pth)
 
+### 3. Super Resolution Models (Optional but Recommended)
+- **File**: `RealESRGAN_x4plus.pth`
+- **Size**: ~64MB
+- **Download**: [GitHub](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth)
+- **Description**: AI Super Resolution model for 4x upscaling
+
+- **File**: `RealESRGAN_x2plus.pth`  
+- **Size**: ~64MB
+- **Download**: [GitHub](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth)
+- **Description**: AI Super Resolution model for 2x upscaling
+
 ## Download Instructions
 
 ### Option 1: Manual Download
@@ -25,6 +36,8 @@ This directory should contain the following model files for the face swap applic
    models/
    ├── inswapper_128_fp16.onnx
    ├── GFPGANv1.4.pth (optional)
+   ├── RealESRGAN_x4plus.pth (optional)
+   ├── RealESRGAN_x2plus.pth (optional)
    └── README.md (this file)
    ```
 
@@ -38,6 +51,10 @@ curl -L https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_12
 
 # Download GFPGAN model (optional, for face enhancement)
 curl -L https://huggingface.co/hacksider/deep-live-cam/resolve/main/GFPGANv1.4.pth -o GFPGANv1.4.pth
+
+# Download RealESRGAN models (optional, for super resolution)
+curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o RealESRGAN_x4plus.pth
+curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth -o RealESRGAN_x2plus.pth
 ```
 
 ### Option 3: Using wget
@@ -45,6 +62,8 @@ curl -L https://huggingface.co/hacksider/deep-live-cam/resolve/main/GFPGANv1.4.p
 cd models/
 wget https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx
 wget https://huggingface.co/hacksider/deep-live-cam/resolve/main/GFPGANv1.4.pth
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth
 ```
 
 ## Verification
@@ -59,6 +78,7 @@ ls -la models/
 
 - **inswapper_128_fp16.onnx** is **required** for face swapping functionality
 - **GFPGANv1.4.pth** is **optional** and used for face enhancement
+- **RealESRGAN_x4plus.pth** and **RealESRGAN_x2plus.pth** are **optional** and used for super resolution
 - Models are not included in the repository due to their large size (596MB total)
 - First run will be slower as the application loads these models
 - These models are for **non-commercial research purposes only**
