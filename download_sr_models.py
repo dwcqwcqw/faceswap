@@ -83,7 +83,7 @@ def main():
             'description': 'Real-ESRGAN 4x Super Resolution Model'
         },
         'RealESRGAN_x2plus.pth': {
-            'url': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth',
+            'url': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth',
             'description': 'Real-ESRGAN 2x Super Resolution Model'
         }
     }
