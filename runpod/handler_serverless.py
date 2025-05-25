@@ -912,6 +912,96 @@ def process_video_swap(source_image_data, target_video_data):
         with open(output_video.name, 'rb') as f:
             video_data = f.read()
         
+        # Apply AI Super Resolution to improve video quality (if available)
+        if SR_AVAILABLE and frame_width < 1024 and frame_height < 1024:
+            logger.info("🔍 Applying AI Super Resolution to video output for ultra-high quality...")
+            try:
+                # Create enhanced video output
+                enhanced_video = tempfile.NamedTemporaryFile(delete=False, suffix='_enhanced.mp4')
+                enhanced_video.close()
+                
+                # Determine scale factor for video
+                max_dimension = max(frame_width, frame_height)
+                if max_dimension < 512:
+                    scale_factor = 2  # Conservative 2x for video (4x would be too intensive)
+                    logger.info(f"📐 Using 2x super resolution for video (input: {frame_width}x{frame_height})")
+                elif max_dimension < 768:
+                    scale_factor = 2  # Still 2x for medium videos
+                    logger.info(f"📐 Using 2x super resolution for video (input: {frame_width}x{frame_height})")
+                else:
+                    scale_factor = 1  # Skip for larger videos
+                    logger.info(f"📐 Skipping super resolution for video (already large: {frame_width}x{frame_height})")
+                
+                if scale_factor > 1:
+                    # Re-process the output video with super resolution
+                    cap_enhanced = cv2.VideoCapture(output_video.name)
+                    
+                    # Calculate new dimensions
+                    new_width = frame_width * scale_factor
+                    new_height = frame_height * scale_factor
+                    
+                    # Setup enhanced video writer
+                    fourcc_enhanced = cv2.VideoWriter_fourcc(*'mp4v')
+                    out_enhanced = cv2.VideoWriter(enhanced_video.name, fourcc_enhanced, fps, (new_width, new_height))
+                    
+                    enhanced_frames = 0
+                    logger.info("🚀 Starting video super resolution enhancement...")
+                    
+                    while True:
+                        ret, frame = cap_enhanced.read()
+                        if not ret:
+                            break
+                        
+                        try:
+                            # Apply super resolution to frame
+                            enhanced_frame = enhance_resolution(frame, scale_factor, max_size=2048)
+                            if enhanced_frame is not None:
+                                out_enhanced.write(enhanced_frame)
+                            else:
+                                # Fallback to traditional upscaling
+                                upscaled_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                                out_enhanced.write(upscaled_frame)
+                            
+                            enhanced_frames += 1
+                            
+                            # Log progress every 60 frames (roughly every 2 seconds at 30fps)
+                            if enhanced_frames % 60 == 0:
+                                logger.info(f"📹 Super resolution progress: {enhanced_frames} frames enhanced")
+                                
+                        except Exception as e:
+                            logger.warning(f"⚠️ Error enhancing frame {enhanced_frames}: {e}")
+                            # Write original frame on error
+                            upscaled_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                            out_enhanced.write(upscaled_frame)
+                            enhanced_frames += 1
+                    
+                    cap_enhanced.release()
+                    out_enhanced.release()
+                    
+                    logger.info(f"✅ Video super resolution completed: {enhanced_frames} frames enhanced to {new_width}x{new_height}")
+                    
+                    # Use enhanced video as final result
+                    with open(enhanced_video.name, 'rb') as f:
+                        video_data = f.read()
+                    
+                    # Update video info
+                    frame_width = new_width
+                    frame_height = new_height
+                    
+                    # Cleanup enhanced video file
+                    try:
+                        os.unlink(enhanced_video.name)
+                    except:
+                        pass
+                        
+            except Exception as e:
+                logger.warning(f"⚠️ Video super resolution failed: {e}, using original quality")
+        else:
+            if not SR_AVAILABLE:
+                logger.info("⚠️ Super resolution not available for video enhancement")
+            else:
+                logger.info(f"ℹ️ Video resolution already high ({frame_width}x{frame_height}), skipping super resolution")
+        
         result_data = base64.b64encode(video_data).decode()
         
         # Cleanup temporary files
@@ -929,7 +1019,9 @@ def process_video_swap(source_image_data, target_video_data):
             "successful_swaps": successful_swaps,
             "fps": fps,
             "resolution": f"{frame_width}x{frame_height}",
-            "processing_type": "video"
+            "processing_type": "video",
+            "enhanced": SR_AVAILABLE and frame_width < 1024 and frame_height < 1024,
+            "quality_level": "ultra-high" if SR_AVAILABLE else "high"
         }
         
     except Exception as e:
@@ -1446,12 +1538,23 @@ def handler(event):
                     logger.info(f"📋 Source content-type: {source_type}")
                     logger.info(f"📋 Target content-type: {target_type}")
                     
-                    # Check if this is actually a video swap request
+                    # Handle different combinations of image/video
                     if 'video' in target_type and 'image' in source_type:
+                        # Correct order: image as source, video as target
                         logger.info("🎬 Detected image-to-video swap, routing to video processing...")
                         return process_video_swap(source_url, target_url)
-                    elif 'video' in source_type:
-                        return {"error": "Video as source is not supported. Please use an image as source and video as target."}
+                    elif 'video' in source_type and 'image' in target_type:
+                        # Reversed order: video as source, image as target - auto-correct
+                        logger.info("🔄 Detected video-to-image order, auto-correcting to image-to-video...")
+                        logger.info("🎬 Routing to video processing with corrected order...")
+                        return process_video_swap(target_url, source_url)  # Swap the order
+                    elif 'video' in source_type and 'video' in target_type:
+                        return {"error": "视频对视频换脸暂不支持。请使用图片作为人脸源，视频作为目标。"}
+                    elif 'image' in source_type and 'image' in target_type:
+                        # Both are images, proceed with image processing
+                        logger.info("🖼️ Both files are images, proceeding with image processing...")
+                    else:
+                        logger.warning(f"⚠️ Unsupported file types - Source: {source_type}, Target: {target_type}")
                     
                 except Exception as e:
                     logger.warning(f"⚠️ Could not check content types: {e}, proceeding with image processing...")

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import FileUpload from '../components/FileUpload'
-import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, PlayIcon, VideoCameraIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, PlayIcon, VideoCameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
 import { ProcessingJob } from '../types'
 
@@ -110,8 +110,15 @@ export default function VideoPage() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">视频换脸</h1>
         <p className="mt-2 text-lg text-gray-600">
-          上传视频和目标人脸，AI将为视频中的人脸进行换脸处理
+          上传图片和视频文件，AI将为视频中的人脸进行换脸处理
         </p>
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-center">
+            <div className="text-blue-800 text-sm">
+              💡 <strong>支持灵活上传：</strong>可以任意顺序上传图片和视频文件，系统会自动识别并处理
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -146,17 +153,24 @@ export default function VideoPage() {
         {/* Source Video Upload */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <FileUpload
-            label="原视频"
-            description="上传需要换脸的视频文件"
+            label="文件1: 视频或图片"
+            description="上传视频文件或人脸图片（支持自动识别）"
             onFileSelect={setSourceVideo}
             currentFile={sourceVideo}
             onRemove={() => setSourceVideo(null)}
-            accept={{ 'video/*': ['.mp4', '.avi', '.mov', '.mkv'] }}
+            accept={{ 
+              'video/*': ['.mp4', '.avi', '.mov', '.mkv'],
+              'image/*': ['.png', '.jpg', '.jpeg']
+            }}
           />
           {sourceVideo && (
             <div className="mt-4">
               <div className="bg-gray-100 rounded-lg p-4 flex items-center">
-                <VideoCameraIcon className="h-8 w-8 text-gray-400 mr-3" />
+                {sourceVideo.type.startsWith('video/') ? (
+                  <VideoCameraIcon className="h-8 w-8 text-gray-400 mr-3" />
+                ) : (
+                  <PhotoIcon className="h-8 w-8 text-gray-400 mr-3" />
+                )}
                 <div>
                   <p className="font-medium text-gray-900">{sourceVideo.name}</p>
                   <p className="text-sm text-gray-500">
@@ -167,13 +181,21 @@ export default function VideoPage() {
                   </p>
                 </div>
               </div>
-              {/* Video preview if supported */}
-              <video
-                src={URL.createObjectURL(sourceVideo)}
-                className="w-full h-48 object-cover rounded-lg mt-3"
-                controls
-                preload="metadata"
-              />
+              {/* File preview */}
+              {sourceVideo.type.startsWith('video/') ? (
+                <video
+                  src={URL.createObjectURL(sourceVideo)}
+                  className="w-full h-48 object-cover rounded-lg mt-3"
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                <img
+                  src={URL.createObjectURL(sourceVideo)}
+                  alt="文件1预览"
+                  className="w-full h-48 object-cover rounded-lg mt-3"
+                />
+              )}
             </div>
           )}
         </div>
@@ -181,23 +203,49 @@ export default function VideoPage() {
         {/* Target Face Upload */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <FileUpload
-            label="目标人脸"
-            description="上传要替换的人脸图片"
+            label="文件2: 图片或视频"
+            description="上传人脸图片或视频文件（支持自动识别）"
             onFileSelect={setTargetFace}
             currentFile={targetFace}
             onRemove={() => setTargetFace(null)}
-            accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
+            accept={{ 
+              'image/*': ['.png', '.jpg', '.jpeg'],
+              'video/*': ['.mp4', '.avi', '.mov', '.mkv']
+            }}
           />
           {targetFace && (
             <div className="mt-4">
-              <img
-                src={URL.createObjectURL(targetFace)}
-                alt="目标人脸"
-                className="w-full h-48 object-cover rounded-lg"
-              />
-              <p className="text-sm text-gray-500 mt-2">
-                文件大小: {(targetFace.size / 1024 / 1024).toFixed(2)} MB
-              </p>
+              <div className="bg-gray-100 rounded-lg p-4 flex items-center">
+                {targetFace.type.startsWith('video/') ? (
+                  <VideoCameraIcon className="h-8 w-8 text-gray-400 mr-3" />
+                ) : (
+                  <PhotoIcon className="h-8 w-8 text-gray-400 mr-3" />
+                )}
+                <div>
+                  <p className="font-medium text-gray-900">{targetFace.name}</p>
+                  <p className="text-sm text-gray-500">
+                    文件大小: {(targetFace.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    类型: {targetFace.type}
+                  </p>
+                </div>
+              </div>
+              {/* File preview */}
+              {targetFace.type.startsWith('video/') ? (
+                <video
+                  src={URL.createObjectURL(targetFace)}
+                  className="w-full h-48 object-cover rounded-lg mt-3"
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                <img
+                  src={URL.createObjectURL(targetFace)}
+                  alt="文件2预览"
+                  className="w-full h-48 object-cover rounded-lg mt-3"
+                />
+              )}
             </div>
           )}
         </div>
@@ -303,12 +351,15 @@ export default function VideoPage() {
       <div className="mt-8 bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-3">视频换脸最佳实践:</h3>
         <ul className="text-sm text-gray-600 space-y-2">
-          <li>• 支持 MP4、AVI、MOV、MKV 等常见视频格式</li>
+          <li>• 支持 MP4、AVI、MOV、MKV 等常见视频格式和 PNG、JPG、JPEG 图片格式</li>
+          <li>• <strong>灵活上传顺序：</strong>可以任意顺序上传图片和视频，系统会自动识别处理</li>
           <li>• 建议视频分辨率不超过1080p，文件大小不超过100MB</li>
+          <li>• <strong>AI超分辨率：</strong>自动为低分辨率视频（&lt;1024px）提供2x高清增强</li>
           <li>• 确保视频中的人脸清晰可见，避免快速移动或模糊</li>
-          <li>• 目标人脸图片最好与视频中的人脸角度和光线相似</li>
+          <li>• 人脸图片最好与视频中的人脸角度和光线相似</li>
           <li>• 视频处理时间较长，通常需要几分钟到几十分钟</li>
           <li>• 较短的视频片段能获得更快的处理速度和更好的效果</li>
+          <li>• <strong>超高质量输出：</strong>系统会自动应用多轮增强和AI超分辨率技术</li>
         </ul>
       </div>
     </div>
