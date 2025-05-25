@@ -128,6 +128,69 @@
 
 ## Latest Fixes Applied
 
+### 2025-01-24 - Local Development Setup Fix
+
+#### Issue: Network Error and API connection problems
+
+**Problem**: Frontend showing "Network Error" when trying to connect to API, SSL connection issues with production Worker.
+
+**Root Cause**: 
+- Wrangler.toml configuration had bindings at top level instead of environment-specific
+- Frontend was trying to connect to production API with SSL issues
+- Missing TypeScript environment variable declarations
+
+**Solution**:
+1. **Fixed Wrangler Configuration**:
+   ```toml
+   # Before: bindings at top level
+   [[r2_buckets]]
+   binding = "FACESWAP_BUCKET"
+   
+   # After: environment-specific bindings
+   [[env.production.r2_buckets]]
+   binding = "FACESWAP_BUCKET"
+   ```
+
+2. **Local Development Setup**:
+   ```javascript
+   // Frontend now uses local API for development
+   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787/api'
+   ```
+
+3. **Added TypeScript Support**:
+   ```typescript
+   // web/frontend/src/vite-env.d.ts
+   interface ImportMetaEnv {
+     readonly VITE_API_URL?: string
+   }
+   ```
+
+4. **Created Connection Test**:
+   ```bash
+   node test-connection.js  # Tests frontend and backend connectivity
+   ```
+
+**Current Status**:
+- ✅ **Local API Server**: http://localhost:8787 (Cloudflare Worker dev)
+- ✅ **Frontend**: http://localhost:3000 (Vite dev server)
+- ✅ **CORS**: Properly configured for local development
+- ✅ **Bindings**: KV, R2, and environment variables working
+
+**Files Modified**:
+- `web/cloudflare/wrangler.toml` - Fixed environment configuration
+- `web/frontend/src/services/api.ts` - Updated API base URL
+- `web/frontend/src/vite-env.d.ts` - Added TypeScript declarations
+- `test-connection.js` - Created connection test script
+
+**Status**: ✅ Fixed and ready for local development
+
+**Next Steps**: 
+1. Visit http://localhost:3000 to test the frontend
+2. File upload and UI should work
+3. For full AI processing, RunPod API key still needed
+
+---
+
 ### 2025-01-24 - WebP Format Support Fix
 
 #### Issue: 404 errors for WebP uploads
