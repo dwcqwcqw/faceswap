@@ -39,6 +39,16 @@ except Exception as e:
     logger.warning(f"⚠️ Model initialization error: {e}")
     logger.info("🔄 Will attempt model setup during request processing")
 
+# Ensure models are available in workspace before proceeding
+try:
+    from download_missing_models import ensure_models_available
+    logger.info("🔄 Checking and downloading missing models...")
+    ensure_models_available()
+    logger.info("✅ Model availability check completed")
+except Exception as e:
+    logger.warning(f"⚠️ Model download check failed: {e}")
+    logger.info("🔄 Proceeding anyway, will check models during processing")
+
 # Import face swap functionality without GUI modules
 try:
     # Import core modules (avoid UI modules)
