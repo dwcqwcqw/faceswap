@@ -223,10 +223,12 @@ export async function handleProcess(request, env, path) {
 export async function handleStatus(request, env, path) {
   try {
     const jobId = path.split('/').pop()
+    console.log(`📋 Checking status for job: ${jobId}`);
     
     // Get job from KV
     const jobData = await env.JOBS.get(jobId)
     if (!jobData) {
+      console.log(`❌ Job not found: ${jobId}`);
       return new Response(JSON.stringify({
         success: false,
         error: 'Job not found'
@@ -234,53 +236,84 @@ export async function handleStatus(request, env, path) {
     }
 
     const job = JSON.parse(jobData)
+    console.log(`🔍 Job status: ${job.status}, RunPod ID: ${job.runpod_id}`);
 
     // If processing, check RunPod status
     if (job.status === 'processing' && job.runpod_id) {
+      console.log(`🔄 Checking RunPod status for: ${job.runpod_id}`);
+      
       const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${job.runpod_id}`, {
         headers: {
           'Authorization': `Bearer ${env.RUNPOD_TOKEN}`
         }
       })
 
-      const runpodResult = await runpodResponse.json()
-      
-      if (runpodResponse.ok) {
+      if (!runpodResponse.ok) {
+        console.log(`⚠️ RunPod API error: ${runpodResponse.status} ${runpodResponse.statusText}`);
+        // Don't fail completely, just return current job status
+      } else {
+        const runpodResult = await runpodResponse.json()
+        console.log(`📊 RunPod result:`, JSON.stringify(runpodResult, null, 2));
+        
         // Update job based on RunPod status
         if (runpodResult.status === 'COMPLETED') {
+          console.log(`✅ RunPod job completed, processing result...`);
+          
           job.status = 'completed'
           job.progress = 100
           job.completed_at = new Date().toISOString()
           
           // Handle different result formats from RunPod
           if (runpodResult.output) {
-            // Format 1: result_url (from old handler)
-            if (runpodResult.output.result_url) {
-              const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId)
-              job.result_url = `/api/download/${resultFileId}`
+            console.log(`🔍 Processing RunPod output...`);
+            
+            try {
+              // Format 1: result_url (from old handler)
+              if (runpodResult.output.result_url) {
+                console.log(`📎 Found result_url format: ${runpodResult.output.result_url}`);
+                const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId)
+                job.result_url = `/api/download/${resultFileId}`
+              }
+              // Format 2: base64 result (from serverless handler)
+              else if (runpodResult.output.result) {
+                console.log(`📄 Found base64 result format (${runpodResult.output.result.length} chars)`);
+                const resultFileId = await storeResultFromBase64(env, runpodResult.output.result, jobId)
+                job.result_url = `/api/download/${resultFileId}`
+              }
+              // Format 3: direct base64 (legacy)
+              else if (typeof runpodResult.output === 'string') {
+                console.log(`📄 Found direct base64 format (${runpodResult.output.length} chars)`);
+                const resultFileId = await storeResultFromBase64(env, runpodResult.output, jobId)
+                job.result_url = `/api/download/${resultFileId}`
+              }
+              else {
+                console.log(`⚠️ Unknown RunPod output format:`, Object.keys(runpodResult.output));
+              }
+              
+            } catch (resultError) {
+              console.error('❌ Error processing result:', resultError);
+              job.status = 'failed'
+              job.error_message = `Result processing failed: ${resultError.message}`
             }
-            // Format 2: base64 result (from serverless handler)
-            else if (runpodResult.output.result) {
-              const resultFileId = await storeResultFromBase64(env, runpodResult.output.result, jobId)
-              job.result_url = `/api/download/${resultFileId}`
-            }
-            // Format 3: direct base64 (legacy)
-            else if (typeof runpodResult.output === 'string') {
-              const resultFileId = await storeResultFromBase64(env, runpodResult.output, jobId)
-              job.result_url = `/api/download/${resultFileId}`
-            }
+          } else {
+            console.log(`⚠️ No output in RunPod result`);
           }
           
           await env.JOBS.put(jobId, JSON.stringify(job))
+          console.log(`💾 Job updated with new status: ${job.status}`);
           
         } else if (runpodResult.status === 'FAILED') {
+          console.log(`❌ RunPod job failed: ${runpodResult.error || 'Unknown error'}`);
           job.status = 'failed'
           job.error_message = runpodResult.error || 'Processing failed'
           await env.JOBS.put(jobId, JSON.stringify(job))
+        } else {
+          console.log(`🔄 RunPod job still in progress: ${runpodResult.status}`);
         }
       }
     }
 
+    console.log(`📤 Returning job status: ${job.status}`);
     return new Response(JSON.stringify({
       success: true,
       data: job
@@ -292,7 +325,7 @@ export async function handleStatus(request, env, path) {
     })
 
   } catch (error) {
-    console.error('Status error:', error)
+    console.error('❌ Status error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: error.message || 'Status check failed'
@@ -494,21 +527,35 @@ async function storeResultFromUrl(env, resultUrl, jobId) {
 
 async function storeResultFromBase64(env, base64Data, jobId) {
   try {
+    console.log(`🔄 Storing base64 result for job ${jobId}...`);
+    
     // Generate result file ID
     const resultFileId = `result_${jobId}_${Date.now()}`
     const fileName = `results/${resultFileId}.jpg` // Assume JPG for now
 
-    // Decode base64 data to a Buffer
-    const buffer = Buffer.from(base64Data, 'base64')
+    // Decode base64 data - Buffer is not available in Cloudflare Workers
+    // Use the Web API atob and convert to Uint8Array
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    console.log(`💾 Storing result file: ${fileName} (${bytes.length} bytes)`);
 
     // Store in R2
-    await env.FACESWAP_BUCKET.put(fileName, buffer, {
+    await env.FACESWAP_BUCKET.put(fileName, bytes, {
+      httpMetadata: {
+        contentType: 'image/jpeg'
+      },
       customMetadata: {
         jobId: jobId,
         createdAt: new Date().toISOString(),
-        base64Data: base64Data
+        originalType: 'base64_result'
       }
     })
+
+    console.log(`✅ Result stored successfully: ${fileName}`);
 
     // Set expiration for result files (7 days)
     await scheduleFileDeletion(env, fileName, 7 * 24 * 60 * 60 * 1000) // 7 days
