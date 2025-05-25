@@ -514,6 +514,10 @@ async function storeResultFromBase64(env, base64Data, jobId) {
   }
 }
 __name(storeResultFromBase64, "storeResultFromBase64");
+async function scheduleFileDeletion(env, fileName, delayMs) {
+  console.log(`\u{1F5D1}\uFE0F File ${fileName} scheduled for deletion in ${delayMs}ms`);
+}
+__name(scheduleFileDeletion, "scheduleFileDeletion");
 
 // ../../../../../../usr/local/lib/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {

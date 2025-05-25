@@ -263,8 +263,8 @@ def process_image_swap_from_urls(source_url, target_url):
             # Try to import and use face enhancer
             from modules.processors.frame.face_enhancer import enhance_face, get_face_enhancer
             
-            # Enhance the result
-            enhanced_frame = enhance_face(target_face, result_frame)
+            # Enhance the result - enhance_face only takes one parameter (the frame)
+            enhanced_frame = enhance_face(result_frame)
             if enhanced_frame is not None:
                 result_frame = enhanced_frame
                 logger.info("✅ Face enhancement applied successfully")
@@ -345,8 +345,8 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
             # Try to import and use face enhancer
             from modules.processors.frame.face_enhancer import enhance_face, get_face_enhancer
             
-            # Enhance the result
-            enhanced_frame = enhance_face(target_face, result_frame)
+            # Enhance the result - enhance_face only takes one parameter (the frame)
+            enhanced_frame = enhance_face(result_frame)
             if enhanced_frame is not None:
                 result_frame = enhanced_frame
                 logger.info("✅ Face enhancement applied successfully")

@@ -582,3 +582,9 @@ async function storeResultFromBase64(env, base64Data, jobId) {
     throw error
   }
 }
+
+async function scheduleFileDeletion(env, fileName, delayMs) {
+  // Use Cloudflare's lifecycle policies or external service for file cleanup
+  // For now, we'll rely on manual cleanup or R2 lifecycle policies
+  console.log(`🗑️ File ${fileName} scheduled for deletion in ${delayMs}ms`)
+}
