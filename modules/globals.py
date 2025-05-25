@@ -66,25 +66,33 @@ def get_models_dir():
         if os.path.exists(models_dir):
             return models_dir
     
-    # Priority 2: Volume mount - workspace/faceswap (user's setup)
-    if os.path.exists('/workspace/faceswap'):
-        models_dir = '/workspace/faceswap/models'
-        if os.path.exists(models_dir) or os.path.exists('/workspace/faceswap'):
-            return models_dir
+    # Priority 2: RunPod Serverless paths (NEW - higher priority)
+    runpod_serverless_paths = [
+        '/runpod-volume/faceswap',
+        '/runpod-volume/faceswap/models',
+        '/runpod-volume/models'
+    ]
     
-    # Priority 3: RunPod Network Volume (if mounted)
-    if os.path.exists('/runpod-volume/models'):
-        return '/runpod-volume/models'
+    for path in runpod_serverless_paths:
+        if os.path.exists(path):
+            return path
     
-    # Priority 4: Workspace models (if exists)
-    if os.path.exists('/workspace/models'):
-        return '/workspace/models'
+    # Priority 3: Traditional RunPod Pod paths - workspace/faceswap (user's setup)
+    workspace_paths = [
+        '/workspace/faceswap',
+        '/workspace/faceswap/models',
+        '/workspace/models'
+    ]
     
-    # Priority 5: Docker app models
+    for path in workspace_paths:
+        if os.path.exists(path):
+            return path
+    
+    # Priority 4: Docker app models
     if os.path.exists('/app/models'):
         return '/app/models'
     
-    # Priority 6: Local development - use relative path
+    # Priority 5: Local development - use relative path
     current_dir = os.path.dirname(os.path.abspath(__file__))
     models_dir = os.path.join(os.path.dirname(current_dir), 'models')
     

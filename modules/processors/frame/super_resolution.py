@@ -60,22 +60,32 @@ def get_models_directory():
 
 
 def find_model_file(model_name: str) -> Optional[str]:
-    """Find model file in multiple possible locations"""
+    """Find model file in various possible locations"""
+    
+    # Enhanced search paths with RunPod Serverless support
     search_paths = [
-        # Primary models directory
-        get_models_directory(),
-        # Workspace paths
-        '/workspace/faceswap/models',
+        # RunPod Serverless paths (NEW)
+        '/runpod-volume/faceswap',
+        '/runpod-volume/faceswap/models', 
+        '/runpod-volume/models',
+        
+        # Traditional RunPod Pod paths
         '/workspace/faceswap',
+        '/workspace/faceswap/models',
         '/workspace/models',
-        # App paths
+        
+        # Docker paths
         '/app/models',
-        # Current directory paths
+        
+        # Local development
         './models',
-        '.'
+        get_models_directory()
     ]
     
+    logger.info(f"🔍 Searching for {model_name} in multiple locations...")
+    
     for search_path in search_paths:
+        # Skip if path doesn't exist
         if not os.path.exists(search_path):
             continue
             

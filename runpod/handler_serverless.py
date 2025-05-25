@@ -22,6 +22,44 @@ import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ====== RunPod Serverless Path Compatibility Fix ======
+# Handle difference between RunPod Pod (/workspace) and Serverless (/runpod-volume) environments
+def setup_runpod_serverless_compatibility():
+    """Setup path compatibility for RunPod Serverless environment"""
+    
+    logger.info("🔧 Setting up RunPod Serverless path compatibility...")
+    
+    # Check if we're in RunPod Serverless environment
+    if os.path.exists('/runpod-volume') and not os.path.exists('/workspace'):
+        logger.info("🚀 Detected RunPod Serverless environment")
+        
+        # Create symbolic link: /runpod-volume -> /workspace
+        try:
+            os.symlink('/runpod-volume', '/workspace')
+            logger.info("✅ Created symbolic link: /runpod-volume -> /workspace")
+            
+            # Verify the link works
+            if os.path.exists('/workspace/faceswap'):
+                logger.info("✅ Path compatibility verified: /workspace/faceswap accessible")
+            else:
+                logger.warning("⚠️ /workspace/faceswap not found via symbolic link")
+                
+        except FileExistsError:
+            logger.info("ℹ️ Symbolic link already exists")
+        except Exception as e:
+            logger.error(f"❌ Failed to create symbolic link: {e}")
+            
+    elif os.path.exists('/workspace'):
+        logger.info("🔍 Detected traditional RunPod Pod environment")
+        logger.info("ℹ️ No path conversion needed")
+        
+    else:
+        logger.info("🏠 Detected local development environment")
+        logger.info("ℹ️ No path conversion needed")
+
+# Apply RunPod Serverless compatibility fix immediately
+setup_runpod_serverless_compatibility()
+
 # Add the app directory to Python path
 sys.path.insert(0, '/app')
 sys.path.insert(0, '/app/runpod')
