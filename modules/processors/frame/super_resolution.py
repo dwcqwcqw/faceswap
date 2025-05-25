@@ -234,22 +234,52 @@ def get_super_resolution_model(scale_factor: int = 4):
                 
                 logger.info(f"🔍 Loading super resolution model: {model_name}")
                 
-                # Initialize RealESRGAN
+                # Determine the correct network architecture for each model
+                if model_name == 'RealESRGAN_x4plus.pth':
+                    # RealESRGAN_x4plus uses RRDBNet architecture
+                    from basicsr.archs.rrdbnet_arch import RRDBNet
+                    model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+                elif model_name == 'RealESRGAN_x2plus.pth':
+                    # RealESRGAN_x2plus uses RRDBNet architecture
+                    from basicsr.archs.rrdbnet_arch import RRDBNet
+                    model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=2)
+                else:
+                    # Fallback to auto-detection for unknown models
+                    model = None
+                    logger.warning(f"⚠️ Unknown model {model_name}, using auto-detection")
+                
+                # Initialize RealESRGAN with proper architecture
                 SUPER_RESOLUTION_MODEL = RealESRGANer(
                     scale=netscale,
                     model_path=model_path,
-                    model=None,  # Auto-detect architecture
-                    tile=512,    # Use tiling for memory efficiency
+                    model=model,  # Use specific architecture instead of None
+                    tile=512,     # Use tiling for memory efficiency
                     tile_pad=10,
                     pre_pad=0,
-                    half=True    # Use half precision for speed
+                    half=True     # Use half precision for speed
                 )
                 
                 logger.info(f"✅ Super resolution model loaded successfully (scale: {netscale}x)")
                 
             except Exception as e:
                 logger.error(f"❌ Failed to load super resolution model: {e}")
-                return None
+                # Try fallback initialization with simpler settings
+                try:
+                    logger.info("🔄 Attempting fallback model initialization...")
+                    
+                    # Try with default settings and no specific model architecture
+                    SUPER_RESOLUTION_MODEL = RealESRGANer(
+                        scale=netscale,
+                        model_path=model_path,
+                        tile=0,       # Disable tiling as fallback
+                        half=False    # Disable half precision as fallback
+                    )
+                    
+                    logger.info("✅ Fallback super resolution model loaded successfully")
+                    
+                except Exception as fallback_error:
+                    logger.error(f"❌ Fallback model loading also failed: {fallback_error}")
+                    return None
     
     return SUPER_RESOLUTION_MODEL
 
