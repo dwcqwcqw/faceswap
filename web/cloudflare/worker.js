@@ -145,6 +145,8 @@ export async function handleProcess(request, env, path) {
     const processType = path.split('/').pop() // single-image, multi-image, etc.
     const requestBody = await request.json()
     
+    console.log(`🔧 Processing ${processType} request:`, JSON.stringify(requestBody, null, 2));
+    
     // Generate job ID
     const jobId = generateJobId()
     
@@ -157,21 +159,49 @@ export async function handleProcess(request, env, path) {
       created_at: new Date().toISOString(),
       source_file: requestBody.source_file,
       target_file: requestBody.target_file,
+      face_mappings: requestBody.face_mappings || {},
       options: requestBody.options || {}
     }
     
     await env.JOBS.put(jobId, JSON.stringify(jobData))
 
-    // Prepare RunPod request
-    const runpodPayload = {
-      input: {
-        job_id: jobId,
-        process_type: processType,
-        source_file: await getR2FileUrl(env, requestBody.source_file),
-        target_file: await getR2FileUrl(env, requestBody.target_file),
-        options: requestBody.options || {}
+    // Prepare RunPod request based on process type
+    let runpodPayload;
+    
+    if (processType === 'multi-image') {
+      // For multi-image, convert face_mappings file IDs to URLs
+      const faceMappingUrls = {};
+      if (requestBody.face_mappings) {
+        for (const [faceId, fileId] of Object.entries(requestBody.face_mappings)) {
+          faceMappingUrls[faceId] = await getR2FileUrl(env, fileId);
+        }
+      }
+      
+      runpodPayload = {
+        input: {
+          job_id: jobId,
+          process_type: 'multi_image',  // Normalize process type
+          target_file: await getR2FileUrl(env, requestBody.target_file),  // Multi-person image
+          face_mappings: faceMappingUrls,  // Individual face replacement images
+          options: requestBody.options || {}
+        }
+      }
+      
+      console.log(`🎯 Multi-image payload:`, JSON.stringify(runpodPayload, null, 2));
+    } else {
+      // Standard single-image processing
+      runpodPayload = {
+        input: {
+          job_id: jobId,
+          process_type: 'single_image',  // Normalize process type
+          source_file: await getR2FileUrl(env, requestBody.source_file),
+          target_file: await getR2FileUrl(env, requestBody.target_file),
+          options: requestBody.options || {}
+        }
       }
     }
+
+    console.log(`🚀 Sending to RunPod:`, JSON.stringify(runpodPayload, null, 2));
 
     // Send to RunPod
     const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
@@ -184,6 +214,7 @@ export async function handleProcess(request, env, path) {
     })
 
     const runpodResult = await runpodResponse.json()
+    console.log(`📊 RunPod response:`, JSON.stringify(runpodResult, null, 2));
     
     if (!runpodResponse.ok) {
       throw new Error(`RunPod error: ${runpodResult.error || 'Unknown error'}`)

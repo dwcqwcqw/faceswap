@@ -165,6 +165,7 @@ async function handleProcess(request, env, path) {
   try {
     const processType = path.split("/").pop();
     const requestBody = await request.json();
+    console.log(`\u{1F527} Processing ${processType} request:`, JSON.stringify(requestBody, null, 2));
     const jobId = generateJobId();
     const jobData = {
       id: jobId,
@@ -174,18 +175,44 @@ async function handleProcess(request, env, path) {
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
       source_file: requestBody.source_file,
       target_file: requestBody.target_file,
+      face_mappings: requestBody.face_mappings || {},
       options: requestBody.options || {}
     };
     await env.JOBS.put(jobId, JSON.stringify(jobData));
-    const runpodPayload = {
-      input: {
-        job_id: jobId,
-        process_type: processType,
-        source_file: await getR2FileUrl(env, requestBody.source_file),
-        target_file: await getR2FileUrl(env, requestBody.target_file),
-        options: requestBody.options || {}
+    let runpodPayload;
+    if (processType === "multi-image") {
+      const faceMappingUrls = {};
+      if (requestBody.face_mappings) {
+        for (const [faceId, fileId] of Object.entries(requestBody.face_mappings)) {
+          faceMappingUrls[faceId] = await getR2FileUrl(env, fileId);
+        }
       }
-    };
+      runpodPayload = {
+        input: {
+          job_id: jobId,
+          process_type: "multi_image",
+          // Normalize process type
+          target_file: await getR2FileUrl(env, requestBody.target_file),
+          // Multi-person image
+          face_mappings: faceMappingUrls,
+          // Individual face replacement images
+          options: requestBody.options || {}
+        }
+      };
+      console.log(`\u{1F3AF} Multi-image payload:`, JSON.stringify(runpodPayload, null, 2));
+    } else {
+      runpodPayload = {
+        input: {
+          job_id: jobId,
+          process_type: "single_image",
+          // Normalize process type
+          source_file: await getR2FileUrl(env, requestBody.source_file),
+          target_file: await getR2FileUrl(env, requestBody.target_file),
+          options: requestBody.options || {}
+        }
+      };
+    }
+    console.log(`\u{1F680} Sending to RunPod:`, JSON.stringify(runpodPayload, null, 2));
     const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
       method: "POST",
       headers: {
@@ -195,6 +222,7 @@ async function handleProcess(request, env, path) {
       body: JSON.stringify(runpodPayload)
     });
     const runpodResult = await runpodResponse.json();
+    console.log(`\u{1F4CA} RunPod response:`, JSON.stringify(runpodResult, null, 2));
     if (!runpodResponse.ok) {
       throw new Error(`RunPod error: ${runpodResult.error || "Unknown error"}`);
     }

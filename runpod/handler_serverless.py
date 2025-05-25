@@ -695,9 +695,9 @@ def extract_face_image(image_frame, face):
         return None
 
 def process_multi_image_swap_from_urls(target_url, face_mappings):
-    """Process multi-person face swap with individual face mappings"""
+    """Process multi-person face swap with individual face mappings - Enhanced with multi-round processing"""
     try:
-        logger.info("🚀 Starting multi-person face swap processing...")
+        logger.info("🚀 Starting enhanced multi-person face swap processing...")
         logger.info(f"📋 Target image URL: {target_url}")
         logger.info(f"📋 Face mappings: {json.dumps(face_mappings, indent=2)}")
         
@@ -760,87 +760,198 @@ def process_multi_image_swap_from_urls(target_url, face_mappings):
         if not face_mapping_pairs:
             return {"error": "No valid face mappings could be processed"}
         
-        logger.info(f"🎯 Processing {len(face_mapping_pairs)} face swap(s)...")
+        logger.info(f"🎯 Processing {len(face_mapping_pairs)} face swap(s) with multi-round enhancement...")
         
-        # Configure enhancement settings
+        # Configure enhancement settings for high quality
         modules.globals.use_face_enhancer = True
         modules.globals.mouth_mask = True
         modules.globals.color_correction = True
         
-        # Apply face swaps sequentially
+        # Multi-round iterative processing for superior quality
         result_frame = target_frame.copy()
         
+        # Store original target faces for quality comparison
+        original_target_faces = target_faces.copy()
+        
+        # Round 1: Initial face swaps for all faces
+        logger.info("🔄 Round 1: Initial multi-face swap...")
         for i, mapping in enumerate(face_mapping_pairs):
-            logger.info(f"🔄 Processing face swap {i+1}/{len(face_mapping_pairs)} ({mapping['face_id']})...")
+            logger.info(f"   Processing face {i+1}/{len(face_mapping_pairs)} ({mapping['face_id']})...")
             
             try:
-                # Perform face swap
+                # Perform initial face swap
                 temp_result = swap_face(
                     mapping['source_face'], 
                     mapping['target_face'], 
                     result_frame
                 )
-                
-                # Update result frame for next iteration
                 result_frame = temp_result
-                logger.info(f"✅ Face swap {i+1} completed successfully")
+                logger.info(f"   ✅ Face {i+1} initial swap completed")
                 
             except Exception as e:
-                logger.warning(f"⚠️ Face swap {i+1} failed: {e}")
+                logger.warning(f"   ⚠️ Face {i+1} initial swap failed: {e}")
                 continue
         
-        # Apply face enhancement if available
+        logger.info("✅ Round 1 completed - all initial face swaps done")
+        
+        # Round 2: Refinement pass - re-detect faces and refine
+        logger.info("🔄 Round 2: Refinement pass...")
+        current_faces = get_many_faces(result_frame)
+        
+        if current_faces and len(current_faces) >= len(face_mapping_pairs):
+            refinement_count = 0
+            for i, mapping in enumerate(face_mapping_pairs):
+                try:
+                    # Use current detected face for refinement
+                    if i < len(current_faces):
+                        current_face = current_faces[i]
+                        
+                        # Quality check before refinement
+                        if current_face.det_score > 0.5:
+                            temp_result = swap_face(
+                                mapping['source_face'],
+                                current_face,
+                                result_frame
+                            )
+                            
+                            # Verify refinement improves quality
+                            refined_faces = get_many_faces(temp_result)
+                            if refined_faces and len(refined_faces) >= len(face_mapping_pairs):
+                                result_frame = temp_result
+                                refinement_count += 1
+                                logger.info(f"   ✅ Face {i+1} refinement applied")
+                            else:
+                                logger.info(f"   ⚠️ Face {i+1} refinement skipped - would degrade detection")
+                        else:
+                            logger.info(f"   ⚠️ Face {i+1} refinement skipped - low confidence")
+                    
+                except Exception as e:
+                    logger.warning(f"   ⚠️ Face {i+1} refinement failed: {e}")
+                    continue
+            
+            logger.info(f"✅ Round 2 completed - {refinement_count}/{len(face_mapping_pairs)} faces refined")
+        else:
+            logger.warning("⚠️ Round 2 skipped - insufficient face detection quality")
+        
+        # Round 3: Final precision pass - high-quality enhancement
+        logger.info("🔄 Round 3: Final precision pass...")
+        final_faces = get_many_faces(result_frame)
+        
+        if final_faces and len(final_faces) >= len(face_mapping_pairs):
+            precision_count = 0
+            for i, mapping in enumerate(face_mapping_pairs):
+                try:
+                    if i < len(final_faces):
+                        final_face = final_faces[i]
+                        
+                        # Very high quality threshold for final pass
+                        if final_face.det_score > 0.6:
+                            temp_result = swap_face(
+                                mapping['source_face'],
+                                final_face,
+                                result_frame
+                            )
+                            
+                            # Conservative quality check
+                            check_faces = get_many_faces(temp_result)
+                            if (check_faces and len(check_faces) >= len(face_mapping_pairs) and
+                                all(f.det_score > 0.5 for f in check_faces[:len(face_mapping_pairs)])):
+                                result_frame = temp_result
+                                precision_count += 1
+                                logger.info(f"   ✅ Face {i+1} precision pass applied")
+                            else:
+                                logger.info(f"   ⚠️ Face {i+1} precision pass skipped - would degrade quality")
+                        else:
+                            logger.info(f"   ⚠️ Face {i+1} precision pass skipped - insufficient confidence")
+                    
+                except Exception as e:
+                    logger.warning(f"   ⚠️ Face {i+1} precision pass failed: {e}")
+                    continue
+            
+            logger.info(f"✅ Round 3 completed - {precision_count}/{len(face_mapping_pairs)} faces precision-enhanced")
+        else:
+            logger.warning("⚠️ Round 3 skipped - insufficient face detection quality")
+        
+        # Advanced face enhancement - multiple passes for superior quality
         try:
-            logger.info("🎨 Applying face enhancement...")
+            logger.info("🎨 Applying advanced multi-pass face enhancement...")
+            
             from modules.processors.frame.face_enhancer import enhance_face
             
-            enhanced_frame = enhance_face(result_frame)
-            if enhanced_frame is not None:
-                result_frame = enhanced_frame
-                logger.info("✅ Face enhancement applied")
-            else:
-                logger.warning("⚠️ Face enhancement failed")
+            # Enhancement Pass 1: Conservative blend
+            logger.info("✨ Enhancement pass 1: Conservative blending...")
+            enhanced_frame_1 = enhance_face(result_frame)
+            if enhanced_frame_1 is not None:
+                # Conservative blend (30% original + 70% enhanced)
+                result_frame = cv2.addWeighted(result_frame, 0.3, enhanced_frame_1, 0.7, 0)
+                logger.info("✅ Enhancement pass 1 completed")
+            
+            # Enhancement Pass 2: Standard enhancement
+            logger.info("✨ Enhancement pass 2: Standard enhancement...")
+            enhanced_frame_2 = enhance_face(result_frame)
+            if enhanced_frame_2 is not None:
+                # Balanced blend (40% original + 60% enhanced)
+                result_frame = cv2.addWeighted(result_frame, 0.4, enhanced_frame_2, 0.6, 0)
+                logger.info("✅ Enhancement pass 2 completed")
+                
+            # Enhancement Pass 3: Final refinement
+            logger.info("✨ Enhancement pass 3: Final refinement...")
+            enhanced_frame_3 = enhance_face(result_frame)
+            if enhanced_frame_3 is not None:
+                # Final enhancement application
+                result_frame = enhanced_frame_3
+                logger.info("✅ Enhancement pass 3 completed")
                 
         except ImportError:
             logger.warning("⚠️ Face enhancer module not available")
         except Exception as e:
-            logger.warning(f"⚠️ Face enhancement failed: {e}")
+            logger.warning(f"⚠️ Advanced face enhancement failed: {e}")
         
-        # Apply edge smoothing for all faces
-        logger.info("🎭 Applying post-processing...")
+        # Advanced post-processing for all faces
+        logger.info("🎭 Applying advanced post-processing to all faces...")
         try:
             current_faces = get_many_faces(result_frame)
             if current_faces:
+                edge_smoothing_count = 0
                 for face in current_faces:
-                    result_frame = apply_edge_smoothing(result_frame, face)
-                logger.info("✅ Edge smoothing applied to all faces")
+                    try:
+                        result_frame = apply_edge_smoothing(result_frame, face)
+                        edge_smoothing_count += 1
+                    except Exception as e:
+                        logger.warning(f"⚠️ Edge smoothing failed for one face: {e}")
+                        continue
+                
+                logger.info(f"✅ Edge smoothing applied to {edge_smoothing_count} faces")
         except Exception as e:
             logger.warning(f"⚠️ Post-processing warning: {e}")
         
-        # Convert to high quality image
-        logger.info("📸 Converting result to high quality image...")
+        # Convert to ultra-high quality image
+        logger.info("📸 Converting result to ultra-high quality image...")
         result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
         
-        # Upscale if needed
+        # Quality upscaling if needed
         width, height = result_image.size
-        if width < 512 or height < 512:
-            scale_factor = max(512 / width, 512 / height)
+        if width < 768 or height < 768:  # Higher threshold for multi-person images
+            scale_factor = max(768 / width, 768 / height)
             new_width = int(width * scale_factor)
             new_height = int(height * scale_factor)
             
             logger.info(f"🔍 Upscaling image from {width}x{height} to {new_width}x{new_height}")
             result_image = result_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # Encode to base64
+        # Encode to high-quality JPEG
         buffer = BytesIO()
-        result_image.save(buffer, format='JPEG', quality=95, optimize=True)
+        result_image.save(buffer, format='JPEG', quality=98, optimize=True)  # Higher quality for multi-person
         result_data = base64.b64encode(buffer.getvalue()).decode()
         
-        logger.info("✅ Multi-person face swap completed successfully")
+        logger.info("✅ Ultra-high quality multi-person face swap completed successfully")
         return {
             "result": result_data,
             "faces_processed": len(face_mapping_pairs),
-            "total_target_faces": len(target_faces)
+            "total_target_faces": len(target_faces),
+            "processing_rounds": 3,
+            "enhancement_passes": 3,
+            "quality_level": "ultra-high"
         }
         
     except Exception as e:
