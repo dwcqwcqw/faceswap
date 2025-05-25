@@ -436,22 +436,25 @@ def process_image_swap_from_urls(source_url, target_url):
         logger.info("🔍 Applying AI Super Resolution for ultra-high quality...")
         try:
             if SR_AVAILABLE:
-                # Determine optimal scale factor based on input size
+                # Determine optimal scale factor based on input size - OPTIMIZED FOR MAXIMUM QUALITY
                 height, width = result_frame.shape[:2]
                 
-                # Use 4x for small images, 2x for medium images, skip for very large images
-                if max(width, height) < 512:
+                # Use 4x for most images to get maximum quality, 2x for large images, skip only for very large
+                if max(width, height) < 768:  # Increased threshold for 4x (was 512)
                     scale_factor = 4
-                    logger.info(f"📐 Using 4x super resolution (input: {width}x{height})")
-                elif max(width, height) < 1024:
+                    max_output_size = 4096  # Higher max size for 4x
+                    logger.info(f"📐 Using 4x super resolution for maximum quality (input: {width}x{height})")
+                elif max(width, height) < 1536:  # Increased threshold for 2x (was 1024)
                     scale_factor = 2 
+                    max_output_size = 3072  # Standard max size for 2x
                     logger.info(f"📐 Using 2x super resolution (input: {width}x{height})")
                 else:
-                    scale_factor = 1  # Skip super resolution for already large images
-                    logger.info(f"📐 Skipping super resolution (input already large: {width}x{height})")
+                    scale_factor = 1  # Skip only for very large images (≥1536px)
+                    max_output_size = 3072
+                    logger.info(f"📐 Skipping super resolution (input already very large: {width}x{height})")
                 
                 if scale_factor > 1:
-                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=3072)
+                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=max_output_size)
                     if enhanced_frame is not None:
                         result_frame = enhanced_frame
                         final_height, final_width = result_frame.shape[:2]
@@ -653,22 +656,25 @@ def process_image_swap_from_base64(source_image_data, target_image_data):
         logger.info("🔍 Applying AI Super Resolution for ultra-high quality...")
         try:
             if SR_AVAILABLE:
-                # Determine optimal scale factor based on input size
+                # Determine optimal scale factor based on input size - OPTIMIZED FOR MAXIMUM QUALITY
                 height, width = result_frame.shape[:2]
                 
-                # Use 4x for small images, 2x for medium images, skip for very large images
-                if max(width, height) < 512:
+                # Use 4x for most images to get maximum quality, 2x for large images, skip only for very large
+                if max(width, height) < 768:  # Increased threshold for 4x (was 512)
                     scale_factor = 4
-                    logger.info(f"📐 Using 4x super resolution (input: {width}x{height})")
-                elif max(width, height) < 1024:
+                    max_output_size = 4096  # Higher max size for 4x
+                    logger.info(f"📐 Using 4x super resolution for maximum quality (input: {width}x{height})")
+                elif max(width, height) < 1536:  # Increased threshold for 2x (was 1024)
                     scale_factor = 2 
+                    max_output_size = 3072  # Standard max size for 2x
                     logger.info(f"📐 Using 2x super resolution (input: {width}x{height})")
                 else:
-                    scale_factor = 1  # Skip super resolution for already large images
-                    logger.info(f"📐 Skipping super resolution (input already large: {width}x{height})")
+                    scale_factor = 1  # Skip only for very large images (≥1536px)
+                    max_output_size = 3072
+                    logger.info(f"📐 Skipping super resolution (input already very large: {width}x{height})")
                 
                 if scale_factor > 1:
-                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=3072)
+                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=max_output_size)
                     if enhanced_frame is not None:
                         result_frame = enhanced_frame
                         final_height, final_width = result_frame.shape[:2]
@@ -1087,22 +1093,25 @@ def process_multi_image_swap_from_urls(target_url, face_mappings):
         logger.info("🔍 Applying AI Super Resolution for ultra-high quality multi-person output...")
         try:
             if SR_AVAILABLE:
-                # Determine optimal scale factor based on input size
+                # Determine optimal scale factor based on input size - OPTIMIZED FOR MAXIMUM QUALITY
                 height, width = result_frame.shape[:2]
                 
-                # Use more conservative scaling for multi-person images (they're often larger)
-                if max(width, height) < 512:
+                # Use 4x for most multi-person images too, but with slightly more conservative thresholds
+                if max(width, height) < 640:  # 4x for smaller multi-person images  
                     scale_factor = 4
-                    logger.info(f"📐 Using 4x super resolution (multi-person input: {width}x{height})")
-                elif max(width, height) < 768:
+                    max_output_size = 5120  # Even higher max for multi-person 4x
+                    logger.info(f"📐 Using 4x super resolution for maximum quality (multi-person input: {width}x{height})")
+                elif max(width, height) < 1280:  # 2x for medium multi-person images
                     scale_factor = 2 
+                    max_output_size = 4096  # Higher max for multi-person 2x
                     logger.info(f"📐 Using 2x super resolution (multi-person input: {width}x{height})")
                 else:
-                    scale_factor = 1  # Skip super resolution for already large multi-person images
-                    logger.info(f"📐 Skipping super resolution (multi-person input already large: {width}x{height})")
+                    scale_factor = 1  # Skip only for very large multi-person images (≥1280px)
+                    max_output_size = 4096
+                    logger.info(f"📐 Skipping super resolution (multi-person input already very large: {width}x{height})")
                 
                 if scale_factor > 1:
-                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=4096)  # Higher max for multi-person
+                    enhanced_frame = enhance_resolution(result_frame, scale_factor, max_size=max_output_size)
                     if enhanced_frame is not None:
                         result_frame = enhanced_frame
                         final_height, final_width = result_frame.shape[:2]

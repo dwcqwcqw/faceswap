@@ -284,14 +284,14 @@ def get_super_resolution_model(scale_factor: int = 4):
     return SUPER_RESOLUTION_MODEL
 
 
-def enhance_resolution(frame: Frame, scale_factor: int = 4, max_size: int = 2048) -> Optional[Frame]:
+def enhance_resolution(frame: Frame, scale_factor: int = 4, max_size: int = 4096) -> Optional[Frame]:
     """
     Enhance frame resolution using Real-ESRGAN
     
     Args:
         frame: Input frame (numpy array)
         scale_factor: Upscaling factor (2 or 4)
-        max_size: Maximum output dimension to prevent memory issues
+        max_size: Maximum output dimension to prevent memory issues (increased to 4096 for higher quality)
     
     Returns:
         Enhanced frame or None if failed
