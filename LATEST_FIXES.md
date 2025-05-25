@@ -1,5 +1,82 @@
 # 🔧 最新错误修复总结
 
+### 2025-01-25 - Fixed Cloudflare Worker Status 500 Errors and Base64 Handling
+
+#### Issue: Frontend getting 500 errors when checking job status despite successful RunPod processing
+
+**Problem**: 
+- RunPod successfully completed face swap processing and encoded base64 results
+- Frontend received `AxiosError: Request failed with status code 500` when checking status
+- No result image download available despite successful processing
+
+**Root Cause Analysis**:
+1. **Buffer API Incompatibility**: Cloudflare Workers don't support Node.js `Buffer` API
+   ```javascript
+   // ❌ This failed in Cloudflare Workers
+   const buffer = Buffer.from(base64Data, 'base64')
+   ```
+
+2. **Insufficient Error Handling**: Status check errors weren't properly logged
+3. **Base64 Decoding Issues**: Improper base64 to binary conversion
+
+**Solution Implemented**:
+
+1. **Fixed Base64 Handling** (`storeResultFromBase64` function):
+   ```javascript
+   // ✅ Replaced Buffer with Web API
+   const binaryString = atob(base64Data);
+   const bytes = new Uint8Array(binaryString.length);
+   for (let i = 0; i < binaryString.length; i++) {
+     bytes[i] = binaryString.charCodeAt(i);
+   }
+   ```
+
+2. **Enhanced Error Handling and Logging**:
+   ```javascript
+   console.log(`📋 Checking status for job: ${jobId}`);
+   console.log(`📄 Found base64 result format (${runpodResult.output.result.length} chars)`);
+   console.log(`💾 Storing result file: ${fileName} (${bytes.length} bytes)`);
+   ```
+
+3. **Improved Status Processing**:
+   - Added try-catch blocks around result processing
+   - Better handling of different RunPod result formats
+   - Graceful degradation on RunPod API errors
+   - Detailed logging for debugging
+
+4. **Added Content-Type Headers**:
+   ```javascript
+   await env.FACESWAP_BUCKET.put(fileName, bytes, {
+     httpMetadata: {
+       contentType: 'image/jpeg'  // Proper MIME type
+     }
+   })
+   ```
+
+**Files Modified**:
+- `web/cloudflare/worker.js` - Fixed base64 handling and enhanced error logging
+- `test_status_fix.js` - New test script for verifying fixes
+
+**Expected Results**:
+- ✅ **No More 500 Errors**: Status checks now handle base64 data correctly
+- ✅ **Successful Downloads**: Base64 results properly converted to downloadable images
+- ✅ **Better Debugging**: Comprehensive logging for troubleshooting
+- ✅ **Proper Error Handling**: Graceful failure and recovery
+
+**Testing**:
+```bash
+# Test the status checking and download fixes
+node test_status_fix.js YOUR_JOB_ID
+
+# Should show:
+# ✅ Valid JPEG file detected!
+# 🎉 Status checking and download working correctly!
+```
+
+**Status**: ✅ Deployed - Base64 handling and status errors fixed
+
+---
+
 ### 2025-01-25 - Enhanced Model Path Detection and Auto-Download
 
 #### Issue: Model file exists but not detected: `inswapper_128_fp16.onnx should exist`
@@ -387,7 +464,7 @@ POST http://localhost:8787/api/upload 500 (Internal Server Error)
 **Benefits**:
 - 🚀 **Instant Setup**: No complex backend configuration needed
 - 🧪 **UI Testing**: Complete interface testing without API dependencies  
-- �� **Auto Fallback**: Graceful degradation when APIs unavailable
+- 🔄 **Auto Fallback**: Graceful degradation when APIs unavailable
 - 📚 **Documentation**: Clear development workflow guide
 
 ---
