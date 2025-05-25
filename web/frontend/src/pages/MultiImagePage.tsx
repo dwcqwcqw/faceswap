@@ -96,33 +96,33 @@ export default function MultiImagePage() {
     setProcessingStatus(null)
 
     try {
-      // Upload source image
-      console.log('上传原图...')
-      const sourceResponse = await apiService.uploadFile(sourceImage)
-      if (!sourceResponse.success || !sourceResponse.data) {
-        throw new Error('原图上传失败')
+      // Upload target image (the original multi-person image)
+      console.log('上传目标图片（原多人图片）...')
+      const targetResponse = await apiService.uploadFile(sourceImage)
+      if (!targetResponse.success || !targetResponse.data) {
+        throw new Error('目标图片上传失败')
       }
 
-      // Upload all target faces and create mappings
+      // Upload all source faces and create mappings
       const uploadedMappings: { [key: string]: string } = {}
       
       for (let i = 0; i < faceMappings.length; i++) {
         const mapping = faceMappings[i]
         if (mapping.targetFile) {
-          console.log(`上传目标人脸 ${i + 1}...`)
-          const targetResponse = await apiService.uploadFile(mapping.targetFile)
-          if (!targetResponse.success || !targetResponse.data) {
-            throw new Error(`目标人脸 ${i + 1} 上传失败`)
+          console.log(`上传替换人脸 ${i + 1}...`)
+          const sourceResponse = await apiService.uploadFile(mapping.targetFile)
+          if (!sourceResponse.success || !sourceResponse.data) {
+            throw new Error(`替换人脸 ${i + 1} 上传失败`)
           }
-          uploadedMappings[`face_${i}`] = targetResponse.data.fileId
+          uploadedMappings[`face_${i}`] = sourceResponse.data.fileId
         }
       }
 
       // Start processing
       console.log('开始处理多人换脸...')
       const processResponse = await apiService.processMultiImage({
-        source_file: sourceResponse.data.fileId,
-        target_file: '', // Not used for multi-face
+        source_file: '', // Not used for multi-face - individual mappings are used instead
+        target_file: targetResponse.data.fileId,
         face_mappings: uploadedMappings,
         options: {
           many_faces: true,

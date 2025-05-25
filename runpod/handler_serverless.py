@@ -64,6 +64,8 @@ except ImportError as e:
     # Create fallback functions
     def get_one_face(frame):
         return None
+    def get_many_faces(frame):
+        return []
     def swap_face(source_face, target_face, frame):
         return frame
 
@@ -547,6 +549,229 @@ def process_video_swap(source_image_data, target_video_data):
         logger.error(f"❌ Video processing failed: {e}")
         return {"error": str(e)}
 
+def process_detect_faces_from_url(image_url):
+    """Detect faces in image from URL - Enhanced multi-face detection"""
+    try:
+        logger.info(f"🔍 Starting face detection from URL: {image_url}")
+        
+        # Download image from URL
+        image_frame = download_image_from_url(image_url)
+        if image_frame is None:
+            return {"error": "Failed to download image"}
+        
+        logger.info(f"📐 Image downloaded successfully, shape: {image_frame.shape}")
+        
+        # Detect all faces in the image
+        logger.info("🔍 Detecting faces using get_many_faces...")
+        faces = get_many_faces(image_frame)
+        
+        if faces is None or len(faces) == 0:
+            logger.warning("⚠️ No faces detected in image")
+            return {
+                "faces": [],
+                "total_faces": 0,
+                "image_path": image_url,
+                "error": "No faces detected in the image"
+            }
+        
+        logger.info(f"✅ Detected {len(faces)} face(s)")
+        
+        # Convert faces to API format
+        detected_faces = []
+        for i, face in enumerate(faces):
+            try:
+                # Extract face information
+                face_info = {
+                    'id': str(i),
+                    'x': int(face.bbox[0]) if hasattr(face, 'bbox') else 0,
+                    'y': int(face.bbox[1]) if hasattr(face, 'bbox') else 0,
+                    'width': int(face.bbox[2] - face.bbox[0]) if hasattr(face, 'bbox') else 0,
+                    'height': int(face.bbox[3] - face.bbox[1]) if hasattr(face, 'bbox') else 0,
+                    'confidence': float(face.det_score) if hasattr(face, 'det_score') else 0.9
+                }
+                
+                # Add embedding for face matching (optional)
+                if hasattr(face, 'embedding'):
+                    face_info['embedding'] = face.embedding.tolist()
+                
+                detected_faces.append(face_info)
+                logger.info(f"👤 Face {i+1}: bbox=({face_info['x']}, {face_info['y']}, {face_info['width']}, {face_info['height']}), confidence={face_info['confidence']:.3f}")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Error processing face {i}: {e}")
+                continue
+        
+        result = {
+            "faces": detected_faces,
+            "total_faces": len(detected_faces),
+            "image_path": image_url
+        }
+        
+        logger.info(f"✅ Face detection completed: {len(detected_faces)} faces detected")
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Face detection failed: {e}")
+        return {
+            "error": f"Face detection failed: {str(e)}",
+            "faces": [],
+            "total_faces": 0,
+            "image_path": image_url if 'image_url' in locals() else ""
+        }
+
+def process_multi_image_swap_from_urls(target_url, face_mappings):
+    """Process multi-person face swap with individual face mappings"""
+    try:
+        logger.info("🚀 Starting multi-person face swap processing...")
+        logger.info(f"📋 Target image URL: {target_url}")
+        logger.info(f"📋 Face mappings: {json.dumps(face_mappings, indent=2)}")
+        
+        # Download target image
+        logger.info("🔄 Downloading target image...")
+        target_frame = download_image_from_url(target_url)
+        if target_frame is None:
+            return {"error": "Failed to download target image"}
+        
+        logger.info(f"✅ Target image downloaded, shape: {target_frame.shape}")
+        
+        # Detect all faces in target image
+        logger.info("🔍 Detecting faces in target image...")
+        target_faces = get_many_faces(target_frame)
+        
+        if target_faces is None or len(target_faces) == 0:
+            return {"error": "No faces detected in target image"}
+        
+        logger.info(f"✅ Detected {len(target_faces)} face(s) in target image")
+        
+        # Prepare source faces
+        source_faces = []
+        face_mapping_pairs = []
+        
+        # Download and process each source face
+        for face_id, source_url in face_mappings.items():
+            try:
+                logger.info(f"🔄 Processing source face for {face_id}: {source_url}")
+                
+                # Download source image
+                source_frame = download_image_from_url(source_url)
+                if source_frame is None:
+                    logger.warning(f"⚠️ Failed to download source image for {face_id}")
+                    continue
+                
+                # Get the main face from source image
+                source_face = get_one_face(source_frame)
+                if source_face is None:
+                    logger.warning(f"⚠️ No face detected in source image for {face_id}")
+                    continue
+                
+                # Parse face_id to get target face index
+                face_index = int(face_id.replace('face_', ''))
+                
+                if face_index < len(target_faces):
+                    face_mapping_pairs.append({
+                        'source_face': source_face,
+                        'target_face': target_faces[face_index],
+                        'face_id': face_id,
+                        'face_index': face_index
+                    })
+                    logger.info(f"✅ Mapped {face_id} (index {face_index}) successfully")
+                else:
+                    logger.warning(f"⚠️ Face index {face_index} out of range for {face_id}")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Error processing source face {face_id}: {e}")
+                continue
+        
+        if not face_mapping_pairs:
+            return {"error": "No valid face mappings could be processed"}
+        
+        logger.info(f"🎯 Processing {len(face_mapping_pairs)} face swap(s)...")
+        
+        # Configure enhancement settings
+        modules.globals.use_face_enhancer = True
+        modules.globals.mouth_mask = True
+        modules.globals.color_correction = True
+        
+        # Apply face swaps sequentially
+        result_frame = target_frame.copy()
+        
+        for i, mapping in enumerate(face_mapping_pairs):
+            logger.info(f"🔄 Processing face swap {i+1}/{len(face_mapping_pairs)} ({mapping['face_id']})...")
+            
+            try:
+                # Perform face swap
+                temp_result = swap_face(
+                    mapping['source_face'], 
+                    mapping['target_face'], 
+                    result_frame
+                )
+                
+                # Update result frame for next iteration
+                result_frame = temp_result
+                logger.info(f"✅ Face swap {i+1} completed successfully")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Face swap {i+1} failed: {e}")
+                continue
+        
+        # Apply face enhancement if available
+        try:
+            logger.info("🎨 Applying face enhancement...")
+            from modules.processors.frame.face_enhancer import enhance_face
+            
+            enhanced_frame = enhance_face(result_frame)
+            if enhanced_frame is not None:
+                result_frame = enhanced_frame
+                logger.info("✅ Face enhancement applied")
+            else:
+                logger.warning("⚠️ Face enhancement failed")
+                
+        except ImportError:
+            logger.warning("⚠️ Face enhancer module not available")
+        except Exception as e:
+            logger.warning(f"⚠️ Face enhancement failed: {e}")
+        
+        # Apply edge smoothing for all faces
+        logger.info("🎭 Applying post-processing...")
+        try:
+            current_faces = get_many_faces(result_frame)
+            if current_faces:
+                for face in current_faces:
+                    result_frame = apply_edge_smoothing(result_frame, face)
+                logger.info("✅ Edge smoothing applied to all faces")
+        except Exception as e:
+            logger.warning(f"⚠️ Post-processing warning: {e}")
+        
+        # Convert to high quality image
+        logger.info("📸 Converting result to high quality image...")
+        result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
+        
+        # Upscale if needed
+        width, height = result_image.size
+        if width < 512 or height < 512:
+            scale_factor = max(512 / width, 512 / height)
+            new_width = int(width * scale_factor)
+            new_height = int(height * scale_factor)
+            
+            logger.info(f"🔍 Upscaling image from {width}x{height} to {new_width}x{new_height}")
+            result_image = result_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Encode to base64
+        buffer = BytesIO()
+        result_image.save(buffer, format='JPEG', quality=95, optimize=True)
+        result_data = base64.b64encode(buffer.getvalue()).decode()
+        
+        logger.info("✅ Multi-person face swap completed successfully")
+        return {
+            "result": result_data,
+            "faces_processed": len(face_mapping_pairs),
+            "total_target_faces": len(target_faces)
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Multi-person face swap failed: {e}")
+        return {"error": f"Multi-person face swap failed: {str(e)}"}
+
 def handler(event):
     """
     RunPod serverless handler function
@@ -576,10 +801,36 @@ def handler(event):
         # Normalize type format (convert single-image to single_image)
         if swap_type == "single-image":
             swap_type = "single_image"
+        elif swap_type == "multi-image":
+            swap_type = "multi_image"
+        elif swap_type == "detect-faces":
+            swap_type = "detect_faces"
         
         logger.info(f"🎯 Processing type: {swap_type}")
         
-        if swap_type == "single_image":
+        # Handle face detection
+        if swap_type == "detect_faces":
+            image_url = input_data.get("image_file")
+            if not image_url:
+                return {"error": "Missing image_file parameter for face detection"}
+            
+            return process_detect_faces_from_url(image_url)
+        
+        # Handle multi-person image face swap
+        elif swap_type == "multi_image":
+            target_url = input_data.get("target_file")
+            face_mappings = input_data.get("face_mappings", {})
+            
+            if not target_url:
+                return {"error": "Missing target_file parameter for multi-image processing"}
+            
+            if not face_mappings:
+                return {"error": "Missing face_mappings parameter for multi-image processing"}
+            
+            return process_multi_image_swap_from_urls(target_url, face_mappings)
+        
+        # Handle single image face swap
+        elif swap_type == "single_image":
             # Check for new format (URLs from Cloudflare Worker)
             if input_data.get("source_file") and input_data.get("target_file"):
                 logger.info("📡 Processing URLs from Cloudflare Worker")
