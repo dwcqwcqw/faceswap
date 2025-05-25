@@ -248,9 +248,17 @@ async function handleStatus(request, env, path) {
           job.status = "completed";
           job.progress = 100;
           job.completed_at = (/* @__PURE__ */ new Date()).toISOString();
-          if (runpodResult.output && runpodResult.output.result_url) {
-            const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId);
-            job.result_url = `/api/download/${resultFileId}`;
+          if (runpodResult.output) {
+            if (runpodResult.output.result_url) {
+              const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId);
+              job.result_url = `/api/download/${resultFileId}`;
+            } else if (runpodResult.output.result) {
+              const resultFileId = await storeResultFromBase64(env, runpodResult.output.result, jobId);
+              job.result_url = `/api/download/${resultFileId}`;
+            } else if (typeof runpodResult.output === "string") {
+              const resultFileId = await storeResultFromBase64(env, runpodResult.output, jobId);
+              job.result_url = `/api/download/${resultFileId}`;
+            }
           }
           await env.JOBS.put(jobId, JSON.stringify(job));
         } else if (runpodResult.status === "FAILED") {
@@ -437,6 +445,26 @@ async function storeResultFromUrl(env, resultUrl, jobId) {
   }
 }
 __name(storeResultFromUrl, "storeResultFromUrl");
+async function storeResultFromBase64(env, base64Data, jobId) {
+  try {
+    const resultFileId = `result_${jobId}_${Date.now()}`;
+    const fileName = `results/${resultFileId}.jpg`;
+    const buffer = Buffer.from(base64Data, "base64");
+    await env.FACESWAP_BUCKET.put(fileName, buffer, {
+      customMetadata: {
+        jobId,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        base64Data
+      }
+    });
+    await scheduleFileDeletion(env, fileName, 7 * 24 * 60 * 60 * 1e3);
+    return resultFileId;
+  } catch (error) {
+    console.error("Failed to store result:", error);
+    throw error;
+  }
+}
+__name(storeResultFromBase64, "storeResultFromBase64");
 async function scheduleFileDeletion(env, fileName, delayMs) {
   console.log(`File ${fileName} scheduled for deletion in ${delayMs}ms`);
 }

@@ -128,6 +128,66 @@
 
 ## Latest Fixes Applied
 
+### 2025-01-24 - Base64 Result Handling Fix
+
+#### Issue: Result image not available for download after successful processing
+
+**Problem**: RunPod Serverless successfully completed face swap processing and returned base64 encoded results, but Cloudflare Worker couldn't handle the base64 format.
+
+**Root Cause**: 
+- RunPod Serverless handler returns `{"result": "base64_data"}` format
+- Cloudflare Worker only handled `{"result_url": "url"}` format from old handler
+- Missing `storeResultFromBase64` function to convert base64 to R2 storage
+
+**Solution**:
+1. **Enhanced Result Format Support**:
+   ```javascript
+   // Handle different result formats from RunPod
+   if (runpodResult.output.result_url) {
+     // Format 1: URL from old handler
+     const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId)
+   } else if (runpodResult.output.result) {
+     // Format 2: base64 from serverless handler ✅ NEW
+     const resultFileId = await storeResultFromBase64(env, runpodResult.output.result, jobId)
+   }
+   ```
+
+2. **New Base64 Storage Function**:
+   ```javascript
+   async function storeResultFromBase64(env, base64Data, jobId) {
+     const buffer = Buffer.from(base64Data, 'base64')
+     await env.FACESWAP_BUCKET.put(`results/${resultFileId}.jpg`, buffer)
+     return resultFileId
+   }
+   ```
+
+3. **Automatic Download URL Generation**:
+   - Stores base64 result as JPEG file in R2
+   - Generates download URL: `/api/download/result_${jobId}_${timestamp}`
+   - Sets 7-day expiration for result files
+
+**Files Modified**:
+- `web/cloudflare/worker.js` - Added base64 result handling and storage function
+
+**Status**: ✅ Fixed - Base64 results now properly stored and downloadable
+
+**Testing**: 
+```bash
+# Check job status (should now show result_url)
+curl "https://faceswap-api.faceswap.workers.dev/api/status/YOUR_JOB_ID"
+
+# Download result image
+curl "https://faceswap-api.faceswap.workers.dev/api/download/result_xxx" -o result.jpg
+```
+
+**Benefits**:
+- 🖼️ **Result Download**: Face swap results now downloadable as JPEG files
+- 🔄 **Format Compatibility**: Supports both URL and base64 result formats
+- 💾 **Automatic Storage**: Base64 data automatically stored in R2 bucket
+- ⏰ **Auto Cleanup**: Result files expire after 7 days
+
+---
+
 ### 2025-01-24 - Model Path Configuration Fix
 
 #### Issue: `model_file /app/models/inswapper_128_fp16.onnx should exist`

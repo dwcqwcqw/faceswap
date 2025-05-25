@@ -252,10 +252,23 @@ export async function handleStatus(request, env, path) {
           job.progress = 100
           job.completed_at = new Date().toISOString()
           
-          // Store result file from RunPod
-          if (runpodResult.output && runpodResult.output.result_url) {
-            const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId)
-            job.result_url = `/api/download/${resultFileId}`
+          // Handle different result formats from RunPod
+          if (runpodResult.output) {
+            // Format 1: result_url (from old handler)
+            if (runpodResult.output.result_url) {
+              const resultFileId = await storeResultFromUrl(env, runpodResult.output.result_url, jobId)
+              job.result_url = `/api/download/${resultFileId}`
+            }
+            // Format 2: base64 result (from serverless handler)
+            else if (runpodResult.output.result) {
+              const resultFileId = await storeResultFromBase64(env, runpodResult.output.result, jobId)
+              job.result_url = `/api/download/${resultFileId}`
+            }
+            // Format 3: direct base64 (legacy)
+            else if (typeof runpodResult.output === 'string') {
+              const resultFileId = await storeResultFromBase64(env, runpodResult.output, jobId)
+              job.result_url = `/api/download/${resultFileId}`
+            }
           }
           
           await env.JOBS.put(jobId, JSON.stringify(job))
@@ -465,6 +478,35 @@ async function storeResultFromUrl(env, resultUrl, jobId) {
         jobId: jobId,
         createdAt: new Date().toISOString(),
         originalUrl: resultUrl
+      }
+    })
+
+    // Set expiration for result files (7 days)
+    await scheduleFileDeletion(env, fileName, 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    return resultFileId
+
+  } catch (error) {
+    console.error('Failed to store result:', error)
+    throw error
+  }
+}
+
+async function storeResultFromBase64(env, base64Data, jobId) {
+  try {
+    // Generate result file ID
+    const resultFileId = `result_${jobId}_${Date.now()}`
+    const fileName = `results/${resultFileId}.jpg` // Assume JPG for now
+
+    // Decode base64 data to a Buffer
+    const buffer = Buffer.from(base64Data, 'base64')
+
+    // Store in R2
+    await env.FACESWAP_BUCKET.put(fileName, buffer, {
+      customMetadata: {
+        jobId: jobId,
+        createdAt: new Date().toISOString(),
+        base64Data: base64Data
       }
     })
 
