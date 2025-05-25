@@ -399,8 +399,7 @@ function getFileExtension(filename) {
 }
 __name(getFileExtension, "getFileExtension");
 async function getR2FileUrl(env, fileId) {
-  const fileName = `uploads/${fileId}`;
-  return `https://${env.R2_BUCKET_NAME}.${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/${fileName}`;
+  return `https://faceswap-api.faceswap.workers.dev/api/download/${fileId}`;
 }
 __name(getR2FileUrl, "getR2FileUrl");
 async function storeResultFromUrl(env, resultUrl, jobId) {

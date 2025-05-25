@@ -16,6 +16,7 @@ from PIL import Image
 import cv2
 import numpy as np
 import logging
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -99,49 +100,74 @@ def download_models():
 
 def download_image_from_url(url):
     """Download image from URL and return as OpenCV format"""
-    try:
-        logger.info(f"📥 Downloading image from: {url}")
-        
-        # Note: Cloudflare Worker now directly provides Worker download URLs
-        # so no conversion is needed
-        
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        
-        # Convert to PIL Image
-        image = Image.open(BytesIO(response.content))
-        
-        # Convert to OpenCV format (BGR)
-        image_array = np.array(image)
-        if len(image_array.shape) == 3 and image_array.shape[2] == 3:
-            # RGB to BGR for OpenCV
-            opencv_image = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
-        elif len(image_array.shape) == 3 and image_array.shape[2] == 4:
-            # RGBA to BGR for OpenCV
-            opencv_image = cv2.cvtColor(image_array, cv2.COLOR_RGBA2BGR)
-        else:
-            # Grayscale to BGR
-            opencv_image = cv2.cvtColor(image_array, cv2.COLOR_GRAY2BGR)
-        
-        logger.info(f"✅ Image downloaded successfully, shape: {opencv_image.shape}")
-        return opencv_image
-        
-    except Exception as e:
-        logger.error(f"❌ Failed to download image from {url}: {e}")
-        return None
+    
+    # Retry configuration
+    max_retries = 3
+    base_delay = 2  # seconds
+    
+    for attempt in range(max_retries + 1):
+        try:
+            logger.info(f"📥 Downloading image from: {url} (attempt {attempt + 1})")
+            
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+            
+            # Convert to PIL Image
+            image = Image.open(BytesIO(response.content))
+            
+            # Convert to OpenCV format (BGR)
+            image_array = np.array(image)
+            if len(image_array.shape) == 3 and image_array.shape[2] == 3:
+                # RGB to BGR for OpenCV
+                opencv_image = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+            elif len(image_array.shape) == 3 and image_array.shape[2] == 4:
+                # RGBA to BGR for OpenCV
+                opencv_image = cv2.cvtColor(image_array, cv2.COLOR_RGBA2BGR)
+            else:
+                # Grayscale to BGR
+                opencv_image = cv2.cvtColor(image_array, cv2.COLOR_GRAY2BGR)
+            
+            logger.info(f"✅ Image downloaded successfully, shape: {opencv_image.shape}")
+            return opencv_image
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404 and attempt < max_retries:
+                # 404 might be temporary due to upload timing, retry with exponential backoff
+                delay = base_delay * (2 ** attempt)
+                logger.warning(f"⚠️ 404 error on attempt {attempt + 1}, retrying in {delay}s...")
+                time.sleep(delay)
+                continue
+            else:
+                logger.error(f"❌ HTTP error after {attempt + 1} attempts: {e}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Failed to download image from {url} on attempt {attempt + 1}: {e}")
+            if attempt < max_retries:
+                delay = base_delay * (2 ** attempt)
+                logger.warning(f"⚠️ Retrying in {delay}s...")
+                time.sleep(delay)
+                continue
+            else:
+                return None
+    
+    return None
 
 def process_image_swap_from_urls(source_url, target_url):
     """Process face swap with image URLs"""
     try:
         # Download images from URLs
+        logger.info("🔄 Starting image downloads...")
         source_frame = download_image_from_url(source_url)
         target_frame = download_image_from_url(target_url)
         
         if source_frame is None:
-            return {"error": "Failed to download source image"}
+            return {"error": "Failed to download source image after retries. The file may not exist or may still be uploading."}
         
         if target_frame is None:
-            return {"error": "Failed to download target image"}
+            return {"error": "Failed to download target image after retries. The file may not exist or may still be uploading."}
+        
+        logger.info("✅ Both images downloaded successfully")
         
         # Get source face
         logger.info("🔍 Detecting face in source image...")
@@ -152,9 +178,12 @@ def process_image_swap_from_urls(source_url, target_url):
         logger.info("✅ Source face detected successfully")
         
         # Get target face as well
+        logger.info("🔍 Detecting face in target image...")
         target_face = get_one_face(target_frame)
         if target_face is None:
             return {"error": "No face detected in target image"}
+        
+        logger.info("✅ Target face detected successfully")
         
         # Swap face
         logger.info("🔄 Starting face swap...")
@@ -174,7 +203,7 @@ def process_image_swap_from_urls(source_url, target_url):
         
     except Exception as e:
         logger.error(f"❌ Face swap processing failed: {e}")
-        return {"error": str(e)}
+        return {"error": f"Processing failed: {str(e)}"}
 
 def process_image_swap_from_base64(source_image_data, target_image_data):
     """Process face swap with base64 data (backward compatibility)"""

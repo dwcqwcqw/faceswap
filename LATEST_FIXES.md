@@ -126,6 +126,82 @@
 3. **详细日志** - 充分的日志有助于快速定位问题
 4. **渐进式改进** - 每次修复一个核心问题，避免引入新问题
 
+## Latest Fixes Applied
+
+### 2025-01-24 - Function Signature Fix
+
+#### Issue: swap_face() missing 1 required positional argument: 'model_path'
+
+**Problem**: RunPod handler was importing the wrong `swap_face` function and calling it with incorrect arguments.
+
+**Root Cause**: 
+- Handler imported `swap_face` from `modules.face_swapper` (wrapper function expecting 3 args: source_image, target_image, model_path)
+- But called it like the processor function with only 2 args: `swap_face(source_face, target_frame)`
+
+**Solution**:
+1. **Changed import** from wrapper to processor function:
+   ```python
+   # Before
+   from modules.face_swapper import swap_face
+   
+   # After  
+   from modules.processors.frame.face_swapper import swap_face
+   ```
+
+2. **Updated function calls** to use correct signature:
+   ```python
+   # Before
+   result_frame = swap_face(source_face, target_frame)
+   
+   # After
+   target_face = get_one_face(target_frame)
+   result_frame = swap_face(source_face, target_face, target_frame)
+   ```
+
+3. **Added target face detection** for both URL and base64 processing functions
+
+**Files Modified**:
+- `runpod/handler_serverless.py` - Fixed imports and function calls
+
+**Status**: ✅ Fixed and deployed
+
+---
+
+## Previous Fixes
+
+### 2025-01-24 - Data Format Compatibility
+
+**Problem**: Cloudflare Worker sent URLs but RunPod expected base64 data.
+
+**Solution**: Modified RunPod handler to support both formats:
+- URL format: `{source_file: "url", target_file: "url", process_type: "single-image"}`
+- Base64 format: `{source_image: "base64", target_image: "base64", type: "single_image"}`
+
+**Status**: ✅ Completed
+
+### 2025-01-24 - R2 Storage Access
+
+**Problem**: 400/404 errors accessing R2 storage URLs directly.
+
+**Solution**: Modified Cloudflare Worker to return Worker download endpoint URLs instead of direct R2 URLs.
+
+**Status**: ✅ Completed
+
+### 2025-01-24 - Build and Runtime Fixes
+
+**Problems**: 
+- GUI dependencies in serverless environment
+- PyTorch installation issues
+- Module import errors
+
+**Solutions**:
+- Created GUI-free handler
+- Fixed Dockerfile for proper PyTorch installation  
+- Implemented error-tolerant model downloads
+- Added health check endpoints
+
+**Status**: ✅ Completed
+
 ---
 
 **最后更新**: 2025-05-24 23:40 UTC+8  
