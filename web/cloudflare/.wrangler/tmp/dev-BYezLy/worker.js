@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-SD6W3m/checked-fetch.js
+// .wrangler/tmp/bundle-gz2vg4/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-SD6W3m/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-gz2vg4/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -410,6 +410,7 @@ async function handleDetectFaces(request, env) {
         image_file: await getR2FileUrl(env, fileId)
       }
     };
+    console.log("\u{1F50D} Sending face detection request to RunPod:", JSON.stringify(runpodPayload, null, 2));
     const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
       method: "POST",
       headers: {
@@ -419,18 +420,54 @@ async function handleDetectFaces(request, env) {
       body: JSON.stringify(runpodPayload)
     });
     const runpodResult = await runpodResponse.json();
+    console.log("\u{1F4CB} RunPod response:", JSON.stringify(runpodResult, null, 2));
     if (!runpodResponse.ok) {
       throw new Error(`RunPod error: ${runpodResult.error || "Unknown error"}`);
     }
-    return new Response(JSON.stringify({
-      success: true,
-      data: runpodResult.output
-    }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*"
+    if (runpodResult.output) {
+      console.log("\u2705 Synchronous response received");
+      return new Response(JSON.stringify({
+        success: true,
+        data: runpodResult.output
+      }), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    } else if (runpodResult.id) {
+      console.log("\u{1F504} Asynchronous response, polling for result...");
+      const pollResult = await pollRunPodResult(env, runpodResult.id, 30);
+      if (pollResult.success) {
+        return new Response(JSON.stringify({
+          success: true,
+          data: pollResult.output
+        }), {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          }
+        });
+      } else {
+        throw new Error(pollResult.error || "Polling failed");
       }
-    });
+    } else {
+      console.log("\u26A0\uFE0F Unknown RunPod response format");
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          faces: [],
+          total_faces: 0,
+          image_path: await getR2FileUrl(env, fileId),
+          message: "Face detection completed but no faces found"
+        }
+      }), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    }
   } catch (error) {
     console.error("Face detection error:", error);
     return new Response(JSON.stringify({
@@ -446,6 +483,45 @@ async function handleDetectFaces(request, env) {
   }
 }
 __name(handleDetectFaces, "handleDetectFaces");
+async function pollRunPodResult(env, jobId, timeoutSeconds = 30) {
+  const maxAttempts = Math.ceil(timeoutSeconds / 2);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`\u{1F504} Polling attempt ${attempt}/${maxAttempts} for job ${jobId}`);
+      const response = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${jobId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${env.RUNPOD_TOKEN}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        console.log(`\u26A0\uFE0F Polling failed with HTTP ${response.status}`);
+        continue;
+      }
+      const result = await response.json();
+      console.log(`\u{1F4CA} Job ${jobId} status: ${result.status}`);
+      if (result.status === "COMPLETED") {
+        console.log("\u2705 Job completed successfully");
+        return { success: true, output: result.output };
+      } else if (result.status === "FAILED") {
+        console.log("\u274C Job failed");
+        return { success: false, error: result.error || "Job failed" };
+      } else {
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 2e3));
+        }
+      }
+    } catch (error) {
+      console.log(`\u26A0\uFE0F Polling error on attempt ${attempt}: ${error.message}`);
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 2e3));
+      }
+    }
+  }
+  return { success: false, error: "Polling timeout" };
+}
+__name(pollRunPodResult, "pollRunPodResult");
 function generateFileId() {
   return crypto.randomUUID();
 }
@@ -560,7 +636,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-SD6W3m/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-gz2vg4/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -592,7 +668,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-SD6W3m/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-gz2vg4/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

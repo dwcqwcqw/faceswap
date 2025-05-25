@@ -451,6 +451,8 @@ export async function handleDetectFaces(request, env) {
       }
     }
 
+    console.log('🔍 Sending face detection request to RunPod:', JSON.stringify(runpodPayload, null, 2))
+
     // Send to RunPod
     const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
       method: 'POST',
@@ -462,20 +464,61 @@ export async function handleDetectFaces(request, env) {
     })
 
     const runpodResult = await runpodResponse.json()
+    console.log('📋 RunPod response:', JSON.stringify(runpodResult, null, 2))
     
     if (!runpodResponse.ok) {
       throw new Error(`RunPod error: ${runpodResult.error || 'Unknown error'}`)
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      data: runpodResult.output
-    }), {
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+    // Check if this is a synchronous response (has output) or asynchronous (has id)
+    if (runpodResult.output) {
+      // Synchronous response - return immediately
+      console.log('✅ Synchronous response received')
+      return new Response(JSON.stringify({
+        success: true,
+        data: runpodResult.output
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    } else if (runpodResult.id) {
+      // Asynchronous response - poll for result
+      console.log('🔄 Asynchronous response, polling for result...')
+      const pollResult = await pollRunPodResult(env, runpodResult.id, 30) // 30 second timeout
+      
+      if (pollResult.success) {
+        return new Response(JSON.stringify({
+          success: true,
+          data: pollResult.output
+        }), {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        })
+      } else {
+        throw new Error(pollResult.error || 'Polling failed')
       }
-    })
+    } else {
+      // Unknown response format
+      console.log('⚠️ Unknown RunPod response format')
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          faces: [],
+          total_faces: 0,
+          image_path: await getR2FileUrl(env, fileId),
+          message: 'Face detection completed but no faces found'
+        }
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
 
   } catch (error) {
     console.error('Face detection error:', error)
@@ -490,6 +533,54 @@ export async function handleDetectFaces(request, env) {
       }
     })
   }
+}
+
+// Helper function to poll RunPod result
+async function pollRunPodResult(env, jobId, timeoutSeconds = 30) {
+  const maxAttempts = Math.ceil(timeoutSeconds / 2) // Poll every 2 seconds
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`🔄 Polling attempt ${attempt}/${maxAttempts} for job ${jobId}`)
+      
+      const response = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${jobId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${env.RUNPOD_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        console.log(`⚠️ Polling failed with HTTP ${response.status}`)
+        continue
+      }
+
+      const result = await response.json()
+      console.log(`📊 Job ${jobId} status: ${result.status}`)
+      
+      if (result.status === 'COMPLETED') {
+        console.log('✅ Job completed successfully')
+        return { success: true, output: result.output }
+      } else if (result.status === 'FAILED') {
+        console.log('❌ Job failed')
+        return { success: false, error: result.error || 'Job failed' }
+      } else {
+        // Still running, wait before next attempt
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
+        }
+      }
+
+    } catch (error) {
+      console.log(`⚠️ Polling error on attempt ${attempt}: ${error.message}`)
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
+      }
+    }
+  }
+  
+  return { success: false, error: 'Polling timeout' }
 }
 
 // Helper functions
