@@ -128,6 +128,88 @@
 
 ## Latest Fixes Applied
 
+### 2025-01-24 - WebP Format Support Fix
+
+#### Issue: 404 errors for WebP uploads
+
+**Problem**: Files uploaded in WebP format (like `4bc9854c-325d-4623-946f-60e3803eb643.webp`) were getting persistent 404 errors even with retry logic.
+
+**Root Cause**: 
+- Cloudflare Worker download endpoint only checked for `.jpg`, `.jpeg`, `.png`, `.mp4` extensions
+- WebP files were stored as `uploads/fileId.webp` but download endpoint never looked for `.webp` files
+- This caused all WebP uploads to fail with 404 Not Found
+
+**Solution**:
+Added comprehensive image and video format support to `possiblePaths` array:
+
+```javascript
+const possiblePaths = [
+  // Image formats
+  `uploads/${fileId}.jpg`,
+  `uploads/${fileId}.jpeg`, 
+  `uploads/${fileId}.png`,
+  `uploads/${fileId}.webp`,  // ✅ Added
+  `uploads/${fileId}.gif`,   // ✅ Added
+  `uploads/${fileId}.bmp`,   // ✅ Added
+  `uploads/${fileId}.svg`,   // ✅ Added
+  
+  // Video formats  
+  `uploads/${fileId}.mp4`,
+  `uploads/${fileId}.avi`,   // ✅ Added
+  `uploads/${fileId}.mov`,   // ✅ Added
+  
+  // Same for results folder...
+];
+```
+
+**Files Modified**:
+- `web/cloudflare/worker.js` - Added missing file format support
+
+**Status**: ✅ Fixed and deployed to production
+
+**Impact**: This should resolve the 404 errors for WebP and other modern image formats.
+
+---
+
+### 2025-01-24 - Retry Logic for 404 Errors
+
+#### Issue: Intermittent 404 errors during image download
+
+**Problem**: RunPod occasionally gets 404 errors when downloading images immediately after upload, causing face swap to fail.
+
+**Root Cause**: 
+- Timing issue between file upload completion and availability
+- Race condition where processing starts before upload is fully committed to R2 storage
+
+**Solution**:
+1. **Added retry logic** with exponential backoff:
+   ```python
+   # Retry configuration
+   max_retries = 3
+   base_delay = 2  # seconds
+   
+   # Exponential backoff: 2s, 4s, 8s delays
+   delay = base_delay * (2 ** attempt)
+   ```
+
+2. **Improved error handling**:
+   - Distinguish between temporary 404s and permanent failures
+   - Better error messages for debugging
+   - Detailed logging for each attempt
+
+3. **Enhanced logging**:
+   ```python
+   logger.info(f"📥 Downloading image from: {url} (attempt {attempt + 1})")
+   logger.warning(f"⚠️ 404 error on attempt {attempt + 1}, retrying in {delay}s...")
+   ```
+
+**Files Modified**:
+- `runpod/handler_serverless.py` - Added retry logic and improved error handling
+
+**Status**: ✅ Fixed and deployed
+
+---
+
 ### 2025-01-24 - Function Signature Fix
 
 #### Issue: swap_face() missing 1 required positional argument: 'model_path'

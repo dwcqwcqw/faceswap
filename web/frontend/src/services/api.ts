@@ -1,8 +1,8 @@
 import axios from 'axios'
 import { ApiResponse, ProcessingJob, DetectedFaces, FaceSwapRequest } from '../types'
 
-// 使用我们部署的生产环境API
-const API_BASE_URL = 'https://faceswap-api.faceswap.workers.dev/api'
+// 临时使用本地开发模式，避免外部网络问题
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
