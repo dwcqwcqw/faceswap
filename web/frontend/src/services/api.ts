@@ -357,14 +357,16 @@ export const apiService = {
     }
     
     return this.withRetry(async () => {
-      const response = await api.post('/process/multi-image', { ...request, options: defaultOptions })
+      const response = await api.post('/process/multi-image', { ...request, options: defaultOptions }, {
+        timeout: 150000  // 2.5分钟超时，与detectFaces保持一致
+      })
       
       if (!response.data?.success || !response.data?.data?.jobId) {
         throw new Error('多人处理任务创建失败，未获得有效任务ID')
       }
       
       return response.data
-    }, 'processMultiImage')
+    }, 'processMultiImage', 2)  // 减少重试次数到2次
   },
 
   // Single video face swap

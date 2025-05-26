@@ -4,7 +4,7 @@ import TaskHistory from '../components/TaskHistory'
 import TaskDetail from '../components/TaskDetail'
 import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
-import { ProcessingJob, DetectedFaces } from '../types'
+import { ProcessingJob, DetectedFaces, ApiResponse } from '../types'
 import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
 
 interface FaceMapping {
@@ -80,9 +80,15 @@ export default function MultiImagePage() {
         throw new Error('图片上传失败')
       }
 
-      // Detect faces
+      // Detect faces with timeout and retry
       console.log('检测人脸...')
-      const detectResponse = await apiService.detectFaces(uploadResponse.data.fileId)
+      const detectResponse = await Promise.race([
+        apiService.detectFaces(uploadResponse.data.fileId),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('人脸检测超时，请重试')), 180000) // 3分钟超时
+        )
+      ]) as ApiResponse<DetectedFaces>
+      
       if (!detectResponse.success || !detectResponse.data) {
         throw new Error('人脸检测失败')
       }
@@ -91,7 +97,7 @@ export default function MultiImagePage() {
       
       // 确保人脸按照从左到右、从上到下的顺序排列
       // 这样可以保证UI显示的顺序与处理时的映射一致
-      faces.faces.sort((a, b) => {
+      faces.faces.sort((a: any, b: any) => {
         // 首先按Y坐标排序（从上到下）
         if (Math.abs(a.y - b.y) > 20) { // 20像素的容错范围
           return a.y - b.y
@@ -100,7 +106,7 @@ export default function MultiImagePage() {
         return a.x - b.x
       })
       
-      console.log('人脸检测结果（已排序）:', faces.faces.map((face, idx) => ({
+      console.log('人脸检测结果（已排序）:', faces.faces.map((face: any, idx: number) => ({
         index: idx,
         position: `(${face.x}, ${face.y})`,
         confidence: face.confidence
@@ -109,7 +115,7 @@ export default function MultiImagePage() {
       setDetectedFaces(faces)
       
       // Initialize face mappings - 确保索引与排序后的人脸一致
-      const mappings: FaceMapping[] = faces.faces.map((_, index) => ({
+      const mappings: FaceMapping[] = faces.faces.map((_: any, index: number) => ({
         faceId: `face_${index}`,
         sourceFile: null
       }))
@@ -117,7 +123,21 @@ export default function MultiImagePage() {
       
     } catch (error: any) {
       console.error('人脸检测错误:', error)
-      setError(error.message || '人脸检测过程中出现错误')
+      
+      // 提供更具体的错误信息和解决建议
+      let errorMessage = '人脸检测过程中出现错误'
+      
+      if (error.message?.includes('timeout') || error.message?.includes('超时')) {
+        errorMessage = '人脸检测超时，请确保网络连接稳定后重试。注意：人脸检测通常需要1-3分钟，请耐心等待'
+      } else if (error.message?.includes('500')) {
+        errorMessage = '服务器处理错误，请稍后重试或更换图片文件'
+      } else if (error.message?.includes('upload') || error.message?.includes('上传')) {
+        errorMessage = '图片上传失败，请检查网络连接'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      setError(errorMessage)
     } finally {
       setIsDetecting(false)
     }
@@ -391,6 +411,16 @@ export default function MultiImagePage() {
                   </>
                 )}
               </button>
+              {canDetect && (
+                <p className="text-sm text-blue-600 mt-2">
+                  💡 提示：人脸检测通常需要1-3分钟，请耐心等待
+                </p>
+              )}
+              {isDetecting && (
+                <p className="text-sm text-orange-600 mt-2">
+                  ⏳ 正在检测人脸，请勿关闭页面，预计需要1-3分钟...
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -594,13 +624,18 @@ export default function MultiImagePage() {
 
       {/* Tips */}
       <div className="mt-8 bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-3">多人换脸最佳实践:</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-3">多人图片换脸最佳实践:</h3>
         <ul className="text-sm text-gray-600 space-y-2">
+          <li>• <strong>格式支持：</strong>图片支持 JPG、PNG、BMP、TIFF、WebP、GIF、HEIC等格式</li>
           <li>• 确保原图中的人脸清晰可见，避免被遮挡或模糊</li>
           <li>• 为每个检测到的人脸准备相应的高质量替换图片</li>
           <li>• 替换图片中的人脸最好与原图中的角度和光线相似</li>
-          <li>• 处理多人换脸可能需要更长时间，请耐心等待</li>
-          <li>• 建议使用人脸较少的图片以获得更好的效果</li>
+          <li>• <strong>⏰ 处理时间：</strong>人脸检测通常需要1-3分钟，处理多人图片需要更长时间</li>
+          <li>• <strong>🔄 重试建议：</strong>如果检测超时，请检查网络连接后重试</li>
+          <li>• <strong>💡 优化建议：</strong>使用人脸较少的图片（2-3人）可显著减少处理时间</li>
+          <li>• 💡 人脸按位置自动排序：从上到下，从左到右</li>
+          <li>• <strong>⚠️ 注意事项：</strong>请勿在检测或处理过程中关闭页面</li>
+          <li>• <strong>📱 网络建议：</strong>强烈建议在WiFi环境下使用</li>
         </ul>
       </div>
     </div>
