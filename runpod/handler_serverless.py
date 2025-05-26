@@ -257,9 +257,11 @@ def download_image_from_url(url):
             
             # Check if it's a video file
             if 'video' in content_type.lower():
-                logger.error(f"❌ Video file detected in image download function. URL: {url}")
+                logger.error(f"❌ Video file detected in download_image_from_url function!")
+                logger.error(f"❌ URL: {url}")
                 logger.error(f"❌ Content-Type: {content_type}")
-                logger.error("❌ This suggests incorrect file type routing. Check if video files are being sent to image processing.")
+                logger.error("❌ This means a video file was sent to image processing instead of video processing.")
+                logger.error("❌ Check if the request type is correctly set to 'video' instead of 'single_image'.")
                 return None
             
             # Check if it's a valid image format
@@ -1519,6 +1521,10 @@ def handler(event):
         # Determine swap type - support both new format and legacy format
         swap_type = input_data.get("type") or input_data.get("process_type", "single_image")
         
+        logger.info(f"🔍 Raw input type: '{input_data.get('type')}'")
+        logger.info(f"🔍 Raw process_type: '{input_data.get('process_type')}'")
+        logger.info(f"🔍 Determined swap_type before normalization: '{swap_type}'")
+        
         # Normalize type format (convert single-image to single_image)
         if swap_type == "single-image":
             swap_type = "single_image"
@@ -1527,7 +1533,19 @@ def handler(event):
         elif swap_type == "detect-faces":
             swap_type = "detect_faces"
         
-        logger.info(f"🎯 Processing type: {swap_type}")
+        logger.info(f"🎯 Final processing type: '{swap_type}'")
+        
+        # Log which branch will be taken
+        if swap_type == "detect_faces":
+            logger.info("🔀 Taking detect_faces branch")
+        elif swap_type == "multi_image":
+            logger.info("🔀 Taking multi_image branch")
+        elif swap_type == "single_image":
+            logger.info("🔀 Taking single_image branch")
+        elif swap_type == "video":
+            logger.info("🔀 Taking video branch")
+        else:
+            logger.info(f"🔀 Taking unsupported type branch: '{swap_type}'")
         
         # Handle face detection
         if swap_type == "detect_faces":
