@@ -18,6 +18,9 @@ import numpy as np
 import logging
 import time
 import subprocess
+import zipfile
+import tarfile
+import shutil
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -52,6 +55,83 @@ def setup_runpod_serverless_compatibility():
         logger.info("🏠 Detected local development environment")
 
 # ====== 优化：直接使用Volume中的预下载模型 ======
+def extract_buffalo_l_if_needed(volume_models_dir):
+    """Extract buffalo_l archive if directory doesn't exist but archive does"""
+    
+    buffalo_l_dir = os.path.join(volume_models_dir, 'buffalo_l')
+    
+    # If buffalo_l directory already exists, skip
+    if os.path.exists(buffalo_l_dir):
+        return True
+    
+    logger.info("🔍 buffalo_l directory not found, searching for archive...")
+    
+    # Search for buffalo archive files
+    buffalo_archives = []
+    for root, dirs, files in os.walk(volume_models_dir):
+        for file in files:
+            if ('buffalo' in file.lower() and 
+                any(file.endswith(ext) for ext in ['.zip', '.tar.gz', '.tgz', '.tar'])):
+                archive_path = os.path.join(root, file)
+                buffalo_archives.append(archive_path)
+                logger.info(f"📦 Found buffalo archive: {archive_path}")
+    
+    if not buffalo_archives:
+        logger.warning("⚠️ No buffalo_l archive found")
+        return False
+    
+    # Try to extract the first archive found
+    for archive_path in buffalo_archives:
+        try:
+            logger.info(f"🔄 Extracting buffalo_l from: {os.path.basename(archive_path)}")
+            
+            # Create temporary extraction directory
+            temp_extract = os.path.join(volume_models_dir, 'temp_buffalo_extract')
+            os.makedirs(temp_extract, exist_ok=True)
+            
+            # Extract based on file type
+            extracted = False
+            if archive_path.endswith('.zip'):
+                with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_extract)
+                    extracted = True
+            elif archive_path.endswith(('.tar.gz', '.tgz')):
+                with tarfile.open(archive_path, 'r:gz') as tar_ref:
+                    tar_ref.extractall(temp_extract)
+                    extracted = True
+            elif archive_path.endswith('.tar'):
+                with tarfile.open(archive_path, 'r') as tar_ref:
+                    tar_ref.extractall(temp_extract)
+                    extracted = True
+            
+            if extracted:
+                # Look for buffalo_l directory in extracted content
+                for root, dirs, files in os.walk(temp_extract):
+                    if 'buffalo_l' in dirs:
+                        source_buffalo = os.path.join(root, 'buffalo_l')
+                        logger.info(f"📁 Found buffalo_l directory in archive")
+                        
+                        # Move to models directory
+                        shutil.move(source_buffalo, buffalo_l_dir)
+                        
+                        # Cleanup temp directory
+                        shutil.rmtree(temp_extract)
+                        
+                        if os.path.exists(buffalo_l_dir):
+                            file_count = len(os.listdir(buffalo_l_dir))
+                            logger.info(f"✅ buffalo_l extracted successfully ({file_count} files)")
+                            return True
+                
+                # Cleanup temp directory if extraction failed
+                shutil.rmtree(temp_extract)
+                
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to extract {os.path.basename(archive_path)}: {e}")
+            continue
+    
+    logger.warning("⚠️ Failed to extract buffalo_l from any archive")
+    return False
+
 def setup_volume_models():
     """直接使用Volume中预下载的模型，无需下载"""
     
@@ -61,6 +141,9 @@ def setup_volume_models():
     volume_models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
     
     logger.info(f"📁 Using models directory: {volume_models_dir}")
+    
+    # Try to extract buffalo_l if needed
+    extract_buffalo_l_if_needed(volume_models_dir)
     
     # 检查必需模型是否存在
     essential_models = {
