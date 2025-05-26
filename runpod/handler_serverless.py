@@ -142,6 +142,25 @@ def setup_volume_models():
     
     logger.info(f"📁 Using models directory: {volume_models_dir}")
     
+    # 检查目录是否存在
+    if not os.path.exists(volume_models_dir):
+        logger.error(f"❌ Models directory does not exist: {volume_models_dir}")
+        # 尝试创建目录
+        try:
+            os.makedirs(volume_models_dir, exist_ok=True)
+            logger.info(f"📁 Created models directory: {volume_models_dir}")
+        except Exception as e:
+            logger.error(f"❌ Failed to create models directory: {e}")
+            return False
+    
+    # 列出目录内容用于调试
+    try:
+        all_files = os.listdir(volume_models_dir)
+        logger.info(f"📋 Files in models directory: {all_files}")
+    except Exception as e:
+        logger.error(f"❌ Failed to list models directory: {e}")
+        return False
+    
     # Try to extract buffalo_l if needed
     extract_buffalo_l_if_needed(volume_models_dir)
     
@@ -154,6 +173,7 @@ def setup_volume_models():
         'RealESRGAN_x2plus.pth': 'Super resolution model (2x)',
         '79999_iter.pth': 'Face parsing model (BiSeNet)',
         'buffalo_l': 'Face analysis model (directory)',
+        'buffalo_l.zip': 'Face analysis model (archive - will be extracted)',
         'detection_Resnet50_Final.pth': 'Face detection model (RetinaFace - for video processing)',
         'parsing_parsenet.pth': 'Face parsing model (ParseNet - for video processing)',
         'detection_mobilenet0.25_Final.pth': 'Mobile face detection model (lightweight)',
@@ -170,6 +190,29 @@ def setup_volume_models():
     for model_name, description in essential_models.items():
         model_path = os.path.join(volume_models_dir, model_name)
         
+        # 特殊处理buffalo_l - 检查目录或zip文件
+        if model_name == 'buffalo_l':
+            buffalo_dir = os.path.join(volume_models_dir, 'buffalo_l')
+            buffalo_zip = os.path.join(volume_models_dir, 'buffalo_l.zip')
+            
+            if os.path.isdir(buffalo_dir):
+                file_count = len(os.listdir(buffalo_dir)) if os.path.exists(buffalo_dir) else 0
+                logger.info(f"✅ Found {description}: buffalo_l directory ({file_count} files)")
+                found_models.append(model_name)
+            elif os.path.isfile(buffalo_zip):
+                size_mb = os.path.getsize(buffalo_zip) / (1024 * 1024)
+                logger.info(f"✅ Found {description}: buffalo_l.zip ({size_mb:.1f}MB) - will extract")
+                found_models.append(model_name)
+            else:
+                logger.warning(f"⚠️ Missing {description}: neither buffalo_l directory nor buffalo_l.zip found")
+                missing_models.append(model_name)
+            continue
+        
+        # 跳过buffalo_l.zip的单独检查，因为已经在buffalo_l中处理了
+        if model_name == 'buffalo_l.zip':
+            continue
+            
+        # 检查模型文件是否存在
         if os.path.exists(model_path):
             if os.path.isfile(model_path):
                 size_mb = os.path.getsize(model_path) / (1024 * 1024)
@@ -178,8 +221,15 @@ def setup_volume_models():
                 logger.info(f"✅ Found {description}: {model_name} (directory)")
             found_models.append(model_name)
         else:
-            logger.warning(f"⚠️ Missing {description}: {model_name}")
-            missing_models.append(model_name)
+            # 检查是否在gfpgan/weights目录中
+            gfpgan_path = os.path.join(volume_models_dir, 'gfpgan', 'weights', model_name)
+            if os.path.exists(gfpgan_path):
+                size_mb = os.path.getsize(gfpgan_path) / (1024 * 1024)
+                logger.info(f"✅ Found {description}: {model_name} (in gfpgan/weights, {size_mb:.1f}MB)")
+                found_models.append(model_name)
+            else:
+                logger.warning(f"⚠️ Missing {description}: {model_name}")
+                missing_models.append(model_name)
     
     # 设置环境变量
     os.environ['MODELS_DIR'] = volume_models_dir
@@ -190,7 +240,7 @@ def setup_volume_models():
         os.makedirs(gfpgan_weights_dir, exist_ok=True)
         logger.info(f"📁 Created GFPGAN weights directory: {gfpgan_weights_dir}")
     
-    # 检查额外的GFPGAN模型文件
+    # 检查额外的GFPGAN模型文件并创建软链接
     gfpgan_models = {
         'detection_Resnet50_Final.pth': 'Face detection model (RetinaFace - for video processing)',
         'parsing_parsenet.pth': 'Face parsing model (ParseNet - for video processing)',
@@ -202,35 +252,31 @@ def setup_volume_models():
         'assessment_hyperIQA.pth': 'Image quality assessment model'
     }
     
+    # 为GFPGAN模型创建软链接
     for model_name, description in gfpgan_models.items():
-        # 检查是否在主目录
-        main_path = os.path.join(volume_models_dir, model_name)
-        # 检查是否在gfpgan/weights目录
-        gfpgan_path = os.path.join(gfpgan_weights_dir, model_name)
+        main_model_path = os.path.join(volume_models_dir, model_name)
+        gfpgan_model_path = os.path.join(gfpgan_weights_dir, model_name)
         
-        if os.path.exists(main_path):
-            logger.info(f"✅ Found {description}: {model_name} (in main directory)")
-            # 如果在主目录但不在gfpgan/weights目录，创建软链接
-            if not os.path.exists(gfpgan_path):
-                try:
-                    os.symlink(main_path, gfpgan_path)
-                    logger.info(f"🔗 Created symlink: {gfpgan_path} -> {main_path}")
-                except Exception as e:
-                    logger.warning(f"⚠️ Failed to create symlink: {e}")
-        elif os.path.exists(gfpgan_path):
-            logger.info(f"✅ Found {description}: {model_name} (in gfpgan/weights)")
-        else:
-            logger.warning(f"⚠️ Missing {description}: {model_name}")
+        if os.path.exists(main_model_path) and not os.path.exists(gfpgan_model_path):
+            try:
+                os.symlink(main_model_path, gfpgan_model_path)
+                logger.info(f"🔗 Created symlink for {model_name} in gfpgan/weights")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to create symlink for {model_name}: {e}")
+        elif os.path.exists(gfpgan_model_path):
+            logger.info(f"✅ {model_name} already available in gfpgan/weights")
     
     # 报告模型状态
-    if len(found_models) >= 4:  # 至少有核心模型
-        logger.info(f"🎉 Ready! Found {len(found_models)}/{len(essential_models)} models")
+    core_models_found = sum(1 for model in ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth', 'buffalo_l'] if model in found_models)
+    
+    if core_models_found >= 3:  # 至少有核心模型
+        logger.info(f"🎉 Ready! Found {len(found_models)}/{len(essential_models)-1} models (excluding buffalo_l.zip)")
         logger.info(f"✅ Found models: {found_models}")
         if missing_models:
             logger.info(f"⚠️ Missing (optional): {missing_models}")
         return True
     else:
-        logger.error(f"❌ Critical models missing! Found only {len(found_models)} models")
+        logger.error(f"❌ Critical models missing! Found only {core_models_found}/3 core models")
         logger.error(f"❌ Missing: {missing_models}")
         return False
 
@@ -246,12 +292,19 @@ os.environ['HEADLESS'] = '1'
 
 # Import face swap functionality
 try:
+    logger.info("🔄 Importing face swap modules...")
+    
+    # 确保模型目录设置正确
+    models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+    logger.info(f"📁 Setting models directory to: {models_dir}")
+    
     from modules.face_analyser import get_one_face, get_many_faces
     from modules.processors.frame.face_swapper import swap_face, process_frame
     import modules.globals
     
     # 更新模型目录
-    modules.globals.models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+    modules.globals.models_dir = models_dir
+    logger.info(f"✅ Updated modules.globals.models_dir to: {modules.globals.models_dir}")
     
     # Import super resolution module
     try:
@@ -265,19 +318,28 @@ try:
             return frame
     
     logger.info("✅ Core modules imported successfully")
+    MODULES_AVAILABLE = True
     
 except ImportError as e:
     logger.error(f"❌ Failed to import core modules: {e}")
+    logger.error(f"❌ Current working directory: {os.getcwd()}")
+    logger.error(f"❌ Python path: {sys.path}")
+    logger.error(f"❌ This might indicate missing dependencies or incorrect paths")
+    
     # Create fallback functions
     def get_one_face(frame):
+        logger.error("❌ get_one_face called but modules not available")
         return None
     def get_many_faces(frame):
+        logger.error("❌ get_many_faces called but modules not available")
         return []
     def swap_face(source_face, target_face, frame):
+        logger.error("❌ swap_face called but modules not available")
         return frame
     def enhance_resolution(frame, scale_factor=4, max_size=2048):
         return frame
     SR_AVAILABLE = False
+    MODULES_AVAILABLE = False
 
 def verify_models():
     """验证模型是否可用（不下载）"""
@@ -1688,6 +1750,11 @@ def handler(job):
         if not models_ready:
             logger.error("❌ Models not ready, cannot process job")
             return {"error": "Models not ready. Please ensure all required models are available in the Volume."}
+        
+        # 验证模块是否可用
+        if not MODULES_AVAILABLE:
+            logger.error("❌ Face swap modules not available")
+            return {"error": "Face swap modules not available. Please check container setup and dependencies."}
         
         # 快速验证核心模型
         if not verify_models():
