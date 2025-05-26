@@ -94,10 +94,23 @@ export default function VideoPage() {
 
   const handleDownload = () => {
     if (processingStatus?.result_url) {
-      const link = document.createElement('a')
-      link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')
-      link.download = 'video-face-swap-result.mp4'
-      link.click()
+      // Smart filename based on what was uploaded
+      let downloadName = 'face-swap-result';
+      
+      // Check if we have video files to determine output format
+      const hasVideo = (sourceVideo && sourceVideo.type.startsWith('video/')) || 
+                       (targetFace && targetFace.type.startsWith('video/'));
+      
+      if (hasVideo) {
+        downloadName += '.mp4';  // Video result
+      } else {
+        downloadName += '.jpg';  // Image result
+      }
+      
+      const link = document.createElement('a');
+      link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '');
+      link.download = downloadName;
+      link.click();
     }
   }
 
@@ -313,34 +326,51 @@ export default function VideoPage() {
       {/* Result */}
       {processingStatus?.status === 'completed' && processingStatus.result_url && !isProcessing && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">视频换脸结果</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">换脸结果</h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
+              {/* Smart media display - try video first, fallback to image */}
               <video
                 src={apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')}
                 className="w-full rounded-lg shadow-sm"
                 controls
                 preload="metadata"
                 onError={(e) => {
-                  console.error('Video load error:', e);
+                  console.error('Video load error, trying image fallback:', e);
+                  // Hide video and show image
+                  e.currentTarget.style.display = 'none';
+                  const img = e.currentTarget.nextElementSibling as HTMLImageElement;
+                  if (img) {
+                    img.style.display = 'block';
+                  }
+                }}
+              />
+              <img
+                src={apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')}
+                alt="换脸结果"
+                className="w-full rounded-lg shadow-sm"
+                style={{ display: 'none' }}
+                onError={(e) => {
+                  console.error('Both video and image failed to load:', e);
                 }}
               />
             </div>
             <div className="flex flex-col justify-center">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">视频换脸完成！</h4>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">换脸完成！</h4>
               <p className="text-gray-600 mb-4">
-                您的视频换脸结果已生成，点击下载按钮保存视频。
+                您的换脸结果已生成，点击下载按钮保存文件。
               </p>
               <button
                 onClick={handleDownload}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mb-3"
               >
                 <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                下载视频结果
+                下载结果
               </button>
               
               <div className="text-sm text-gray-500">
-                <p>💡 提示：下载的视频可能较大，请确保网络连接稳定</p>
+                <p>💡 提示：下载的文件可能较大，请确保网络连接稳定</p>
+                <p>🎬 支持图片和视频结果的智能显示</p>
               </div>
             </div>
           </div>

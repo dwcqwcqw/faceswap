@@ -180,7 +180,7 @@ export async function handleProcess(request, env, path) {
       runpodPayload = {
         input: {
           job_id: jobId,
-          process_type: 'multi_image',  // Normalize process type
+          type: 'multi_image',  // Normalize process type
           target_file: await getR2FileUrl(env, requestBody.target_file),  // Multi-person image
           face_mappings: faceMappingUrls,  // Individual face replacement images
           options: requestBody.options || {}
@@ -188,17 +188,32 @@ export async function handleProcess(request, env, path) {
       }
       
       console.log(`🎯 Multi-image payload:`, JSON.stringify(runpodPayload, null, 2));
+    } else if (processType === 'single-video' || processType === 'multi-video') {
+      // Video processing
+      runpodPayload = {
+        input: {
+          job_id: jobId,
+          type: processType === 'multi-video' ? 'multi_video' : 'video',  // Use video processing
+          source_file: await getR2FileUrl(env, requestBody.source_file),  // Source face image or video
+          target_file: await getR2FileUrl(env, requestBody.target_file),   // Target video or face image
+          options: requestBody.options || {}
+        }
+      }
+      
+      console.log(`🎬 Video payload:`, JSON.stringify(runpodPayload, null, 2));
     } else {
       // Standard single-image processing
       runpodPayload = {
         input: {
           job_id: jobId,
-          process_type: 'single_image',  // Normalize process type
+          type: 'single_image',  // Normalize process type
           source_file: await getR2FileUrl(env, requestBody.source_file),
           target_file: await getR2FileUrl(env, requestBody.target_file),
           options: requestBody.options || {}
         }
       }
+      
+      console.log(`🖼️ Single-image payload:`, JSON.stringify(runpodPayload, null, 2));
     }
 
     console.log(`🚀 Sending to RunPod:`, JSON.stringify(runpodPayload, null, 2));
@@ -697,39 +712,83 @@ async function storeResultFromBase64(env, base64Data, jobId) {
   try {
     console.log(`🔄 Storing base64 result for job ${jobId}...`);
     
-    // Generate result file ID
-    const resultFileId = `result_${jobId}_${Date.now()}`
-    const fileName = `results/${resultFileId}.jpg` // Assume JPG for now
-
-    // Decode base64 data - Buffer is not available in Cloudflare Workers
-    // Use the Web API atob and convert to Uint8Array
+    // Decode base64 data to detect file type
     const binaryString = atob(base64Data);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    console.log(`💾 Storing result file: ${fileName} (${bytes.length} bytes)`);
+    // Detect file type from magic bytes
+    let fileExtension = 'jpg';  // Default
+    let contentType = 'image/jpeg';  // Default
+    
+    if (bytes.length >= 4) {
+      // Check for common video file signatures
+      const header = Array.from(bytes.slice(0, 12)).map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      // MP4 signatures
+      if (header.includes('66747970') || header.includes('6d703430') || header.includes('6d703431') || 
+          header.includes('6d703432') || header.includes('69736f6d') || header.includes('6d70342')) {
+        fileExtension = 'mp4';
+        contentType = 'video/mp4';
+        console.log(`🎬 Detected MP4 video file`);
+      }
+      // AVI signature
+      else if (header.startsWith('52494646') && header.includes('41564920')) {
+        fileExtension = 'avi';
+        contentType = 'video/x-msvideo';
+        console.log(`🎬 Detected AVI video file`);
+      }
+      // MOV/QuickTime signature
+      else if (header.includes('6d6f6f76') || header.includes('6d646174') || header.includes('66726565')) {
+        fileExtension = 'mov';
+        contentType = 'video/quicktime';
+        console.log(`🎬 Detected MOV video file`);
+      }
+      // JPEG signature
+      else if (header.startsWith('ffd8ff')) {
+        fileExtension = 'jpg';
+        contentType = 'image/jpeg';
+        console.log(`📸 Detected JPEG image file`);
+      }
+      // PNG signature
+      else if (header.startsWith('89504e47')) {
+        fileExtension = 'png';
+        contentType = 'image/png';
+        console.log(`📸 Detected PNG image file`);
+      }
+      else {
+        console.log(`🔍 Unknown file signature: ${header}, defaulting to JPEG`);
+      }
+    }
+    
+    // Generate result file ID
+    const resultFileId = `result_${jobId}_${Date.now()}`;
+    const fileName = `results/${resultFileId}.${fileExtension}`;
+
+    console.log(`💾 Storing result file: ${fileName} (${bytes.length} bytes) as ${contentType}`);
 
     // Store in R2
     await env.FACESWAP_BUCKET.put(fileName, bytes, {
       httpMetadata: {
-        contentType: 'image/jpeg'
+        contentType: contentType
       },
       customMetadata: {
         jobId: jobId,
         createdAt: new Date().toISOString(),
-        type: 'result'
+        type: 'result',
+        fileExtension: fileExtension
       }
-    })
+    });
 
-    console.log(`💾 Result stored successfully`);
+    console.log(`💾 Result stored successfully as ${fileExtension.toUpperCase()}`);
 
-    return resultFileId
+    return resultFileId;
 
   } catch (error) {
-    console.error('Failed to store result:', error)
-    throw error
+    console.error('Failed to store result:', error);
+    throw error;
   }
 }
 

@@ -1574,6 +1574,7 @@ def handler(event):
                 return {"error": "Missing source_file/target_file or source_image/target_image"}
             
         elif swap_type == "video":
+            logger.info("🎬 Processing video face swap request...")
             source_image = input_data.get("source_image") or input_data.get("source_file")
             target_video = input_data.get("target_video") or input_data.get("target_file")
             
