@@ -199,7 +199,7 @@ def handler(job):
                     "job_id": job_id
                 }
             
-            elif process_type == 'detect-faces':
+            elif process_type == 'detect_faces':
                 # Download image file
                 image_url = job_input.get('image_file')
                 image_path = temp_path / 'image.jpg'

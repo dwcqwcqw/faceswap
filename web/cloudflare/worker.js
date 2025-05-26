@@ -534,7 +534,7 @@ export async function handleDetectFaces(request, env) {
     // Prepare RunPod request for face detection
     const runpodPayload = {
       input: {
-        process_type: 'detect-faces',
+        process_type: 'detect_faces',
         image_file: await getR2FileUrl(env, fileId)
       }
     }

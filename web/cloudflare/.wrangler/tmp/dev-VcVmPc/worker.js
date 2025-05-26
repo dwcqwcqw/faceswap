@@ -346,7 +346,7 @@ async function handleDetectFaces(request, env) {
     }
     const runpodPayload = {
       input: {
-        process_type: "detect-faces",
+        process_type: "detect_faces",
         image_file: await getR2FileUrl(env, fileId)
       }
     };

@@ -543,7 +543,7 @@ def handler(job):
             return process_single_video_swap(job_input)
         elif process_type == "multi-video":
             return process_multi_video_swap(job_input)
-        elif process_type == "detect-faces":
+        elif process_type == "detect_faces":
             return process_detect_faces(job_input)
         else:
             return {
