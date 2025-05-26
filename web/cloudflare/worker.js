@@ -146,6 +146,10 @@ export async function handleProcess(request, env, path) {
     const requestBody = await request.json()
     
     console.log(`🔧 Processing ${processType} request:`, JSON.stringify(requestBody, null, 2));
+    console.log(`📍 Full path: ${path}`);
+    console.log(`🔍 Extracted processType: '${processType}'`);
+    console.log(`🔍 processType === 'single-video': ${processType === 'single-video'}`);
+    console.log(`🔍 processType === 'multi-video': ${processType === 'multi-video'}`);
     
     // Generate job ID
     const jobId = generateJobId()
@@ -169,6 +173,7 @@ export async function handleProcess(request, env, path) {
     let runpodPayload;
     
     if (processType === 'multi-image') {
+      console.log(`🔀 Taking multi-image branch`);
       // For multi-image, convert face_mappings file IDs to URLs
       const faceMappingUrls = {};
       if (requestBody.face_mappings) {
@@ -189,6 +194,7 @@ export async function handleProcess(request, env, path) {
       
       console.log(`🎯 Multi-image payload:`, JSON.stringify(runpodPayload, null, 2));
     } else if (processType === 'single-video' || processType === 'multi-video') {
+      console.log(`🔀 Taking video branch (processType: '${processType}')`);
       // Video processing
       runpodPayload = {
         input: {
@@ -202,6 +208,7 @@ export async function handleProcess(request, env, path) {
       
       console.log(`🎬 Video payload:`, JSON.stringify(runpodPayload, null, 2));
     } else {
+      console.log(`🔀 Taking else branch (default single-image) for processType: '${processType}'`);
       // Standard single-image processing
       runpodPayload = {
         input: {

@@ -127,6 +127,14 @@ export default function SingleImagePage() {
         <p className="mt-2 text-lg text-gray-600">
           上传原图和目标人脸，开始AI换脸处理
         </p>
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-center">
+            <div className="text-blue-800 text-sm">
+              💡 <strong>注意：</strong>此页面仅支持图片换脸。如需处理视频，请前往 
+              <a href="/video" className="text-blue-600 hover:text-blue-800 underline ml-1">视频换脸页面</a>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Error Message */}

@@ -25,9 +25,36 @@ export default function FileUpload({
 }: FileUploadProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      onFileSelect(acceptedFiles[0])
+      const file = acceptedFiles[0];
+      
+      // Additional file type validation
+      const acceptedTypes = Object.values(accept).flat();
+      const isValidType = acceptedTypes.some(type => 
+        file.name.toLowerCase().endsWith(type.toLowerCase()) ||
+        file.type.startsWith(type.replace('/*', '').replace('*', ''))
+      );
+      
+      if (!isValidType) {
+        // This should be caught by react-dropzone, but adding extra safety
+        console.error('Invalid file type:', file.type, file.name);
+        return;
+      }
+      
+      // Check for video files in image upload
+      if (accept['image/*'] && file.type.startsWith('video/')) {
+        alert('检测到视频文件！请前往"视频换脸"页面处理视频文件。');
+        return;
+      }
+      
+      // Check for image files in video upload  
+      if (accept['video/*'] && file.type.startsWith('image/')) {
+        // This is actually OK for video page (source can be image)
+        // Only warn if this is clearly meant to be a video upload
+      }
+      
+      onFileSelect(file);
     }
-  }, [onFileSelect])
+  }, [onFileSelect, accept])
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,

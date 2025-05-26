@@ -59,6 +59,26 @@ export default function VideoPage() {
 
       // Start processing
       console.log('开始视频换脸处理...')
+      console.log('📋 Request payload:', {
+        source_file: sourceResponse.data.fileId,
+        target_file: targetResponse.data.fileId,
+        source_file_info: {
+          name: sourceVideo.name,
+          type: sourceVideo.type,
+          size: sourceVideo.size
+        },
+        target_file_info: {
+          name: targetFace.name,
+          type: targetFace.type,  
+          size: targetFace.size
+        },
+        options: {
+          keep_fps: true,
+          video_quality: 18,
+          mouth_mask: true,
+        }
+      })
+      
       const processResponse = await apiService.processSingleVideo({
         source_file: sourceResponse.data.fileId,
         target_file: targetResponse.data.fileId,

@@ -262,6 +262,8 @@ def download_image_from_url(url):
                 logger.error(f"❌ Content-Type: {content_type}")
                 logger.error("❌ This means a video file was sent to image processing instead of video processing.")
                 logger.error("❌ Check if the request type is correctly set to 'video' instead of 'single_image'.")
+                
+                # Return a more user-friendly error message
                 return None
             
             # Check if it's a valid image format
@@ -382,7 +384,7 @@ def process_image_swap_from_urls(source_url, target_url):
             return {"error": "Failed to download source image after retries. The file may not exist or may still be uploading."}
         
         if target_frame is None:
-            return {"error": "Failed to download target image after retries. The file may not exist or may still be uploading."}
+            return {"error": "Failed to download target image after retries. The file may not exist or may still be uploading. If you uploaded a video file, please use the Video Face Swap page instead of the Image Face Swap page."}
         
         logger.info("✅ Both images downloaded successfully")
         logger.info(f"📐 Source image shape: {source_frame.shape}")

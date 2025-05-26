@@ -166,6 +166,10 @@ async function handleProcess(request, env, path) {
     const processType = path.split("/").pop();
     const requestBody = await request.json();
     console.log(`\u{1F527} Processing ${processType} request:`, JSON.stringify(requestBody, null, 2));
+    console.log(`\u{1F4CD} Full path: ${path}`);
+    console.log(`\u{1F50D} Extracted processType: '${processType}'`);
+    console.log(`\u{1F50D} processType === 'single-video': ${processType === "single-video"}`);
+    console.log(`\u{1F50D} processType === 'multi-video': ${processType === "multi-video"}`);
     const jobId = generateJobId();
     const jobData = {
       id: jobId,
@@ -181,6 +185,7 @@ async function handleProcess(request, env, path) {
     await env.JOBS.put(jobId, JSON.stringify(jobData));
     let runpodPayload;
     if (processType === "multi-image") {
+      console.log(`\u{1F500} Taking multi-image branch`);
       const faceMappingUrls = {};
       if (requestBody.face_mappings) {
         for (const [faceId, fileId] of Object.entries(requestBody.face_mappings)) {
@@ -201,6 +206,7 @@ async function handleProcess(request, env, path) {
       };
       console.log(`\u{1F3AF} Multi-image payload:`, JSON.stringify(runpodPayload, null, 2));
     } else if (processType === "single-video" || processType === "multi-video") {
+      console.log(`\u{1F500} Taking video branch (processType: '${processType}')`);
       runpodPayload = {
         input: {
           job_id: jobId,
@@ -215,6 +221,7 @@ async function handleProcess(request, env, path) {
       };
       console.log(`\u{1F3AC} Video payload:`, JSON.stringify(runpodPayload, null, 2));
     } else {
+      console.log(`\u{1F500} Taking else branch (default single-image) for processType: '${processType}'`);
       runpodPayload = {
         input: {
           job_id: jobId,
