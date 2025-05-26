@@ -5,33 +5,56 @@ import apiService from '../services/api'
 
 interface TaskHistoryProps {
   onTaskSelect?: (task: TaskHistoryItem) => void;
+  taskType?: TaskHistoryItem['type'];
 }
 
-export default function TaskHistory({ onTaskSelect }: TaskHistoryProps) {
+export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps) {
   const [tasks, setTasks] = useState<TaskHistoryItem[]>([])
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'failed'>('all')
   const [isExpanded, setIsExpanded] = useState(false)
+
+  const getTaskTypeLabel = (type: TaskHistoryItem['type']) => {
+    switch (type) {
+      case 'single-image':
+        return '单人图片换脸历史'
+      case 'multi-image':
+        return '多人图片换脸历史'
+      case 'video':
+        return '视频换脸历史'
+      case 'multi-video':
+        return '多人视频换脸历史'
+      default:
+        return '任务历史'
+    }
+  }
 
   useEffect(() => {
     loadTasks()
     
     // 定期刷新活跃任务状态
     const interval = setInterval(() => {
-      const activeTasks = taskHistory.getActiveTasks()
+      const activeTasks = taskType 
+        ? taskHistory.getActiveTasksByType(taskType)
+        : taskHistory.getActiveTasks()
       if (activeTasks.length > 0) {
         refreshActiveTasks()
       }
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [taskType])
 
   const loadTasks = () => {
-    setTasks(taskHistory.getHistory())
+    const allTasks = taskType 
+      ? taskHistory.getHistoryByType(taskType)
+      : taskHistory.getHistory()
+    setTasks(allTasks)
   }
 
   const refreshActiveTasks = async () => {
-    const activeTasks = taskHistory.getActiveTasks()
+    const activeTasks = taskType 
+      ? taskHistory.getActiveTasksByType(taskType)
+      : taskHistory.getActiveTasks()
     
     for (const task of activeTasks) {
       try {
@@ -142,7 +165,9 @@ export default function TaskHistory({ onTaskSelect }: TaskHistoryProps) {
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <h3 className="text-lg font-medium text-gray-900">任务历史</h3>
+            <h3 className="text-lg font-medium text-gray-900">
+              {taskType ? getTaskTypeLabel(taskType) : '任务历史'}
+            </h3>
             {activeTasks.length > 0 && (
               <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                 {activeTasks.length} 个活跃任务

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import FileUpload from '../components/FileUpload'
 import TaskHistory from '../components/TaskHistory'
+import TaskDetail from '../components/TaskDetail'
 import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, PlayIcon, VideoCameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
 import { ProcessingJob } from '../types'
@@ -13,6 +14,20 @@ export default function VideoPage() {
   const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
+
+  // 在组件加载时检查是否有活跃任务需要恢复
+  useEffect(() => {
+    const activeTask = taskHistory.getLatestActiveTask('video')
+    if (activeTask) {
+      console.log('🔄 恢复活跃视频任务:', activeTask.id)
+      setProcessingStatus(activeTask)
+      setIsProcessing(true)
+      setError(null)
+      
+      // 恢复轮询
+      setTimeout(() => pollJobStatus(activeTask.id), 1000)
+    }
+  }, [])
 
   const pollJobStatus = async (jobId: string) => {
     try {
@@ -151,15 +166,11 @@ export default function VideoPage() {
     setError(null)
   }
 
-  const handleDownloadHistory = (task: TaskHistoryItem) => {
-    if (task.result_url) {
-      const link = document.createElement('a')
-      link.href = apiService.getDownloadUrl(task.result_url.split('/').pop() || '')
-      const extension = task.type === 'video' ? 'mp4' : 'jpg'
-      link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`
-      link.click()
-    }
+  const handleCloseTaskDetail = () => {
+    setSelectedHistoryTask(null)
   }
+
+
 
   const canProcess = sourceVideo && targetFace && !isProcessing
   const videoSizeLimit = 100 * 1024 * 1024 // 100MB
@@ -185,10 +196,72 @@ export default function VideoPage() {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <div className="flex">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2" />
-            <div>
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2 flex-shrink-0" />
+            <div className="flex-1">
               <h3 className="text-sm font-medium text-red-800">处理错误</h3>
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              
+              {/* 错误类型判断和建议 */}
+              <div className="mt-3 text-sm text-red-600">
+                {error.includes('unexpected EOF') || error.includes('corrupted') ? (
+                  <div className="bg-red-100 p-3 rounded border-l-4 border-red-500">
+                    <p className="font-medium">🛠️ 文件损坏问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>请重新选择文件并重试</li>
+                      <li>确保文件完整且未损坏</li>
+                      <li>尝试使用其他视频格式（MP4/AVI/MOV）</li>
+                      <li>检查网络连接是否稳定</li>
+                    </ul>
+                  </div>
+                ) : error.includes('timeout') || error.includes('超时') ? (
+                  <div className="bg-yellow-100 p-3 rounded border-l-4 border-yellow-500">
+                    <p className="font-medium">⏱️ 超时问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>检查网络连接</li>
+                      <li>尝试压缩视频文件大小</li>
+                      <li>稍后重试</li>
+                    </ul>
+                  </div>
+                ) : error.includes('format') || error.includes('格式') ? (
+                  <div className="bg-blue-100 p-3 rounded border-l-4 border-blue-500">
+                    <p className="font-medium">📁 格式问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>确保使用支持的视频格式（MP4、AVI、MOV）</li>
+                      <li>避免使用损坏或特殊格式的文件</li>
+                      <li>尝试重新编码视频</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 p-3 rounded border-l-4 border-gray-500">
+                    <p className="font-medium">💡 通用解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>检查网络连接</li>
+                      <li>刷新页面重试</li>
+                      <li>更换不同的视频文件</li>
+                      <li>稍后再试</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              {/* 重试按钮 */}
+              <div className="mt-4 flex space-x-3">
+                <button
+                  onClick={() => setError(null)}
+                  className="inline-flex items-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  关闭错误信息
+                </button>
+                {canProcess && !isVideoTooLarge && (
+                  <button
+                    onClick={handleProcess}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    <ArrowPathIcon className="h-4 w-4 mr-1" />
+                    重试处理
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -394,67 +467,19 @@ export default function VideoPage() {
         </div>
       )}
 
-      {/* Historical Result */}
-      {selectedHistoryTask?.status === 'completed' && selectedHistoryTask.result_url && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">历史任务结果</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              {selectedHistoryTask.type === 'video' ? (
-                <video
-                  src={apiService.getDownloadUrl(selectedHistoryTask.result_url.split('/').pop() || '')}
-                  className="w-full rounded-lg shadow-sm"
-                  controls
-                  preload="metadata"
-                  onError={(e) => {
-                    console.error('Historical video load error:', e);
-                    const errorDiv = e.currentTarget.nextElementSibling as HTMLDivElement;
-                    if (errorDiv) {
-                      errorDiv.style.display = 'block';
-                    }
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              ) : (
-                <img
-                  src={apiService.getDownloadUrl(selectedHistoryTask.result_url.split('/').pop() || '')}
-                  alt="历史结果"
-                  className="w-full rounded-lg shadow-sm"
-                  onError={(e) => {
-                    console.error('Historical image load error:', e);
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+加载失败</dGV4dD48L3N2Zz4=';
-                  }}
-                />
-              )}
-              <div 
-                className="text-center py-8 text-red-600" 
-                style={{ display: 'none' }}
-              >
-                ❌ 媒体加载失败，请尝试重新下载
-              </div>
-            </div>
-            <div className="flex flex-col justify-center">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">{selectedHistoryTask.title}</h4>
-              <p className="text-gray-600 mb-2">
-                任务类型: {selectedHistoryTask.type}
-              </p>
-              <p className="text-gray-600 mb-4">
-                完成时间: {new Date(selectedHistoryTask.updated_at).toLocaleString('zh-CN')}
-              </p>
-              <button
-                onClick={() => handleDownloadHistory(selectedHistoryTask)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                下载结果
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Task Detail */}
+      {selectedHistoryTask && (
+        <TaskDetail 
+          task={selectedHistoryTask} 
+          onClose={handleCloseTaskDetail}
+        />
       )}
 
-      {/* Task History */}
-      <TaskHistory onTaskSelect={handleTaskSelect} />
+      {/* Task History - 只显示视频换脸的任务历史 */}
+      <TaskHistory 
+        onTaskSelect={handleTaskSelect} 
+        taskType="video"
+      />
 
       {/* Tips */}
       <div className="mt-8 bg-gray-50 rounded-lg p-6">

@@ -195,18 +195,41 @@ export async function handleProcess(request, env, path) {
       console.log(`🎯 Multi-image payload:`, JSON.stringify(runpodPayload, null, 2));
     } else if (processType === 'single-video' || processType === 'multi-video') {
       console.log(`🔀 Taking video branch (processType: '${processType}')`);
-      // Video processing
-      runpodPayload = {
-        input: {
-          job_id: jobId,
-          type: processType === 'multi-video' ? 'multi_video' : 'video',  // Use video processing
-          source_file: await getR2FileUrl(env, requestBody.source_file),  // Source face image or video
-          target_file: await getR2FileUrl(env, requestBody.target_file),   // Target video or face image
-          options: requestBody.options || {}
-        }
-      }
       
-      console.log(`🎬 Video payload:`, JSON.stringify(runpodPayload, null, 2));
+      if (processType === 'multi-video') {
+        // For multi-video, convert face_mappings file IDs to URLs like multi-image
+        const faceMappingUrls = {};
+        if (requestBody.face_mappings) {
+          for (const [faceId, fileId] of Object.entries(requestBody.face_mappings)) {
+            faceMappingUrls[faceId] = await getR2FileUrl(env, fileId);
+          }
+        }
+        
+        runpodPayload = {
+          input: {
+            job_id: jobId,
+            type: 'multi_video',  // Use multi_video processing
+            target_file: await getR2FileUrl(env, requestBody.target_file),  // Target video with multiple people
+            face_mappings: faceMappingUrls,  // Individual face replacement images
+            options: requestBody.options || {}
+          }
+        }
+        
+        console.log(`🎬 Multi-video payload:`, JSON.stringify(runpodPayload, null, 2));
+      } else {
+        // Single video processing
+        runpodPayload = {
+          input: {
+            job_id: jobId,
+            type: 'video',  // Use video processing
+            source_file: await getR2FileUrl(env, requestBody.source_file),  // Source face image
+            target_file: await getR2FileUrl(env, requestBody.target_file),   // Target video
+            options: requestBody.options || {}
+          }
+        }
+        
+        console.log(`🎬 Single-video payload:`, JSON.stringify(runpodPayload, null, 2));
+      }
     } else {
       console.log(`🔀 Taking else branch (default single-image) for processType: '${processType}'`);
       // Standard single-image processing

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import FileUpload from '../components/FileUpload'
 import TaskHistory from '../components/TaskHistory'
+import TaskDetail from '../components/TaskDetail'
 import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
 import { ProcessingJob, DetectedFaces } from '../types'
@@ -21,6 +22,20 @@ export default function MultiImagePage() {
   const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
+
+  // 在组件加载时检查是否有活跃任务需要恢复
+  useEffect(() => {
+    const activeTask = taskHistory.getLatestActiveTask('multi-image')
+    if (activeTask) {
+      console.log('🔄 恢复活跃多人任务:', activeTask.id)
+      setProcessingStatus(activeTask)
+      setIsProcessing(true)
+      setError(null)
+      
+      // 恢复轮询
+      setTimeout(() => pollJobStatus(activeTask.id), 1000)
+    }
+  }, [])
 
   const pollJobStatus = async (jobId: string) => {
     try {
@@ -73,9 +88,27 @@ export default function MultiImagePage() {
       }
 
       const faces = detectResponse.data
+      
+      // 确保人脸按照从左到右、从上到下的顺序排列
+      // 这样可以保证UI显示的顺序与处理时的映射一致
+      faces.faces.sort((a, b) => {
+        // 首先按Y坐标排序（从上到下）
+        if (Math.abs(a.y - b.y) > 20) { // 20像素的容错范围
+          return a.y - b.y
+        }
+        // 如果Y坐标相近，则按X坐标排序（从左到右）
+        return a.x - b.x
+      })
+      
+      console.log('人脸检测结果（已排序）:', faces.faces.map((face, idx) => ({
+        index: idx,
+        position: `(${face.x}, ${face.y})`,
+        confidence: face.confidence
+      })))
+      
       setDetectedFaces(faces)
       
-      // Initialize face mappings
+      // Initialize face mappings - 确保索引与排序后的人脸一致
       const mappings: FaceMapping[] = faces.faces.map((_, index) => ({
         faceId: `face_${index}`,
         sourceFile: null
@@ -113,16 +146,18 @@ export default function MultiImagePage() {
       }
 
       // Upload all source faces and create mappings
+      // 确保人脸映射顺序与检测到的人脸顺序一致
       const uploadedMappings: { [key: string]: string } = {}
       
       for (let i = 0; i < faceMappings.length; i++) {
         const mapping = faceMappings[i]
         if (mapping.sourceFile) {
-          console.log(`上传替换人脸 ${i + 1}...`)
+          console.log(`上传替换人脸 ${i + 1} (对应检测人脸 ${i + 1})...`)
           const sourceResponse = await apiService.uploadFile(mapping.sourceFile)
           if (!sourceResponse.success || !sourceResponse.data) {
             throw new Error(`替换人脸 ${i + 1} 上传失败`)
           }
+          // 使用与人脸检测相同的索引顺序
           uploadedMappings[`face_${i}`] = sourceResponse.data.fileId
         }
       }
@@ -193,15 +228,11 @@ export default function MultiImagePage() {
     setError(null)
   }
 
-  const handleDownloadHistory = (task: TaskHistoryItem) => {
-    if (task.result_url) {
-      const link = document.createElement('a')
-      link.href = apiService.getDownloadUrl(task.result_url.split('/').pop() || '')
-      const extension = task.type === 'video' ? 'mp4' : 'jpg'
-      link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`
-      link.click()
-    }
+  const handleCloseTaskDetail = () => {
+    setSelectedHistoryTask(null)
   }
+
+
 
   const canDetect = targetImage && !isDetecting && !detectedFaces
   const canProcess = targetImage && detectedFaces && faceMappings.every(m => m.sourceFile) && !isProcessing
@@ -226,10 +257,81 @@ export default function MultiImagePage() {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <div className="flex">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2" />
-            <div>
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2 flex-shrink-0" />
+            <div className="flex-1">
               <h3 className="text-sm font-medium text-red-800">处理错误</h3>
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              
+              {/* 错误类型判断和建议 */}
+              <div className="mt-3 text-sm text-red-600">
+                {error.includes('unexpected EOF') || error.includes('corrupted') ? (
+                  <div className="bg-red-100 p-3 rounded border-l-4 border-red-500">
+                    <p className="font-medium">🛠️ 文件损坏问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>请重新选择文件并重试</li>
+                      <li>确保文件完整且未损坏</li>
+                      <li>尝试使用其他图片格式（JPG/PNG）</li>
+                      <li>检查网络连接是否稳定</li>
+                    </ul>
+                  </div>
+                ) : error.includes('timeout') || error.includes('超时') ? (
+                  <div className="bg-yellow-100 p-3 rounded border-l-4 border-yellow-500">
+                    <p className="font-medium">⏱️ 超时问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>检查网络连接</li>
+                      <li>尝试压缩图片大小</li>
+                      <li>稍后重试</li>
+                    </ul>
+                  </div>
+                ) : error.includes('format') || error.includes('格式') ? (
+                  <div className="bg-blue-100 p-3 rounded border-l-4 border-blue-500">
+                    <p className="font-medium">📁 格式问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>确保使用支持的图片格式（JPG、PNG）</li>
+                      <li>避免使用损坏或特殊格式的文件</li>
+                      <li>尝试重新保存图片</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 p-3 rounded border-l-4 border-gray-500">
+                    <p className="font-medium">💡 通用解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>检查网络连接</li>
+                      <li>刷新页面重试</li>
+                      <li>更换不同的图片文件</li>
+                      <li>稍后再试</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              {/* 重试按钮 */}
+              <div className="mt-4 flex space-x-3">
+                <button
+                  onClick={() => setError(null)}
+                  className="inline-flex items-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  关闭错误信息
+                </button>
+                {canProcess && (
+                  <button
+                    onClick={handleProcess}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    <ArrowPathIcon className="h-4 w-4 mr-1" />
+                    重试处理
+                  </button>
+                )}
+                {canDetect && (
+                  <button
+                    onClick={handleDetectFaces}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <EyeIcon className="h-4 w-4 mr-1" />
+                    重新检测人脸
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -331,11 +433,27 @@ export default function MultiImagePage() {
                     </div>
                   )}
                   {face.preview && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      置信度: {(face.confidence * 100).toFixed(1)}% | 
-                      位置: ({face.x}, {face.y}) | 
-                      大小: {face.width} × {face.height}
-                    </p>
+                    <div className="text-xs text-gray-500 mt-1 bg-gray-50 p-2 rounded">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="font-medium">位置:</span> ({face.x}, {face.y})
+                        </div>
+                        <div>
+                          <span className="font-medium">大小:</span> {face.width} × {face.height}
+                        </div>
+                        <div>
+                          <span className="font-medium">置信度:</span> {(face.confidence * 100).toFixed(1)}%
+                        </div>
+                        {face.center_x && face.center_y && (
+                          <div>
+                            <span className="font-medium">中心:</span> ({face.center_x}, {face.center_y})
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-1 text-blue-600 text-xs">
+                        💡 人脸 {index + 1}：这个位置的人脸将被替换为您上传的图片
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -456,44 +574,19 @@ export default function MultiImagePage() {
         </div>
       )}
 
-      {/* Historical Result */}
-      {selectedHistoryTask?.status === 'completed' && selectedHistoryTask.result_url && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">历史任务结果</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <img
-                src={apiService.getDownloadUrl(selectedHistoryTask.result_url.split('/').pop() || '')}
-                alt="历史多人换脸结果"
-                className="w-full rounded-lg shadow-sm"
-                onError={(e) => {
-                  console.error('Historical image load error:', e);
-                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+加载失败</dGV4dD48L3N2Zz4=';
-                }}
-              />
-            </div>
-            <div className="flex flex-col justify-center">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">{selectedHistoryTask.title}</h4>
-              <p className="text-gray-600 mb-2">
-                任务类型: {selectedHistoryTask.type}
-              </p>
-              <p className="text-gray-600 mb-4">
-                完成时间: {new Date(selectedHistoryTask.updated_at).toLocaleString('zh-CN')}
-              </p>
-              <button
-                onClick={() => handleDownloadHistory(selectedHistoryTask)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                下载结果
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Task Detail */}
+      {selectedHistoryTask && (
+        <TaskDetail 
+          task={selectedHistoryTask} 
+          onClose={handleCloseTaskDetail}
+        />
       )}
 
-      {/* Task History */}
-      <TaskHistory onTaskSelect={handleTaskSelect} />
+      {/* Task History - 只显示多人图片换脸的任务历史 */}
+      <TaskHistory 
+        onTaskSelect={handleTaskSelect} 
+        taskType="multi-image"
+      />
 
       {/* Tips */}
       <div className="mt-8 bg-gray-50 rounded-lg p-6">

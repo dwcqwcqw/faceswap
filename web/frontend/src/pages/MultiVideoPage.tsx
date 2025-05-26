@@ -1,23 +1,42 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import FileUpload from '../components/FileUpload'
-import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon, PlayIcon, VideoCameraIcon } from '@heroicons/react/24/outline'
+import TaskHistory from '../components/TaskHistory'
+import TaskDetail from '../components/TaskDetail'
+import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon, PlayIcon, VideoCameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
 import { ProcessingJob, DetectedFaces } from '../types'
+import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
 
 interface FaceMapping {
   faceId: string;
-  targetFile: File | null;
+  sourceFile: File | null;  // 替换的源人脸文件
   previewUrl?: string;
 }
 
 export default function MultiVideoPage() {
-  const [sourceVideo, setSourceVideo] = useState<File | null>(null)
+  const [targetVideo, setTargetVideo] = useState<File | null>(null)
+  const [targetVideoThumbnail, setTargetVideoThumbnail] = useState<string | null>(null)
   const [detectedFaces, setDetectedFaces] = useState<DetectedFaces | null>(null)
   const [faceMappings, setFaceMappings] = useState<FaceMapping[]>([])
   const [isDetecting, setIsDetecting] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
+
+  // 在组件加载时检查是否有活跃任务需要恢复
+  useEffect(() => {
+    const activeTask = taskHistory.getLatestActiveTask('multi-video')
+    if (activeTask) {
+      console.log('🔄 恢复活跃多人视频任务:', activeTask.id)
+      setProcessingStatus(activeTask)
+      setIsProcessing(true)
+      setError(null)
+      
+      // 恢复轮询
+      setTimeout(() => pollJobStatus(activeTask.id), 1000)
+    }
+  }, [])
 
   const pollJobStatus = async (jobId: string) => {
     try {
@@ -26,13 +45,19 @@ export default function MultiVideoPage() {
         const status = response.data
         setProcessingStatus(status)
         
+        // Update task history
+        taskHistory.updateTask(jobId, {
+          ...status,
+          updated_at: new Date().toISOString()
+        })
+        
         if (status.status === 'completed') {
           setIsProcessing(false)
         } else if (status.status === 'failed') {
           setIsProcessing(false)
-          setError(status.error_message || '视频处理失败')
+          setError(status.error_message || '处理失败')
         } else {
-          setTimeout(() => pollJobStatus(jobId), 8000) // Video processing takes much longer
+          setTimeout(() => pollJobStatus(jobId), 3000)
         }
       }
     } catch (error) {
@@ -42,25 +67,75 @@ export default function MultiVideoPage() {
     }
   }
 
+  const generateVideoThumbnail = (videoFile: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video')
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      
+      video.addEventListener('loadedmetadata', () => {
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        video.currentTime = 1 // 获取第1秒的帧
+      })
+      
+      video.addEventListener('seeked', () => {
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+          const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.8)
+          resolve(thumbnailDataUrl)
+        } else {
+          reject(new Error('无法创建canvas context'))
+        }
+      })
+      
+      video.addEventListener('error', () => {
+        reject(new Error('视频加载失败'))
+      })
+      
+      video.src = URL.createObjectURL(videoFile)
+    })
+  }
+
+  const handleVideoSelect = async (file: File | null) => {
+    setTargetVideo(file)
+    setDetectedFaces(null)
+    setFaceMappings([])
+    setTargetVideoThumbnail(null)
+    
+    if (file) {
+      try {
+        const thumbnail = await generateVideoThumbnail(file)
+        setTargetVideoThumbnail(thumbnail)
+      } catch (error) {
+        console.error('生成视频缩略图失败:', error)
+      }
+    }
+  }
+
   const handleDetectFaces = async () => {
-    if (!sourceVideo) return
+    if (!targetVideoThumbnail) return
     
     setIsDetecting(true)
     setError(null)
     
     try {
-      // Upload source video first - we'll detect faces from the first frame
-      console.log('上传视频进行人脸检测...')
-      const uploadResponse = await apiService.uploadFile(sourceVideo)
+      // 将缩略图转换为File对象用于人脸检测
+      const response = await fetch(targetVideoThumbnail)
+      const blob = await response.blob()
+      const thumbnailFile = new File([blob], 'video_thumbnail.jpg', { type: 'image/jpeg' })
+      
+      console.log('上传视频缩略图进行人脸检测...')
+      const uploadResponse = await apiService.uploadFile(thumbnailFile)
       if (!uploadResponse.success || !uploadResponse.data) {
-        throw new Error('视频上传失败')
+        throw new Error('缩略图上传失败')
       }
 
-      // Detect faces - the API should extract the first frame and detect faces
-      console.log('检测视频中的人脸...')
+      // Detect faces
+      console.log('检测人脸...')
       const detectResponse = await apiService.detectFaces(uploadResponse.data.fileId)
       if (!detectResponse.success || !detectResponse.data) {
-        throw new Error('视频人脸检测失败')
+        throw new Error('人脸检测失败')
       }
 
       const faces = detectResponse.data
@@ -69,13 +144,13 @@ export default function MultiVideoPage() {
       // Initialize face mappings
       const mappings: FaceMapping[] = faces.faces.map((_, index) => ({
         faceId: `face_${index}`,
-        targetFile: null
+        sourceFile: null
       }))
       setFaceMappings(mappings)
       
     } catch (error: any) {
-      console.error('视频人脸检测错误:', error)
-      setError(error.message || '视频人脸检测过程中出现错误')
+      console.error('人脸检测错误:', error)
+      setError(error.message || '人脸检测过程中出现错误')
     } finally {
       setIsDetecting(false)
     }
@@ -83,73 +158,88 @@ export default function MultiVideoPage() {
 
   const handleFaceFileSelect = (faceIndex: number, file: File | null) => {
     const newMappings = [...faceMappings]
-    newMappings[faceIndex].targetFile = file
+    newMappings[faceIndex].sourceFile = file
     newMappings[faceIndex].previewUrl = file ? URL.createObjectURL(file) : undefined
     setFaceMappings(newMappings)
   }
 
   const handleProcess = async () => {
-    if (!sourceVideo || !detectedFaces || faceMappings.some(m => !m.targetFile)) return
+    if (!targetVideo || !detectedFaces || faceMappings.some(m => !m.sourceFile)) return
     
     setIsProcessing(true)
     setError(null)
     setProcessingStatus(null)
 
     try {
-      // Upload source video
-      console.log('上传原视频...')
-      const sourceResponse = await apiService.uploadFile(sourceVideo)
-      if (!sourceResponse.success || !sourceResponse.data) {
-        throw new Error('原视频上传失败')
+      // Upload target video
+      console.log('上传目标视频...')
+      const targetResponse = await apiService.uploadFile(targetVideo)
+      if (!targetResponse.success || !targetResponse.data) {
+        throw new Error('目标视频上传失败')
       }
 
-      // Upload all target faces and create mappings
+      // Upload all source faces and create mappings
       const uploadedMappings: { [key: string]: string } = {}
       
       for (let i = 0; i < faceMappings.length; i++) {
         const mapping = faceMappings[i]
-        if (mapping.targetFile) {
-          console.log(`上传目标人脸 ${i + 1}...`)
-          const targetResponse = await apiService.uploadFile(mapping.targetFile)
-          if (!targetResponse.success || !targetResponse.data) {
-            throw new Error(`目标人脸 ${i + 1} 上传失败`)
+        if (mapping.sourceFile) {
+          console.log(`上传替换人脸 ${i + 1}...`)
+          const sourceResponse = await apiService.uploadFile(mapping.sourceFile)
+          if (!sourceResponse.success || !sourceResponse.data) {
+            throw new Error(`替换人脸 ${i + 1} 上传失败`)
           }
-          uploadedMappings[`face_${i}`] = targetResponse.data.fileId
+          uploadedMappings[`face_${i}`] = sourceResponse.data.fileId
         }
       }
 
-      // Start processing
+      // Start processing (using multi-image processing endpoint for now)
       console.log('开始处理多人视频换脸...')
       const processResponse = await apiService.processMultiVideo({
-        source_file: sourceResponse.data.fileId,
-        target_file: '', // Not used for multi-face
+        source_file: '', // Not used for multi-face - individual mappings are used instead
+        target_file: targetResponse.data.fileId,
         face_mappings: uploadedMappings,
         options: {
           many_faces: true,
+          mouth_mask: true,
           keep_fps: true,
           video_quality: 18,
-          mouth_mask: true,
         }
       })
 
       if (processResponse.success && processResponse.data) {
         const jobId = processResponse.data.jobId
-        setProcessingStatus({
+        
+        const initialStatus: ProcessingJob = {
           id: jobId,
-          status: 'pending',
+          status: 'pending' as const,
           progress: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
+        }
         
-        setTimeout(() => pollJobStatus(jobId), 5000)
+        setProcessingStatus(initialStatus)
+        
+        // Add to task history
+        const historyTask: TaskHistoryItem = {
+          ...initialStatus,
+          title: `多人视频换脸 - ${targetVideo.name} (${faceMappings.length}个人脸)`,
+          type: 'multi-video',
+          files: {
+            target: targetVideo.name,
+            source: faceMappings.map(m => m.sourceFile?.name).filter(Boolean).join(', ')
+          }
+        }
+        taskHistory.addTask(historyTask)
+        
+        setTimeout(() => pollJobStatus(jobId), 2000)
       } else {
-        throw new Error('视频处理启动失败')
+        throw new Error('处理启动失败')
       }
       
     } catch (error: any) {
-      console.error('视频处理错误:', error)
-      setError(error.message || '视频处理过程中出现错误')
+      console.error('处理错误:', error)
+      setError(error.message || '处理过程中出现错误')
       setIsProcessing(false)
     }
   }
@@ -158,97 +248,186 @@ export default function MultiVideoPage() {
     if (processingStatus?.result_url) {
       const link = document.createElement('a')
       link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')
-      link.download = 'multi-video-face-swap-result.mp4'
+      link.download = 'multi-face-video-swap-result.mp4'
       link.click()
     }
   }
 
-  const canDetect = sourceVideo && !isDetecting && !detectedFaces
-  const canProcess = sourceVideo && detectedFaces && faceMappings.every(m => m.targetFile) && !isProcessing
-  const videoSizeLimit = 200 * 1024 * 1024 // 200MB for multi-video
-  const isVideoTooLarge = sourceVideo ? sourceVideo.size > videoSizeLimit : false
+  const handleTaskSelect = (task: TaskHistoryItem) => {
+    setSelectedHistoryTask(task)
+    // Clear current processing state to show historical result
+    setProcessingStatus(null)
+    setIsProcessing(false)
+    setError(null)
+  }
+
+  const handleCloseTaskDetail = () => {
+    setSelectedHistoryTask(null)
+  }
+
+
+
+  const canDetect = targetVideo && targetVideoThumbnail && !isDetecting && !detectedFaces
+  const canProcess = targetVideo && detectedFaces && faceMappings.every(m => m.sourceFile) && !isProcessing
+  const videoSizeLimit = 200 * 1024 * 1024 // 200MB for multi-person video
+  const isVideoTooLarge = targetVideo ? targetVideo.size > videoSizeLimit : false
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">多人视频换脸</h1>
         <p className="mt-2 text-lg text-gray-600">
-          上传包含多人的视频，系统将识别所有人脸并允许您分别替换
+          上传包含多人的目标视频，系统将识别所有人脸并允许您为每个人脸选择替换的源人脸
         </p>
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-center">
+            <div className="text-blue-800 text-sm">
+              💡 <strong>操作流程：</strong>1. 上传目标视频（包含多人） → 2. 检测人脸 → 3. 为每个人脸选择替换的源人脸图片 → 4. 开始换脸
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <div className="flex">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2" />
-            <div>
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2 flex-shrink-0" />
+            <div className="flex-1">
               <h3 className="text-sm font-medium text-red-800">处理错误</h3>
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              
+              {/* 错误类型判断和建议 */}
+              <div className="mt-3 text-sm text-red-600">
+                {error.includes('unexpected EOF') || error.includes('corrupted') ? (
+                  <div className="bg-red-100 p-3 rounded border-l-4 border-red-500">
+                    <p className="font-medium">🛠️ 文件损坏问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>请重新选择文件并重试</li>
+                      <li>确保文件完整且未损坏</li>
+                      <li>尝试使用其他视频格式（MP4/AVI/MOV）</li>
+                      <li>检查网络连接是否稳定</li>
+                    </ul>
+                  </div>
+                ) : error.includes('timeout') || error.includes('超时') ? (
+                  <div className="bg-yellow-100 p-3 rounded border-l-4 border-yellow-500">
+                    <p className="font-medium">⏱️ 超时问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>检查网络连接</li>
+                      <li>尝试压缩视频文件大小</li>
+                      <li>稍后重试</li>
+                    </ul>
+                  </div>
+                ) : error.includes('format') || error.includes('格式') ? (
+                  <div className="bg-blue-100 p-3 rounded border-l-4 border-blue-500">
+                    <p className="font-medium">📁 格式问题的解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>确保使用支持的视频格式（MP4、AVI、MOV）</li>
+                      <li>避免使用损坏或特殊格式的文件</li>
+                      <li>尝试重新编码视频</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 p-3 rounded border-l-4 border-gray-500">
+                    <p className="font-medium">💡 通用解决方案：</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>检查网络连接</li>
+                      <li>刷新页面重试</li>
+                      <li>更换不同的视频文件</li>
+                      <li>稍后再试</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              {/* 重试按钮 */}
+              <div className="mt-4 flex space-x-3">
+                <button
+                  onClick={() => setError(null)}
+                  className="inline-flex items-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  关闭错误信息
+                </button>
+                {canProcess && !isVideoTooLarge && (
+                  <button
+                    onClick={handleProcess}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    <ArrowPathIcon className="h-4 w-4 mr-1" />
+                    重试处理
+                  </button>
+                )}
+                {canDetect && (
+                  <button
+                    onClick={handleDetectFaces}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <EyeIcon className="h-4 w-4 mr-1" />
+                    重新检测人脸
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* Video Size Warning */}
-      {isVideoTooLarge && sourceVideo && (
+      {isVideoTooLarge && targetVideo && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
           <div className="flex">
             <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 mr-2" />
             <div>
               <h3 className="text-sm font-medium text-yellow-800">文件大小警告</h3>
               <p className="text-sm text-yellow-700">
-                视频文件过大 ({(sourceVideo.size / 1024 / 1024).toFixed(2)} MB)，建议压缩到200MB以下以获得更快的处理速度。
+                视频文件过大 ({(targetVideo.size / 1024 / 1024).toFixed(2)} MB)，建议压缩到200MB以下以获得更快的处理速度。
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Step 1: Upload Source Video */}
+      {/* Step 1: Upload Target Video */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">第一步：上传原视频</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">第一步：上传目标视频</h2>
         <FileUpload
-          label="包含多人的原视频"
-          description="上传包含多个人脸的视频文件"
-          onFileSelect={setSourceVideo}
-          currentFile={sourceVideo}
+          label="包含多人的目标视频"
+          description="上传包含多个人脸的目标视频"
+          onFileSelect={handleVideoSelect}
+          currentFile={targetVideo}
           onRemove={() => {
-            setSourceVideo(null)
+            setTargetVideo(null)
+            setTargetVideoThumbnail(null)
             setDetectedFaces(null)
             setFaceMappings([])
           }}
           accept={{ 'video/*': ['.mp4', '.avi', '.mov', '.mkv'] }}
         />
-        {sourceVideo && (
+        {targetVideo && (
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
-              <div className="bg-gray-100 rounded-lg p-4 flex items-center mb-3">
-                <VideoCameraIcon className="h-8 w-8 text-gray-400 mr-3" />
-                <div>
-                  <p className="font-medium text-gray-900">{sourceVideo.name}</p>
-                  <p className="text-sm text-gray-500">
-                    文件大小: {(sourceVideo.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    类型: {sourceVideo.type}
-                  </p>
+              {targetVideoThumbnail ? (
+                <img
+                  src={targetVideoThumbnail}
+                  alt="视频缩略图"
+                  className="w-full h-64 object-cover rounded-lg"
+                />
+              ) : (
+                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <VideoCameraIcon className="h-16 w-16 text-gray-400" />
                 </div>
-              </div>
-              <video
-                src={URL.createObjectURL(sourceVideo)}
-                className="w-full h-48 object-cover rounded-lg"
-                controls
-                preload="metadata"
-              />
+              )}
+              <p className="text-sm text-gray-500 mt-2">
+                文件大小: {(targetVideo.size / 1024 / 1024).toFixed(2)} MB
+              </p>
             </div>
             <div className="flex flex-col justify-center">
               <button
                 onClick={handleDetectFaces}
-                disabled={!canDetect || isVideoTooLarge}
+                disabled={!canDetect}
                 className={`
                   inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md
-                  ${canDetect && !isVideoTooLarge
+                  ${canDetect
                     ? 'text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
                     : 'text-gray-400 bg-gray-200 cursor-not-allowed'
                   }
@@ -258,7 +437,7 @@ export default function MultiVideoPage() {
                 {isDetecting ? (
                   <>
                     <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                    检测视频人脸中...
+                    检测人脸中...
                   </>
                 ) : (
                   <>
@@ -267,22 +446,16 @@ export default function MultiVideoPage() {
                   </>
                 )}
               </button>
-              
-              {isVideoTooLarge && (
-                <p className="mt-2 text-sm text-red-600">
-                  请上传小于200MB的视频文件
-                </p>
-              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Step 2: Detected Faces and Target Upload */}
+      {/* Step 2: Detected Faces and Source Upload */}
       {detectedFaces && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            第二步：为每个人脸选择替换图片 (检测到 {detectedFaces.faces.length} 个人脸)
+            第二步：为每个检测到的人脸选择替换的源人脸 (检测到 {detectedFaces.faces.length} 个人脸)
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -290,28 +463,68 @@ export default function MultiVideoPage() {
               <div key={index} className="border border-gray-200 rounded-lg p-4">
                 <h3 className="text-lg font-medium text-gray-900 mb-3">人脸 {index + 1}</h3>
                 
-                {/* Face preview from video frame */}
+                {/* Face preview from video thumbnail */}
                 <div className="mb-4">
                   <p className="text-sm text-gray-600 mb-2">视频中的人脸:</p>
-                  <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-gray-500 text-sm text-center">
-                      位置: ({face.x}, {face.y})<br/>
-                      置信度: {(face.confidence * 100).toFixed(1)}%
-                    </span>
-                  </div>
+                  {face.preview ? (
+                    <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                      <img
+                        src={`data:image/jpeg;base64,${face.preview}`}
+                        alt={`人脸 ${index + 1}`}
+                        className="max-w-full max-h-full object-contain rounded"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <span className="text-gray-500 text-sm block">
+                          位置: ({face.x}, {face.y})
+                        </span>
+                        <span className="text-gray-500 text-sm block">
+                          大小: {face.width} × {face.height}
+                        </span>
+                        <span className="text-gray-500 text-sm block">
+                          置信度: {(face.confidence * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {face.preview && (
+                    <div className="text-xs text-gray-500 mt-1 bg-gray-50 p-2 rounded">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="font-medium">位置:</span> ({face.x}, {face.y})
+                        </div>
+                        <div>
+                          <span className="font-medium">大小:</span> {face.width} × {face.height}
+                        </div>
+                        <div>
+                          <span className="font-medium">置信度:</span> {(face.confidence * 100).toFixed(1)}%
+                        </div>
+                        {face.center_x && face.center_y && (
+                          <div>
+                            <span className="font-medium">中心:</span> ({face.center_x}, {face.center_y})
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-1 text-blue-600 text-xs">
+                        💡 人脸按位置排序：从上到下，从左到右
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Target face upload */}
+                {/* Source face upload */}
                 <FileUpload
                   label={`替换人脸 ${index + 1}`}
                   description="上传要替换的人脸图片"
                   onFileSelect={(file) => handleFaceFileSelect(index, file)}
-                  currentFile={faceMappings[index]?.targetFile || null}
+                  currentFile={faceMappings[index]?.sourceFile || null}
                   onRemove={() => handleFaceFileSelect(index, null)}
                   accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
                 />
 
-                {/* Target face preview */}
+                {/* Source face preview */}
                 {faceMappings[index]?.previewUrl && (
                   <div className="mt-3">
                     <img
@@ -332,10 +545,10 @@ export default function MultiVideoPage() {
         <div className="text-center mb-8">
           <button
             onClick={handleProcess}
-            disabled={!canProcess}
+            disabled={!canProcess || isVideoTooLarge}
             className={`
               inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md
-              ${canProcess
+              ${canProcess && !isVideoTooLarge
                 ? 'text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
                 : 'text-gray-400 bg-gray-200 cursor-not-allowed'
               }
@@ -355,9 +568,15 @@ export default function MultiVideoPage() {
             )}
           </button>
           
-          {faceMappings.some(m => !m.targetFile) && (
+          {faceMappings.some(m => !m.sourceFile) && (
             <p className="mt-2 text-sm text-red-600">
               请为所有检测到的人脸上传替换图片
+            </p>
+          )}
+          
+          {isVideoTooLarge && (
+            <p className="mt-2 text-sm text-red-600">
+              请上传小于200MB的视频文件
             </p>
           )}
         </div>
@@ -375,7 +594,7 @@ export default function MultiVideoPage() {
                 状态: {processingStatus.status} | 进度: {processingStatus.progress}%
               </p>
               <p className="text-sm text-blue-600 mt-2">
-                ⚠️ 多人视频处理时间很长，可能需要数十分钟，请耐心等待...
+                ⚠️ 多人视频处理需要很长时间，请耐心等待...
               </p>
             </div>
           </div>
@@ -401,41 +620,61 @@ export default function MultiVideoPage() {
                 preload="metadata"
                 onError={(e) => {
                   console.error('Video load error:', e);
+                  const errorDiv = e.currentTarget.nextElementSibling as HTMLDivElement;
+                  if (errorDiv) {
+                    errorDiv.style.display = 'block';
+                  }
+                  e.currentTarget.style.display = 'none';
                 }}
               />
+              <div 
+                className="text-center py-8 text-red-600" 
+                style={{ display: 'none' }}
+              >
+                ❌ 视频加载失败，请尝试重新下载
+              </div>
             </div>
             <div className="flex flex-col justify-center">
               <h4 className="text-lg font-medium text-gray-900 mb-2">多人视频换脸完成！</h4>
               <p className="text-gray-600 mb-4">
-                您的多人视频换脸结果已生成，点击下载按钮保存视频。
+                您的多人视频换脸结果已生成，点击下载按钮保存视频文件。
               </p>
               <button
                 onClick={handleDownload}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mb-3"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
                 <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                下载视频结果
+                下载结果
               </button>
-              
-              <div className="text-sm text-gray-500">
-                <p>💡 提示：下载的视频可能很大，请确保网络连接稳定</p>
-              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Task Detail */}
+      {selectedHistoryTask && (
+        <TaskDetail 
+          task={selectedHistoryTask} 
+          onClose={handleCloseTaskDetail}
+        />
+      )}
+
+      {/* Task History - 只显示多人视频换脸的任务历史 */}
+      <TaskHistory 
+        onTaskSelect={handleTaskSelect} 
+        taskType="multi-video"
+      />
+
       {/* Tips */}
       <div className="mt-8 bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-3">多人视频换脸最佳实践:</h3>
         <ul className="text-sm text-gray-600 space-y-2">
-          <li>• 支持 MP4、AVI、MOV、MKV 等常见视频格式</li>
-          <li>• 建议视频分辨率不超过1080p，文件大小不超过200MB</li>
-          <li>• 确保视频中的人脸清晰可见，避免快速移动或模糊</li>
+          <li>• 确保视频中的人脸清晰可见，避免被遮挡或模糊</li>
           <li>• 为每个检测到的人脸准备相应的高质量替换图片</li>
           <li>• 替换图片中的人脸最好与视频中的角度和光线相似</li>
-          <li>• 多人视频处理时间很长，通常需要数十分钟到几小时</li>
-          <li>• 建议使用人脸较少且时长较短的视频以获得更好的效果</li>
+          <li>• 处理多人视频换脸需要很长时间，建议视频不超过200MB</li>
+          <li>• 建议使用人脸较少且较短的视频以获得更好的效果</li>
+          <li>• 💡 人脸检测按位置排序：从上到下，从左到右</li>
         </ul>
       </div>
     </div>

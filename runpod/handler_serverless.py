@@ -17,6 +17,7 @@ import cv2
 import numpy as np
 import logging
 import time
+import subprocess
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -879,9 +880,25 @@ def process_video_swap(source_image_data, target_video_data):
         output_video = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
         output_video.close()
         
-        # Setup video writer
+        # Setup video writer with improved encoding for browser compatibility
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_video.name, fourcc, fps, (frame_width, frame_height))
+        
+        if not out.isOpened():
+            # Fallback to a more compatible codec
+            logger.warning("⚠️ Primary codec failed, trying fallback...")
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            output_video_avi = tempfile.NamedTemporaryFile(delete=False, suffix='.avi')
+            output_video_avi.close()
+            out = cv2.VideoWriter(output_video_avi.name, fourcc, fps, (frame_width, frame_height))
+            
+            if not out.isOpened():
+                return {"error": "Failed to initialize video writer"}
+            
+            # We'll convert to MP4 later using FFmpeg
+            temp_output_path = output_video_avi.name
+        else:
+            temp_output_path = output_video.name
         
         # Configure enhancement settings
         modules.globals.use_face_enhancer = True
@@ -944,8 +961,55 @@ def process_video_swap(source_image_data, target_video_data):
         
         logger.info(f"✅ Video processing completed: {processed_frames} frames processed, {successful_swaps} successful face swaps")
         
-        # Read the output video and encode to base64
-        with open(output_video.name, 'rb') as f:
+        # Preserve audio from original video using FFmpeg
+        final_video_path = temp_output_path
+        try:
+            logger.info("🎵 Preserving audio from original video...")
+            
+            # Create final video with audio
+            final_video_with_audio = tempfile.NamedTemporaryFile(delete=False, suffix='_with_audio.mp4')
+            final_video_with_audio.close()
+            
+            # Use FFmpeg to combine processed video with original audio and ensure H.264 encoding
+            ffmpeg_cmd = [
+                'ffmpeg', '-i', final_video_path,  # Processed video (no audio)
+                '-i', target_video_path,            # Original video (with audio)
+                '-c:v', 'libx264',                  # Use H.264 for video
+                '-preset', 'fast',                  # Encoding speed preset
+                '-crf', '23',                       # Quality (lower = better)
+                '-c:a', 'aac',                      # Use AAC for audio  
+                '-b:a', '128k',                     # Audio bitrate
+                '-map', '0:v',                      # Use video from first input
+                '-map', '1:a',                      # Use audio from second input
+                '-shortest',                        # Match shortest stream
+                '-movflags', '+faststart',          # Optimize for web streaming
+                '-y',                               # Overwrite output
+                final_video_with_audio.name
+            ]
+            
+            logger.info(f"🔄 Running FFmpeg command: {' '.join(ffmpeg_cmd)}")
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                logger.info("✅ Audio preservation successful")
+                final_video_path = final_video_with_audio.name
+            else:
+                logger.warning(f"⚠️ FFmpeg failed: {result.stderr}")
+                logger.info("🔄 Proceeding with video-only output")
+                try:
+                    os.unlink(final_video_with_audio.name)
+                except:
+                    pass
+                    
+        except subprocess.TimeoutExpired:
+            logger.warning("⚠️ FFmpeg timeout, proceeding with video-only output")
+        except FileNotFoundError:
+            logger.warning("⚠️ FFmpeg not found, proceeding with video-only output")
+        except Exception as e:
+            logger.warning(f"⚠️ Audio preservation failed: {e}, proceeding with video-only output")
+        
+        # Read the final video file
+        with open(final_video_path, 'rb') as f:
             video_data = f.read()
         
         # Apply AI Super Resolution to improve video quality (if available)
@@ -970,7 +1034,7 @@ def process_video_swap(source_image_data, target_video_data):
                 
                 if scale_factor > 1:
                     # Re-process the output video with super resolution
-                    cap_enhanced = cv2.VideoCapture(output_video.name)
+                    cap_enhanced = cv2.VideoCapture(final_video_path)
                     
                     # Calculate new dimensions
                     new_width = frame_width * scale_factor
@@ -1044,11 +1108,15 @@ def process_video_swap(source_image_data, target_video_data):
         try:
             if target_video_path != target_video_data:  # Only delete if it's a temp file
                 os.unlink(target_video_path)
-            os.unlink(output_video.name)
-        except:
-            pass
+            os.unlink(final_video_path)
+            
+            # Cleanup audio-merged video file if it's different from output_video
+            if final_video_path != temp_output_path and os.path.exists(final_video_path):
+                os.unlink(final_video_path)
+        except Exception as cleanup_error:
+            logger.warning(f"⚠️ Cleanup error: {cleanup_error}")
         
-        logger.info("✅ Video face swap completed successfully")
+        logger.info("✅ Video face swap with audio preservation completed successfully")
         return {
             "result": result_data,
             "total_frames": processed_frames,
@@ -1091,6 +1159,20 @@ def process_detect_faces_from_url(image_url):
         
         logger.info(f"✅ Detected {len(faces)} face(s)")
         
+        # 稳定排序：按照人脸位置排序，确保每次检测结果一致
+        # 先按 y 坐标排序（从上到下），再按 x 坐标排序（从左到右）
+        def get_face_position(face):
+            if hasattr(face, 'bbox'):
+                x1, y1, x2, y2 = face.bbox
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+                return (center_y, center_x)  # 先按y排序，再按x排序
+            return (0, 0)
+        
+        # 对人脸进行稳定排序
+        faces = sorted(faces, key=get_face_position)
+        logger.info("✅ Faces sorted by position (top-to-bottom, left-to-right)")
+        
         # Convert faces to API format with face previews
         detected_faces = []
         for i, face in enumerate(faces):
@@ -1104,6 +1186,14 @@ def process_detect_faces_from_url(image_url):
                     'height': int(face.bbox[3] - face.bbox[1]) if hasattr(face, 'bbox') else 0,
                     'confidence': float(face.det_score) if hasattr(face, 'det_score') else 0.9
                 }
+                
+                # 添加位置信息用于前端显示，帮助用户确认映射关系
+                if hasattr(face, 'bbox'):
+                    center_x = int((face.bbox[0] + face.bbox[2]) / 2)
+                    center_y = int((face.bbox[1] + face.bbox[3]) / 2)
+                    face_info['center_x'] = center_x
+                    face_info['center_y'] = center_y
+                    face_info['position_description'] = f"位置: ({center_x}, {center_y})"
                 
                 # Extract and encode face image
                 try:
@@ -1121,7 +1211,7 @@ def process_detect_faces_from_url(image_url):
                     face_info['embedding'] = face.embedding.tolist()
                 
                 detected_faces.append(face_info)
-                logger.info(f"👤 Face {i+1}: bbox=({face_info['x']}, {face_info['y']}, {face_info['width']}, {face_info['height']}), confidence={face_info['confidence']:.3f}")
+                logger.info(f"👤 Face {i+1}: bbox=({face_info['x']}, {face_info['y']}, {face_info['width']}, {face_info['height']}), center=({face_info.get('center_x', 0)}, {face_info.get('center_y', 0)}), confidence={face_info['confidence']:.3f}")
                 
             except Exception as e:
                 logger.warning(f"⚠️ Error processing face {i}: {e}")
@@ -1130,10 +1220,11 @@ def process_detect_faces_from_url(image_url):
         result = {
             "faces": detected_faces,
             "total_faces": len(detected_faces),
-            "image_path": image_url
+            "image_path": image_url,
+            "sorting_info": "Faces sorted by position: top-to-bottom, left-to-right"
         }
         
-        logger.info(f"✅ Face detection completed: {len(detected_faces)} faces detected")
+        logger.info(f"✅ Face detection completed: {len(detected_faces)} faces detected and sorted by position")
         return result
         
     except Exception as e:
@@ -1213,6 +1304,27 @@ def process_multi_image_swap_from_urls(target_url, face_mappings):
             return {"error": "No faces detected in target image"}
         
         logger.info(f"✅ Detected {len(target_faces)} face(s) in target image")
+        
+        # 稳定排序：使用与人脸检测相同的排序逻辑，确保索引一致
+        # 按照人脸位置排序，先按 y 坐标排序（从上到下），再按 x 坐标排序（从左到右）
+        def get_face_position(face):
+            if hasattr(face, 'bbox'):
+                x1, y1, x2, y2 = face.bbox
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+                return (center_y, center_x)  # 先按y排序，再按x排序
+            return (0, 0)
+        
+        # 对目标图片中的人脸进行稳定排序
+        target_faces = sorted(target_faces, key=get_face_position)
+        logger.info("✅ Target faces sorted by position (top-to-bottom, left-to-right)")
+        
+        # 记录排序后的人脸位置信息用于调试
+        for i, face in enumerate(target_faces):
+            if hasattr(face, 'bbox'):
+                center_x = int((face.bbox[0] + face.bbox[2]) / 2)
+                center_y = int((face.bbox[1] + face.bbox[3]) / 2)
+                logger.info(f"   Target face {i}: center=({center_x}, {center_y})")
         
         # Prepare source faces
         source_faces = []
@@ -1497,6 +1609,300 @@ def process_multi_image_swap_from_urls(target_url, face_mappings):
         logger.error(f"❌ Multi-person face swap failed: {e}")
         return {"error": f"Multi-person face swap failed: {str(e)}"}
 
+def process_multi_video_swap_from_urls(target_url, face_mappings):
+    """Process multi-person video face swap with individual face mappings - Enhanced with multi-round processing"""
+    try:
+        logger.info("🚀 Starting enhanced multi-person video face swap processing...")
+        logger.info(f"📋 Target video URL: {target_url}")
+        logger.info(f"📋 Face mappings: {json.dumps(face_mappings, indent=2)}")
+        
+        # Download target video
+        logger.info("🔄 Downloading target video...")
+        target_video_path = download_video_from_url(target_url)
+        if target_video_path is None:
+            return {"error": "Failed to download target video"}
+        
+        logger.info(f"✅ Target video downloaded: {target_video_path}")
+        
+        # Open video to get first frame for face detection
+        cap = cv2.VideoCapture(target_video_path)
+        if not cap.isOpened():
+            return {"error": "Failed to open target video"}
+        
+        # Get video properties
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        logger.info(f"🎬 Video properties: {frame_width}x{frame_height}, {fps} FPS, {frame_count} frames")
+        
+        # Get first frame for face detection
+        ret, first_frame = cap.read()
+        if not ret:
+            cap.release()
+            return {"error": "Failed to read first frame from video"}
+        
+        # Detect all faces in first frame
+        logger.info("🔍 Detecting faces in first frame...")
+        target_faces = get_many_faces(first_frame)
+        
+        if target_faces is None or len(target_faces) == 0:
+            cap.release()
+            return {"error": "No faces detected in video"}
+        
+        logger.info(f"✅ Detected {len(target_faces)} face(s) in video")
+        
+        # 稳定排序：使用与人脸检测相同的排序逻辑，确保索引一致
+        def get_face_position(face):
+            if hasattr(face, 'bbox'):
+                x1, y1, x2, y2 = face.bbox
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+                return (center_y, center_x)  # 先按y排序，再按x排序
+            return (0, 0)
+        
+        # 对目标视频中的人脸进行稳定排序
+        target_faces = sorted(target_faces, key=get_face_position)
+        logger.info("✅ Target faces sorted by position (top-to-bottom, left-to-right)")
+        
+        # 记录排序后的人脸位置信息用于调试
+        for i, face in enumerate(target_faces):
+            if hasattr(face, 'bbox'):
+                center_x = int((face.bbox[0] + face.bbox[2]) / 2)
+                center_y = int((face.bbox[1] + face.bbox[3]) / 2)
+                logger.info(f"   Target face {i}: center=({center_x}, {center_y})")
+        
+        # Download and process each source face
+        source_faces = []
+        face_mapping_pairs = []
+        
+        for face_id, source_url in face_mappings.items():
+            try:
+                logger.info(f"🔄 Processing source face for {face_id}: {source_url}")
+                
+                # Download source image
+                source_frame = download_image_from_url(source_url)
+                if source_frame is None:
+                    logger.warning(f"⚠️ Failed to download source image for {face_id}")
+                    continue
+                
+                # Get the main face from source image
+                source_face = get_one_face(source_frame)
+                if source_face is None:
+                    logger.warning(f"⚠️ No face detected in source image for {face_id}")
+                    continue
+                
+                # Parse face_id to get target face index
+                face_index = int(face_id.replace('face_', ''))
+                
+                if face_index < len(target_faces):
+                    face_mapping_pairs.append({
+                        'source_face': source_face,
+                        'target_face': target_faces[face_index],
+                        'face_id': face_id,
+                        'face_index': face_index
+                    })
+                    logger.info(f"✅ Mapped {face_id} (index {face_index}) successfully")
+                else:
+                    logger.warning(f"⚠️ Face index {face_index} out of range for {face_id}")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Error processing source face {face_id}: {e}")
+                continue
+        
+        if not face_mapping_pairs:
+            cap.release()
+            return {"error": "No valid face mappings could be processed"}
+        
+        logger.info(f"🎯 Processing {len(face_mapping_pairs)} face swap(s) in video...")
+        
+        # Create output video file
+        output_video = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        output_video.close()
+        
+        # Setup video writer with improved encoding for browser compatibility
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_video.name, fourcc, fps, (frame_width, frame_height))
+        
+        if not out.isOpened():
+            # Fallback to a more compatible codec
+            logger.warning("⚠️ Primary codec failed, trying fallback...")
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            output_video_avi = tempfile.NamedTemporaryFile(delete=False, suffix='.avi')
+            output_video_avi.close()
+            out = cv2.VideoWriter(output_video_avi.name, fourcc, fps, (frame_width, frame_height))
+            
+            if not out.isOpened():
+                cap.release()
+                return {"error": "Failed to initialize video writer"}
+            
+            temp_output_path = output_video_avi.name
+        else:
+            temp_output_path = output_video.name
+        
+        # Configure enhancement settings
+        modules.globals.use_face_enhancer = True
+        modules.globals.mouth_mask = True
+        modules.globals.color_correction = True
+        
+        # Reset video to beginning
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        
+        # Process video frame by frame
+        processed_frames = 0
+        successful_swaps = 0
+        
+        logger.info("🚀 Starting frame-by-frame multi-person processing...")
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            try:
+                # Detect faces in current frame
+                current_faces = get_many_faces(frame)
+                
+                if current_faces and len(current_faces) >= len(face_mapping_pairs):
+                    # Sort current faces using same logic
+                    current_faces = sorted(current_faces, key=get_face_position)
+                    
+                    # Apply face swaps for all mapped faces
+                    swapped_frame = frame.copy()
+                    frame_swaps = 0
+                    
+                    for mapping in face_mapping_pairs:
+                        face_index = mapping['face_index']
+                        if face_index < len(current_faces):
+                            current_face = current_faces[face_index]
+                            
+                            # Perform face swap
+                            swapped_frame = swap_face(
+                                mapping['source_face'], 
+                                current_face, 
+                                swapped_frame
+                            )
+                            frame_swaps += 1
+                    
+                    # Apply enhancement if available (conservative for video)
+                    try:
+                        from modules.processors.frame.face_enhancer import enhance_face
+                        enhanced_frame = enhance_face(swapped_frame)
+                        if enhanced_frame is not None:
+                            # Very conservative blending for video stability
+                            swapped_frame = cv2.addWeighted(swapped_frame, 0.8, enhanced_frame, 0.2, 0)
+                    except ImportError:
+                        pass
+                    except Exception as e:
+                        logger.warning(f"⚠️ Frame enhancement failed: {e}")
+                    
+                    out.write(swapped_frame)
+                    successful_swaps += frame_swaps
+                else:
+                    # No faces detected or insufficient faces, write original frame
+                    out.write(frame)
+                
+                processed_frames += 1
+                
+                # Log progress every 30 frames (roughly every second at 30fps)
+                if processed_frames % 30 == 0:
+                    progress = (processed_frames / frame_count) * 100
+                    logger.info(f"📹 Processing progress: {progress:.1f}% ({processed_frames}/{frame_count} frames, {successful_swaps} total swaps)")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Error processing frame {processed_frames}: {e}")
+                # Write original frame on error
+                out.write(frame)
+                processed_frames += 1
+        
+        # Cleanup
+        cap.release()
+        out.release()
+        
+        logger.info(f"✅ Multi-person video processing completed: {processed_frames} frames processed, {successful_swaps} total face swaps")
+        
+        # Preserve audio from original video using FFmpeg
+        final_video_path = temp_output_path
+        try:
+            logger.info("🎵 Preserving audio from original video...")
+            
+            # Create final video with audio
+            final_video_with_audio = tempfile.NamedTemporaryFile(delete=False, suffix='_with_audio.mp4')
+            final_video_with_audio.close()
+            
+            # Use FFmpeg to combine processed video with original audio and ensure H.264 encoding
+            ffmpeg_cmd = [
+                'ffmpeg', '-i', final_video_path,  # Processed video (no audio)
+                '-i', target_video_path,            # Original video (with audio)
+                '-c:v', 'libx264',                  # Use H.264 for video
+                '-preset', 'fast',                  # Encoding speed preset
+                '-crf', '23',                       # Quality (lower = better)
+                '-c:a', 'aac',                      # Use AAC for audio  
+                '-b:a', '128k',                     # Audio bitrate
+                '-map', '0:v',                      # Use video from first input
+                '-map', '1:a',                      # Use audio from second input
+                '-shortest',                        # Match shortest stream
+                '-movflags', '+faststart',          # Optimize for web streaming
+                '-y',                               # Overwrite output
+                final_video_with_audio.name
+            ]
+            
+            logger.info(f"🔄 Running FFmpeg command: {' '.join(ffmpeg_cmd)}")
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=600)  # 10 minute timeout for multi-person
+            
+            if result.returncode == 0:
+                logger.info("✅ Audio preservation successful")
+                final_video_path = final_video_with_audio.name
+            else:
+                logger.warning(f"⚠️ FFmpeg failed: {result.stderr}")
+                logger.info("🔄 Proceeding with video-only output")
+                try:
+                    os.unlink(final_video_with_audio.name)
+                except:
+                    pass
+                    
+        except subprocess.TimeoutExpired:
+            logger.warning("⚠️ FFmpeg timeout, proceeding with video-only output")
+        except FileNotFoundError:
+            logger.warning("⚠️ FFmpeg not found, proceeding with video-only output")
+        except Exception as e:
+            logger.warning(f"⚠️ Audio preservation failed: {e}, proceeding with video-only output")
+        
+        # Read the final video file
+        with open(final_video_path, 'rb') as f:
+            video_data = f.read()
+        
+        result_data = base64.b64encode(video_data).decode()
+        
+        # Cleanup temporary files
+        try:
+            if target_video_path:
+                os.unlink(target_video_path)
+            os.unlink(final_video_path)
+            
+            # Cleanup audio-merged video file if it's different
+            if final_video_path != temp_output_path and os.path.exists(final_video_path):
+                os.unlink(final_video_path)
+        except Exception as cleanup_error:
+            logger.warning(f"⚠️ Cleanup error: {cleanup_error}")
+        
+        logger.info("✅ Multi-person video face swap with audio preservation completed successfully")
+        return {
+            "result": result_data,
+            "total_frames": processed_frames,
+            "successful_swaps": successful_swaps,
+            "faces_processed": len(face_mapping_pairs),
+            "fps": fps,
+            "resolution": f"{frame_width}x{frame_height}",
+            "processing_type": "multi-video",
+            "quality_level": "high"
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Multi-person video face swap failed: {e}")
+        return {"error": f"Multi-person video face swap failed: {str(e)}"}
+
 def handler(event):
     """
     RunPod serverless handler function
@@ -1532,6 +1938,8 @@ def handler(event):
             swap_type = "single_image"
         elif swap_type == "multi-image":
             swap_type = "multi_image"
+        elif swap_type == "multi-video":
+            swap_type = "multi_video"
         elif swap_type == "detect-faces":
             swap_type = "detect_faces"
         
@@ -1542,6 +1950,8 @@ def handler(event):
             logger.info("🔀 Taking detect_faces branch")
         elif swap_type == "multi_image":
             logger.info("🔀 Taking multi_image branch")
+        elif swap_type == "multi_video":
+            logger.info("🔀 Taking multi_video branch")
         elif swap_type == "single_image":
             logger.info("🔀 Taking single_image branch")
         elif swap_type == "video":
@@ -1569,6 +1979,19 @@ def handler(event):
                 return {"error": "Missing face_mappings parameter for multi-image processing"}
             
             return process_multi_image_swap_from_urls(target_url, face_mappings)
+        
+        # Handle multi-person video face swap
+        elif swap_type == "multi_video":
+            target_url = input_data.get("target_file")
+            face_mappings = input_data.get("face_mappings", {})
+            
+            if not target_url:
+                return {"error": "Missing target_file parameter for multi-video processing"}
+            
+            if not face_mappings:
+                return {"error": "Missing face_mappings parameter for multi-video processing"}
+            
+            return process_multi_video_swap_from_urls(target_url, face_mappings)
         
         # Handle single image face swap
         elif swap_type == "single_image":

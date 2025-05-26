@@ -5,6 +5,9 @@ export interface Face {
   width: number
   height: number
   confidence: number
+  center_x?: number  // 人脸中心点x坐标
+  center_y?: number  // 人脸中心点y坐标
+  position_description?: string  // 位置描述信息
   embedding?: number[]
   preview?: string  // Base64 encoded face image
 }

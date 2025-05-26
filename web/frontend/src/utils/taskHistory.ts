@@ -2,7 +2,7 @@ import { ProcessingJob } from '../types'
 
 export interface TaskHistoryItem extends ProcessingJob {
   title: string;
-  type: 'single-image' | 'multi-image' | 'video';
+  type: 'single-image' | 'multi-image' | 'video' | 'multi-video';
   thumbnail?: string;
   files: {
     source?: string;
@@ -28,6 +28,11 @@ class TaskHistoryManager {
       console.error('Failed to load task history:', error);
       return [];
     }
+  }
+
+  // 获取指定类型的历史任务
+  getHistoryByType(type: TaskHistoryItem['type']): TaskHistoryItem[] {
+    return this.getHistory().filter(task => task.type === type);
   }
 
   // 添加新任务到历史记录
@@ -99,6 +104,17 @@ class TaskHistoryManager {
     );
   }
 
+  // 获取指定类型的活跃任务
+  getActiveTasksByType(type: TaskHistoryItem['type']): TaskHistoryItem[] {
+    return this.getActiveTasks().filter(task => task.type === type);
+  }
+
+  // 获取最近的活跃任务（用于页面恢复）
+  getLatestActiveTask(type?: TaskHistoryItem['type']): TaskHistoryItem | null {
+    const activeTasks = type ? this.getActiveTasksByType(type) : this.getActiveTasks();
+    return activeTasks.length > 0 ? activeTasks[0] : null;
+  }
+
   // 获取已完成的任务
   getCompletedTasks(): TaskHistoryItem[] {
     return this.getHistory().filter(task => 
@@ -111,6 +127,12 @@ class TaskHistoryManager {
     return this.getHistory().filter(task => 
       task.status === 'failed'
     );
+  }
+
+  // 获取特定任务
+  getTask(taskId: string): TaskHistoryItem | null {
+    const history = this.getHistory();
+    return history.find(task => task.id === taskId) || null;
   }
 }
 
