@@ -298,9 +298,9 @@ export const apiService = {
   // Face detection
   async detectFaces(fileId: string): Promise<ApiResponse<DetectedFaces>> {
     return this.withRetry(async () => {
-      // 为人脸检测设置较短的超时时间
+      // 为人脸检测设置较长的超时时间
       const response = await api.post('/detect-faces', { fileId }, {
-        timeout: 45000  // 45秒超时，比默认的60秒短
+        timeout: 150000  // 2.5分钟超时，给后台足够处理时间
       })
       
       if (!response.data?.success) {

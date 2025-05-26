@@ -158,7 +158,7 @@ export default function MultiVideoPage() {
       const detectResponse = await Promise.race([
         apiService.detectFaces(uploadResponse.data.fileId),
         new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('人脸检测超时，请重试')), 30000) // 30秒超时
+          setTimeout(() => reject(new Error('人脸检测超时，请重试')), 180000) // 3分钟超时
         )
       ]) as ApiResponse<DetectedFaces>
       
@@ -183,7 +183,7 @@ export default function MultiVideoPage() {
       let errorMessage = '人脸检测过程中出现错误'
       
       if (error.message?.includes('timeout') || error.message?.includes('超时')) {
-        errorMessage = '人脸检测超时，请确保网络连接稳定后重试'
+        errorMessage = '人脸检测超时，请确保网络连接稳定后重试。注意：人脸检测通常需要1-3分钟，请耐心等待'
       } else if (error.message?.includes('500')) {
         errorMessage = '服务器处理错误，请稍后重试或更换视频文件'
       } else if (error.message?.includes('upload') || error.message?.includes('上传')) {
@@ -414,10 +414,27 @@ export default function MultiVideoPage() {
                 {canDetect && (
                   <button
                     onClick={handleDetectFaces}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    disabled={!canDetect}
+                    className={`
+                      inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md
+                      ${canDetect
+                        ? 'text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                        : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+                      }
+                      transition-colors
+                    `}
                   >
-                    <EyeIcon className="h-4 w-4 mr-1" />
-                    重新检测人脸
+                    {isDetecting ? (
+                      <>
+                        <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                        检测人脸中...
+                      </>
+                    ) : (
+                      <>
+                        <EyeIcon className="h-4 w-4 mr-2" />
+                        检测视频中的人脸
+                      </>
+                    )}
                   </button>
                 )}
               </div>
@@ -489,6 +506,16 @@ export default function MultiVideoPage() {
                   </>
                 )}
               </button>
+              {canDetect && (
+                <p className="text-sm text-blue-600 mt-2">
+                  💡 提示：人脸检测通常需要1-3分钟，请耐心等待
+                </p>
+              )}
+              {isDetecting && (
+                <p className="text-sm text-orange-600 mt-2">
+                  ⏳ 正在检测人脸，请勿关闭页面，预计需要1-3分钟...
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -719,6 +746,8 @@ export default function MultiVideoPage() {
           <li>• <strong>📱 移动设备：</strong>强烈建议在WiFi环境下使用，避免使用移动数据</li>
           <li>• 💡 人脸检测按位置排序：从上到下，从左到右</li>
           <li>• <strong>⏰ 超时提示：</strong>如果人脸检测超时，请尝试更换更清晰的视频或图片</li>
+          <li>• <strong>⌛ 处理时间：</strong>人脸检测通常需要1-3分钟，请耐心等待，勿关闭页面</li>
+          <li>• <strong>🔄 重试建议：</strong>如果检测失败，请检查网络连接后重试</li>
         </ul>
       </div>
     </div>
