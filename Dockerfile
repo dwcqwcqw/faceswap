@@ -13,8 +13,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HEADLESS=1
 ENV DISPLAY=
-ENV MODELS_DIR=/runpod-volume/faceswap
-ENV WORKSPACE_DIR=/runpod-volume
 
 # Install system dependencies (optimized list)
 RUN apt-get update && apt-get install -y \
@@ -51,8 +49,11 @@ COPY modules/ /app/modules/
 COPY locales/ /app/locales/
 COPY runpod/ /app/runpod/
 
+# Copy handler to root for easier access
+COPY runpod/handler_serverless.py /app/handler.py
+
 # Create necessary directories
 RUN mkdir -p /app/models /tmp/faceswap
 
-# Set up the Volume-optimized handler as entry point
-CMD ["python", "-u", "/app/runpod/handler_serverless.py"] 
+# Set up the handler as entry point (can be overridden by Container Start Command)
+CMD ["python", "-u", "handler.py"] 
