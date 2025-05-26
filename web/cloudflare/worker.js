@@ -446,9 +446,21 @@ export async function handleDownload(request, env, path) {
     let downloadFilename;
     
     if (foundPath.startsWith('results/')) {
-      // For result files, create a descriptive filename
+      // For result files, use the detected file extension from metadata or path
       const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      downloadFilename = `face_swap_result_${timestamp}.jpg`;
+      
+      // Try to get extension from custom metadata first
+      const storedExtension = r2Object.customMetadata?.fileExtension;
+      if (storedExtension) {
+        downloadFilename = `face_swap_result_${timestamp}.${storedExtension}`;
+        console.log(`📁 Using stored extension: ${storedExtension}`);
+      } else {
+        // Fallback: extract extension from the found path
+        const pathParts = foundPath.split('.');
+        const extension = pathParts.length > 1 ? pathParts.pop() : 'jpg';
+        downloadFilename = `face_swap_result_${timestamp}.${extension}`;
+        console.log(`📁 Using path extension: ${extension}`);
+      }
     } else {
       // For uploaded files, use original name or generate one with extension
       const originalName = r2Object.customMetadata?.originalName;

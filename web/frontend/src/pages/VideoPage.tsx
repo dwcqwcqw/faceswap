@@ -94,18 +94,8 @@ export default function VideoPage() {
 
   const handleDownload = () => {
     if (processingStatus?.result_url) {
-      // Smart filename based on what was uploaded
-      let downloadName = 'face-swap-result';
-      
-      // Check if we have video files to determine output format
-      const hasVideo = (sourceVideo && sourceVideo.type.startsWith('video/')) || 
-                       (targetFace && targetFace.type.startsWith('video/'));
-      
-      if (hasVideo) {
-        downloadName += '.mp4';  // Video result
-      } else {
-        downloadName += '.jpg';  // Image result
-      }
+      // Video results should always be MP4
+      const downloadName = 'video-face-swap-result.mp4';
       
       const link = document.createElement('a');
       link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '');
@@ -116,19 +106,19 @@ export default function VideoPage() {
 
   const canProcess = sourceVideo && targetFace && !isProcessing
   const videoSizeLimit = 100 * 1024 * 1024 // 100MB
-  const isVideoTooLarge = sourceVideo ? sourceVideo.size > videoSizeLimit : false
+  const isVideoTooLarge = targetFace ? targetFace.size > videoSizeLimit : false
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">视频换脸</h1>
         <p className="mt-2 text-lg text-gray-600">
-          上传图片和视频文件，AI将为视频中的人脸进行换脸处理
+          上传人脸图片和目标视频，AI将为视频中的人脸进行换脸处理
         </p>
         <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center justify-center">
             <div className="text-blue-800 text-sm">
-              💡 <strong>支持灵活上传：</strong>可以任意顺序上传图片和视频文件，系统会自动识别并处理
+              💡 <strong>上传要求：</strong>左侧上传人脸图片（JPG/PNG），右侧上传目标视频（MP4/AVI/MOV）
             </div>
           </div>
         </div>
@@ -148,14 +138,14 @@ export default function VideoPage() {
       )}
 
       {/* Video Size Warning */}
-      {isVideoTooLarge && sourceVideo && (
+      {isVideoTooLarge && targetFace && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
           <div className="flex">
             <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 mr-2" />
             <div>
               <h3 className="text-sm font-medium text-yellow-800">文件大小警告</h3>
               <p className="text-sm text-yellow-700">
-                视频文件过大 ({(sourceVideo.size / 1024 / 1024).toFixed(2)} MB)，建议压缩到100MB以下以获得更快的处理速度。
+                视频文件过大 ({(targetFace.size / 1024 / 1024).toFixed(2)} MB)，建议压缩到100MB以下以获得更快的处理速度。
               </p>
             </div>
           </div>
@@ -163,27 +153,22 @@ export default function VideoPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Source Video Upload */}
+        {/* Source Face Upload */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <FileUpload
-            label="文件1: 视频或图片"
-            description="上传视频文件或人脸图片（支持自动识别）"
+            label="人脸图片"
+            description="上传要替换的人脸图片（仅限JPG/PNG格式）"
             onFileSelect={setSourceVideo}
             currentFile={sourceVideo}
             onRemove={() => setSourceVideo(null)}
             accept={{ 
-              'video/*': ['.mp4', '.avi', '.mov', '.mkv'],
               'image/*': ['.png', '.jpg', '.jpeg']
             }}
           />
           {sourceVideo && (
             <div className="mt-4">
               <div className="bg-gray-100 rounded-lg p-4 flex items-center">
-                {sourceVideo.type.startsWith('video/') ? (
-                  <VideoCameraIcon className="h-8 w-8 text-gray-400 mr-3" />
-                ) : (
-                  <PhotoIcon className="h-8 w-8 text-gray-400 mr-3" />
-                )}
+                <PhotoIcon className="h-8 w-8 text-gray-400 mr-3" />
                 <div>
                   <p className="font-medium text-gray-900">{sourceVideo.name}</p>
                   <p className="text-sm text-gray-500">
@@ -194,46 +179,32 @@ export default function VideoPage() {
                   </p>
                 </div>
               </div>
-              {/* File preview */}
-              {sourceVideo.type.startsWith('video/') ? (
-                <video
-                  src={URL.createObjectURL(sourceVideo)}
-                  className="w-full h-48 object-cover rounded-lg mt-3"
-                  controls
-                  preload="metadata"
-                />
-              ) : (
-                <img
-                  src={URL.createObjectURL(sourceVideo)}
-                  alt="文件1预览"
-                  className="w-full h-48 object-cover rounded-lg mt-3"
-                />
-              )}
+              {/* Image preview */}
+              <img
+                src={URL.createObjectURL(sourceVideo)}
+                alt="人脸图片预览"
+                className="w-full h-48 object-cover rounded-lg mt-3"
+              />
             </div>
           )}
         </div>
 
-        {/* Target Face Upload */}
+        {/* Target Video Upload */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <FileUpload
-            label="文件2: 图片或视频"
-            description="上传人脸图片或视频文件（支持自动识别）"
+            label="目标视频"
+            description="上传需要换脸的视频文件（仅限MP4/AVI/MOV格式）"
             onFileSelect={setTargetFace}
             currentFile={targetFace}
             onRemove={() => setTargetFace(null)}
             accept={{ 
-              'image/*': ['.png', '.jpg', '.jpeg'],
               'video/*': ['.mp4', '.avi', '.mov', '.mkv']
             }}
           />
           {targetFace && (
             <div className="mt-4">
               <div className="bg-gray-100 rounded-lg p-4 flex items-center">
-                {targetFace.type.startsWith('video/') ? (
-                  <VideoCameraIcon className="h-8 w-8 text-gray-400 mr-3" />
-                ) : (
-                  <PhotoIcon className="h-8 w-8 text-gray-400 mr-3" />
-                )}
+                <VideoCameraIcon className="h-8 w-8 text-gray-400 mr-3" />
                 <div>
                   <p className="font-medium text-gray-900">{targetFace.name}</p>
                   <p className="text-sm text-gray-500">
@@ -244,21 +215,13 @@ export default function VideoPage() {
                   </p>
                 </div>
               </div>
-              {/* File preview */}
-              {targetFace.type.startsWith('video/') ? (
-                <video
-                  src={URL.createObjectURL(targetFace)}
-                  className="w-full h-48 object-cover rounded-lg mt-3"
-                  controls
-                  preload="metadata"
-                />
-              ) : (
-                <img
-                  src={URL.createObjectURL(targetFace)}
-                  alt="文件2预览"
-                  className="w-full h-48 object-cover rounded-lg mt-3"
-                />
-              )}
+              {/* Video preview */}
+              <video
+                src={URL.createObjectURL(targetFace)}
+                className="w-full h-48 object-cover rounded-lg mt-3"
+                controls
+                preload="metadata"
+              />
             </div>
           )}
         </div>
@@ -326,51 +289,48 @@ export default function VideoPage() {
       {/* Result */}
       {processingStatus?.status === 'completed' && processingStatus.result_url && !isProcessing && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">换脸结果</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">视频换脸结果</h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              {/* Smart media display - try video first, fallback to image */}
+              {/* Video display only - no image fallback needed for video results */}
               <video
                 src={apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')}
                 className="w-full rounded-lg shadow-sm"
                 controls
                 preload="metadata"
                 onError={(e) => {
-                  console.error('Video load error, trying image fallback:', e);
-                  // Hide video and show image
-                  e.currentTarget.style.display = 'none';
-                  const img = e.currentTarget.nextElementSibling as HTMLImageElement;
-                  if (img) {
-                    img.style.display = 'block';
+                  console.error('Video load error:', e);
+                  // Show error message instead of fallback
+                  const errorDiv = e.currentTarget.nextElementSibling as HTMLDivElement;
+                  if (errorDiv) {
+                    errorDiv.style.display = 'block';
                   }
+                  e.currentTarget.style.display = 'none';
                 }}
               />
-              <img
-                src={apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')}
-                alt="换脸结果"
-                className="w-full rounded-lg shadow-sm"
+              <div 
+                className="text-center py-8 text-red-600" 
                 style={{ display: 'none' }}
-                onError={(e) => {
-                  console.error('Both video and image failed to load:', e);
-                }}
-              />
+              >
+                ❌ 视频加载失败，请尝试重新下载
+              </div>
             </div>
             <div className="flex flex-col justify-center">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">换脸完成！</h4>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">视频换脸完成！</h4>
               <p className="text-gray-600 mb-4">
-                您的换脸结果已生成，点击下载按钮保存文件。
+                您的视频换脸结果已生成，点击下载按钮保存视频文件。
               </p>
               <button
                 onClick={handleDownload}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mb-3"
               >
                 <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                下载结果
+                下载视频结果
               </button>
               
               <div className="text-sm text-gray-500">
-                <p>💡 提示：下载的文件可能较大，请确保网络连接稳定</p>
-                <p>🎬 支持图片和视频结果的智能显示</p>
+                <p>💡 提示：下载的视频文件可能较大，请确保网络连接稳定</p>
+                <p>🎬 结果格式：MP4高质量视频</p>
               </div>
             </div>
           </div>
@@ -381,15 +341,15 @@ export default function VideoPage() {
       <div className="mt-8 bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-3">视频换脸最佳实践:</h3>
         <ul className="text-sm text-gray-600 space-y-2">
-          <li>• 支持 MP4、AVI、MOV、MKV 等常见视频格式和 PNG、JPG、JPEG 图片格式</li>
-          <li>• <strong>灵活上传顺序：</strong>可以任意顺序上传图片和视频，系统会自动识别处理</li>
+          <li>• <strong>严格格式要求：</strong>人脸图片仅支持 JPG、PNG 格式，目标视频仅支持 MP4、AVI、MOV 格式</li>
+          <li>• <strong>上传顺序：</strong>左侧上传人脸图片，右侧上传目标视频</li>
           <li>• 建议视频分辨率不超过1080p，文件大小不超过100MB</li>
           <li>• <strong>AI超分辨率：</strong>自动为低分辨率视频（&lt;1024px）提供2x高清增强</li>
           <li>• 确保视频中的人脸清晰可见，避免快速移动或模糊</li>
           <li>• 人脸图片最好与视频中的人脸角度和光线相似</li>
           <li>• 视频处理时间较长，通常需要几分钟到几十分钟</li>
           <li>• 较短的视频片段能获得更快的处理速度和更好的效果</li>
-          <li>• <strong>超高质量输出：</strong>系统会自动应用多轮增强和AI超分辨率技术</li>
+          <li>• <strong>结果格式：</strong>视频换脸结果始终为MP4格式的高质量视频</li>
         </ul>
       </div>
     </div>

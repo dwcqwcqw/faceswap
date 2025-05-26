@@ -1522,42 +1522,9 @@ def handler(event):
         elif swap_type == "single_image":
             # Check for new format (URLs from Cloudflare Worker)
             if input_data.get("source_file") and input_data.get("target_file"):
-                logger.info("📡 Processing URLs from Cloudflare Worker")
+                logger.info("📡 Processing URLs from Cloudflare Worker for single_image")
                 source_url = input_data.get("source_file")
                 target_url = input_data.get("target_file")
-                
-                # Smart detection: check if either file is a video based on content-type
-                try:
-                    # Quick HEAD request to check content types
-                    source_response = requests.head(source_url, timeout=10)
-                    target_response = requests.head(target_url, timeout=10)
-                    
-                    source_type = source_response.headers.get('content-type', '').lower()
-                    target_type = target_response.headers.get('content-type', '').lower()
-                    
-                    logger.info(f"📋 Source content-type: {source_type}")
-                    logger.info(f"📋 Target content-type: {target_type}")
-                    
-                    # Handle different combinations of image/video
-                    if 'video' in target_type and 'image' in source_type:
-                        # Correct order: image as source, video as target
-                        logger.info("🎬 Detected image-to-video swap, routing to video processing...")
-                        return process_video_swap(source_url, target_url)
-                    elif 'video' in source_type and 'image' in target_type:
-                        # Reversed order: video as source, image as target - auto-correct
-                        logger.info("🔄 Detected video-to-image order, auto-correcting to image-to-video...")
-                        logger.info("🎬 Routing to video processing with corrected order...")
-                        return process_video_swap(target_url, source_url)  # Swap the order
-                    elif 'video' in source_type and 'video' in target_type:
-                        return {"error": "视频对视频换脸暂不支持。请使用图片作为人脸源，视频作为目标。"}
-                    elif 'image' in source_type and 'image' in target_type:
-                        # Both are images, proceed with image processing
-                        logger.info("🖼️ Both files are images, proceeding with image processing...")
-                    else:
-                        logger.warning(f"⚠️ Unsupported file types - Source: {source_type}, Target: {target_type}")
-                    
-                except Exception as e:
-                    logger.warning(f"⚠️ Could not check content types: {e}, proceeding with image processing...")
                 
                 return process_image_swap_from_urls(source_url, target_url)
             

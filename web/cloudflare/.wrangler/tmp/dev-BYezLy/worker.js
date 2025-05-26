@@ -414,7 +414,16 @@ async function handleDownload(request, env, path) {
     let downloadFilename;
     if (foundPath.startsWith("results/")) {
       const timestamp = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-      downloadFilename = `face_swap_result_${timestamp}.jpg`;
+      const storedExtension = r2Object.customMetadata?.fileExtension;
+      if (storedExtension) {
+        downloadFilename = `face_swap_result_${timestamp}.${storedExtension}`;
+        console.log(`\u{1F4C1} Using stored extension: ${storedExtension}`);
+      } else {
+        const pathParts = foundPath.split(".");
+        const extension = pathParts.length > 1 ? pathParts.pop() : "jpg";
+        downloadFilename = `face_swap_result_${timestamp}.${extension}`;
+        console.log(`\u{1F4C1} Using path extension: ${extension}`);
+      }
     } else {
       const originalName = r2Object.customMetadata?.originalName;
       if (originalName) {
