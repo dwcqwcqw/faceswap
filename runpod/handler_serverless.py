@@ -1565,18 +1565,19 @@ def handler(job):
             return {"error": "Model verification failed. Some required models are missing."}
         
         job_input = job.get("input", {})
-        process_type = job_input.get("process_type", "")
+        # Support both "process_type" and "type" field names for compatibility
+        process_type = job_input.get("process_type") or job_input.get("type", "")
         
         logger.info(f"🎯 Processing job type: {process_type}")
         
         # Process different types of requests
         if process_type == "single_image":
-            # Single image face swap with URLs
-            source_url = job_input.get("source_url")
-            target_url = job_input.get("target_url")
+            # Single image face swap with URLs - support both field name formats
+            source_url = job_input.get("source_url") or job_input.get("source_file")
+            target_url = job_input.get("target_url") or job_input.get("target_file")
             
             if not source_url or not target_url:
-                return {"error": "Missing source_url or target_url for single_image processing"}
+                return {"error": "Missing source_url/source_file or target_url/target_file for single_image processing"}
             
             logger.info(f"📸 Processing single image face swap")
             logger.info(f"   Source: {source_url}")
