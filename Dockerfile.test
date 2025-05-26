@@ -1,0 +1,17 @@
+# Ultra-minimal test container for RunPod debugging
+FROM python:3.10-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Minimal environment
+ENV PYTHONUNBUFFERED=1
+
+# Install runpod only
+RUN pip install --no-cache-dir runpod
+
+# Create inline test handler
+RUN echo 'import runpod; runpod.serverless.start({"handler": lambda job: {"test": "ok"}})' > handler.py
+
+# Start immediately
+CMD ["python", "handler.py"] 
