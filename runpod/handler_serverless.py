@@ -152,7 +152,9 @@ def setup_volume_models():
         'RealESRGAN_x4plus.pth': 'Super resolution model (4x)',
         'RealESRGAN_x2plus.pth': 'Super resolution model (2x)',
         '79999_iter.pth': 'Face parsing model',
-        'buffalo_l': 'Face analysis model (directory)'
+        'buffalo_l': 'Face analysis model (directory)',
+        'detection_Resnet50_Final.pth': 'Face detection model (for video processing)',
+        'parsing_parsenet.pth': 'Face parsing model (for video processing)'
     }
     
     found_models = []
@@ -174,6 +176,38 @@ def setup_volume_models():
     
     # 设置环境变量
     os.environ['MODELS_DIR'] = volume_models_dir
+    
+    # 检查是否有GFPGAN权重目录，如果没有则创建
+    gfpgan_weights_dir = os.path.join(volume_models_dir, 'gfpgan', 'weights')
+    if not os.path.exists(gfpgan_weights_dir):
+        os.makedirs(gfpgan_weights_dir, exist_ok=True)
+        logger.info(f"📁 Created GFPGAN weights directory: {gfpgan_weights_dir}")
+    
+    # 检查额外的GFPGAN模型文件
+    gfpgan_models = {
+        'detection_Resnet50_Final.pth': 'Face detection model (for video processing)',
+        'parsing_parsenet.pth': 'Face parsing model (for video processing)'
+    }
+    
+    for model_name, description in gfpgan_models.items():
+        # 检查是否在主目录
+        main_path = os.path.join(volume_models_dir, model_name)
+        # 检查是否在gfpgan/weights目录
+        gfpgan_path = os.path.join(gfpgan_weights_dir, model_name)
+        
+        if os.path.exists(main_path):
+            logger.info(f"✅ Found {description}: {model_name} (in main directory)")
+            # 如果在主目录但不在gfpgan/weights目录，创建软链接
+            if not os.path.exists(gfpgan_path):
+                try:
+                    os.symlink(main_path, gfpgan_path)
+                    logger.info(f"🔗 Created symlink: {gfpgan_path} -> {main_path}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to create symlink: {e}")
+        elif os.path.exists(gfpgan_path):
+            logger.info(f"✅ Found {description}: {model_name} (in gfpgan/weights)")
+        else:
+            logger.warning(f"⚠️ Missing {description}: {model_name}")
     
     # 报告模型状态
     if len(found_models) >= 4:  # 至少有核心模型

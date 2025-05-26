@@ -30,7 +30,7 @@ async function testRunPodDirectly() {
         console.log('🔍 测试人脸检测...');
         const faceDetectionResponse = await callRunPodAPI({
             input: {
-                process_type: 'detect-faces',
+                process_type: 'detect_faces',
                 image_file: 'https://faceswap-api.faceswap.workers.dev/api/download/test-file'
             }
         });
