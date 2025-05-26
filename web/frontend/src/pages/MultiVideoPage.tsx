@@ -223,6 +223,8 @@ export default function MultiVideoPage() {
       // Upload all source faces and create mappings
       const uploadedMappings: { [key: string]: string } = {}
       
+      console.log('📤 开始上传人脸映射文件，共', faceMappings.length, '个')
+      
       for (let i = 0; i < faceMappings.length; i++) {
         const mapping = faceMappings[i]
         if (mapping.sourceFile) {
@@ -232,20 +234,34 @@ export default function MultiVideoPage() {
             throw new Error(`替换人脸 ${i + 1} 上传失败`)
           }
           uploadedMappings[`face_${i}`] = sourceResponse.data.fileId
+          console.log(`✅ 人脸 ${i + 1} 上传成功:`, sourceResponse.data.fileId)
+        } else {
+          console.error(`❌ 人脸 ${i + 1} 没有文件`)
         }
       }
+      
+      console.log('🎯 最终映射结果:', uploadedMappings)
 
-      // Start processing (using multi-image processing endpoint for now)
+      // Start processing (using multi-video processing)
       console.log('开始处理多人视频换脸...')
+      console.log('📋 Face mappings:', uploadedMappings)
+      console.log('📋 Target file:', targetResponse.data.fileId)
+      
+      // 确保face_mappings不为空
+      if (Object.keys(uploadedMappings).length === 0) {
+        throw new Error('没有有效的人脸映射，请确保所有人脸都已上传替换图片')
+      }
+      
       const processResponse = await apiService.processMultiVideo({
         source_file: '', // Not used for multi-face - individual mappings are used instead
         target_file: targetResponse.data.fileId,
         face_mappings: uploadedMappings,
         options: {
           many_faces: true,
-          mouth_mask: true,
           keep_fps: true,
-          video_quality: 18,
+          video_quality: 20,  // 使用新的优化配置
+          mouth_mask: false,  // 使用新的优化配置
+          use_face_enhancer: true,  // 使用新的优化配置
         }
       })
 

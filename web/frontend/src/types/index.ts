@@ -46,6 +46,9 @@ export interface FaceSwapRequest {
     mouth_mask?: boolean
     keep_fps?: boolean
     video_quality?: number
+    use_face_enhancer?: boolean
+    video_encoder?: 'libx264' | 'libx265' | 'libvpx-vp9'
+    execution_provider?: string
   }
 }
 
