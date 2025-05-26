@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import FileUpload from '../components/FileUpload'
+import TaskHistory from '../components/TaskHistory'
 import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, PlayIcon, VideoCameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
 import { ProcessingJob } from '../types'
+import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
 
 export default function VideoPage() {
   const [sourceVideo, setSourceVideo] = useState<File | null>(null)
@@ -10,6 +12,7 @@ export default function VideoPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
 
   const pollJobStatus = async (jobId: string) => {
     try {
@@ -18,14 +21,19 @@ export default function VideoPage() {
         const status = response.data
         setProcessingStatus(status)
         
+        // Update task history
+        taskHistory.updateTask(jobId, {
+          ...status,
+          updated_at: new Date().toISOString()
+        })
+        
         if (status.status === 'completed') {
           setIsProcessing(false)
         } else if (status.status === 'failed') {
           setIsProcessing(false)
-          setError(status.error_message || '视频处理失败')
+          setError(status.error_message || '处理失败')
         } else {
-          // Continue polling if still processing
-          setTimeout(() => pollJobStatus(jobId), 5000) // Video processing takes longer
+          setTimeout(() => pollJobStatus(jobId), 3000)
         }
       }
     } catch (error) {
@@ -91,18 +99,32 @@ export default function VideoPage() {
 
       if (processResponse.success && processResponse.data) {
         const jobId = processResponse.data.jobId
-        setProcessingStatus({
+        
+        const initialStatus: ProcessingJob = {
           id: jobId,
-          status: 'pending',
+          status: 'pending' as const,
           progress: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
+        }
         
-        // Start polling for status
-        setTimeout(() => pollJobStatus(jobId), 3000)
+        setProcessingStatus(initialStatus)
+        
+        // Add to task history
+        const historyTask: TaskHistoryItem = {
+          ...initialStatus,
+          title: `视频换脸 - ${sourceVideo.name} → ${targetFace.name}`,
+          type: 'video',
+          files: {
+            source: sourceVideo.name,
+            target: targetFace.name
+          }
+        }
+        taskHistory.addTask(historyTask)
+        
+        setTimeout(() => pollJobStatus(jobId), 2000)
       } else {
-        throw new Error('视频处理启动失败')
+        throw new Error('处理启动失败')
       }
       
     } catch (error: any) {
@@ -114,13 +136,28 @@ export default function VideoPage() {
 
   const handleDownload = () => {
     if (processingStatus?.result_url) {
-      // Video results should always be MP4
-      const downloadName = 'video-face-swap-result.mp4';
-      
-      const link = document.createElement('a');
-      link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '');
-      link.download = downloadName;
-      link.click();
+      const link = document.createElement('a')
+      link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')
+      link.download = 'video-face-swap-result.mp4'
+      link.click()
+    }
+  }
+
+  const handleTaskSelect = (task: TaskHistoryItem) => {
+    setSelectedHistoryTask(task)
+    // Clear current processing state to show historical result
+    setProcessingStatus(null)
+    setIsProcessing(false)
+    setError(null)
+  }
+
+  const handleDownloadHistory = (task: TaskHistoryItem) => {
+    if (task.result_url) {
+      const link = document.createElement('a')
+      link.href = apiService.getDownloadUrl(task.result_url.split('/').pop() || '')
+      const extension = task.type === 'video' ? 'mp4' : 'jpg'
+      link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`
+      link.click()
     }
   }
 
@@ -356,6 +393,68 @@ export default function VideoPage() {
           </div>
         </div>
       )}
+
+      {/* Historical Result */}
+      {selectedHistoryTask?.status === 'completed' && selectedHistoryTask.result_url && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">历史任务结果</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              {selectedHistoryTask.type === 'video' ? (
+                <video
+                  src={apiService.getDownloadUrl(selectedHistoryTask.result_url.split('/').pop() || '')}
+                  className="w-full rounded-lg shadow-sm"
+                  controls
+                  preload="metadata"
+                  onError={(e) => {
+                    console.error('Historical video load error:', e);
+                    const errorDiv = e.currentTarget.nextElementSibling as HTMLDivElement;
+                    if (errorDiv) {
+                      errorDiv.style.display = 'block';
+                    }
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <img
+                  src={apiService.getDownloadUrl(selectedHistoryTask.result_url.split('/').pop() || '')}
+                  alt="历史结果"
+                  className="w-full rounded-lg shadow-sm"
+                  onError={(e) => {
+                    console.error('Historical image load error:', e);
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+加载失败</dGV4dD48L3N2Zz4=';
+                  }}
+                />
+              )}
+              <div 
+                className="text-center py-8 text-red-600" 
+                style={{ display: 'none' }}
+              >
+                ❌ 媒体加载失败，请尝试重新下载
+              </div>
+            </div>
+            <div className="flex flex-col justify-center">
+              <h4 className="text-lg font-medium text-gray-900 mb-2">{selectedHistoryTask.title}</h4>
+              <p className="text-gray-600 mb-2">
+                任务类型: {selectedHistoryTask.type}
+              </p>
+              <p className="text-gray-600 mb-4">
+                完成时间: {new Date(selectedHistoryTask.updated_at).toLocaleString('zh-CN')}
+              </p>
+              <button
+                onClick={() => handleDownloadHistory(selectedHistoryTask)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                下载结果
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task History */}
+      <TaskHistory onTaskSelect={handleTaskSelect} />
 
       {/* Tips */}
       <div className="mt-8 bg-gray-50 rounded-lg p-6">

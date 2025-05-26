@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import FileUpload from '../components/FileUpload'
+import TaskHistory from '../components/TaskHistory'
 import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
 import { ProcessingJob } from '../types'
+import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
 
 export default function SingleImagePage() {
   const [sourceImage, setSourceImage] = useState<File | null>(null)
@@ -10,6 +12,7 @@ export default function SingleImagePage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
 
   const pollJobStatus = async (jobId: string) => {
     try {
@@ -17,6 +20,12 @@ export default function SingleImagePage() {
       if (response.success && response.data) {
         const status = response.data
         setProcessingStatus(status)
+        
+        // Update task history
+        taskHistory.updateTask(jobId, {
+          ...status,
+          updated_at: new Date().toISOString()
+        })
         
         if (status.status === 'completed') {
           setIsProcessing(false)
@@ -88,13 +97,27 @@ export default function SingleImagePage() {
         const jobId = processResponse.data.jobId
         console.log('✅ 处理任务创建成功:', jobId)
         
-        setProcessingStatus({
+        const initialStatus: ProcessingJob = {
           id: jobId,
-          status: 'pending',
+          status: 'pending' as const,
           progress: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
+        }
+        
+        setProcessingStatus(initialStatus)
+        
+        // Add to task history
+        const historyTask: TaskHistoryItem = {
+          ...initialStatus,
+          title: `单图换脸 - ${sourceImage.name} → ${targetFace.name}`,
+          type: 'single-image',
+          files: {
+            source: sourceImage.name,
+            target: targetFace.name
+          }
+        }
+        taskHistory.addTask(historyTask)
         
         // Start polling for status
         setTimeout(() => pollJobStatus(jobId), 2000)
@@ -114,6 +137,23 @@ export default function SingleImagePage() {
       const link = document.createElement('a')
       link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')
       link.download = 'face-swap-result.jpg'
+      link.click()
+    }
+  }
+
+  const handleTaskSelect = (task: TaskHistoryItem) => {
+    setSelectedHistoryTask(task)
+    // Clear current processing state to show historical result
+    setProcessingStatus(null)
+    setIsProcessing(false)
+    setError(null)
+  }
+
+  const handleDownloadHistory = (task: TaskHistoryItem) => {
+    if (task.result_url) {
+      const link = document.createElement('a')
+      link.href = apiService.getDownloadUrl(task.result_url.split('/').pop() || '')
+      link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`
       link.click()
     }
   }
@@ -284,6 +324,45 @@ export default function SingleImagePage() {
           </div>
         </div>
       )}
+
+      {/* Historical Result */}
+      {selectedHistoryTask?.status === 'completed' && selectedHistoryTask.result_url && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">历史任务结果</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <img
+                src={apiService.getDownloadUrl(selectedHistoryTask.result_url.split('/').pop() || '')}
+                alt="历史换脸结果"
+                className="w-full rounded-lg shadow-sm"
+                onError={(e) => {
+                  console.error('Historical image load error:', e);
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+加载失败</dGV4dD48L3N2Zz4=';
+                }}
+              />
+            </div>
+            <div className="flex flex-col justify-center">
+              <h4 className="text-lg font-medium text-gray-900 mb-2">{selectedHistoryTask.title}</h4>
+              <p className="text-gray-600 mb-2">
+                任务类型: {selectedHistoryTask.type}
+              </p>
+              <p className="text-gray-600 mb-4">
+                完成时间: {new Date(selectedHistoryTask.updated_at).toLocaleString('zh-CN')}
+              </p>
+              <button
+                onClick={() => handleDownloadHistory(selectedHistoryTask)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                下载结果
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task History */}
+      <TaskHistory onTaskSelect={handleTaskSelect} />
 
       {/* Tips */}
       <div className="mt-8 bg-gray-50 rounded-lg p-6">

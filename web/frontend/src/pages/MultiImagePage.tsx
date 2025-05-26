@@ -1,23 +1,26 @@
 import { useState } from 'react'
 import FileUpload from '../components/FileUpload'
+import TaskHistory from '../components/TaskHistory'
 import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
 import { ProcessingJob, DetectedFaces } from '../types'
+import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
 
 interface FaceMapping {
   faceId: string;
-  targetFile: File | null;
+  sourceFile: File | null;  // 替换的源人脸文件
   previewUrl?: string;
 }
 
 export default function MultiImagePage() {
-  const [sourceImage, setSourceImage] = useState<File | null>(null)
+  const [targetImage, setTargetImage] = useState<File | null>(null)
   const [detectedFaces, setDetectedFaces] = useState<DetectedFaces | null>(null)
   const [faceMappings, setFaceMappings] = useState<FaceMapping[]>([])
   const [isDetecting, setIsDetecting] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
 
   const pollJobStatus = async (jobId: string) => {
     try {
@@ -25,6 +28,12 @@ export default function MultiImagePage() {
       if (response.success && response.data) {
         const status = response.data
         setProcessingStatus(status)
+        
+        // Update task history
+        taskHistory.updateTask(jobId, {
+          ...status,
+          updated_at: new Date().toISOString()
+        })
         
         if (status.status === 'completed') {
           setIsProcessing(false)
@@ -43,7 +52,7 @@ export default function MultiImagePage() {
   }
 
   const handleDetectFaces = async () => {
-    if (!sourceImage) return
+    if (!targetImage) return
     
     setIsDetecting(true)
     setError(null)
@@ -51,7 +60,7 @@ export default function MultiImagePage() {
     try {
       // Upload source image first
       console.log('上传图片进行人脸检测...')
-      const uploadResponse = await apiService.uploadFile(sourceImage)
+      const uploadResponse = await apiService.uploadFile(targetImage)
       if (!uploadResponse.success || !uploadResponse.data) {
         throw new Error('图片上传失败')
       }
@@ -69,7 +78,7 @@ export default function MultiImagePage() {
       // Initialize face mappings
       const mappings: FaceMapping[] = faces.faces.map((_, index) => ({
         faceId: `face_${index}`,
-        targetFile: null
+        sourceFile: null
       }))
       setFaceMappings(mappings)
       
@@ -83,13 +92,13 @@ export default function MultiImagePage() {
 
   const handleFaceFileSelect = (faceIndex: number, file: File | null) => {
     const newMappings = [...faceMappings]
-    newMappings[faceIndex].targetFile = file
+    newMappings[faceIndex].sourceFile = file
     newMappings[faceIndex].previewUrl = file ? URL.createObjectURL(file) : undefined
     setFaceMappings(newMappings)
   }
 
   const handleProcess = async () => {
-    if (!sourceImage || !detectedFaces || faceMappings.some(m => !m.targetFile)) return
+    if (!targetImage || !detectedFaces || faceMappings.some(m => !m.sourceFile)) return
     
     setIsProcessing(true)
     setError(null)
@@ -98,7 +107,7 @@ export default function MultiImagePage() {
     try {
       // Upload target image (the original multi-person image)
       console.log('上传目标图片（原多人图片）...')
-      const targetResponse = await apiService.uploadFile(sourceImage)
+      const targetResponse = await apiService.uploadFile(targetImage)
       if (!targetResponse.success || !targetResponse.data) {
         throw new Error('目标图片上传失败')
       }
@@ -108,9 +117,9 @@ export default function MultiImagePage() {
       
       for (let i = 0; i < faceMappings.length; i++) {
         const mapping = faceMappings[i]
-        if (mapping.targetFile) {
+        if (mapping.sourceFile) {
           console.log(`上传替换人脸 ${i + 1}...`)
-          const sourceResponse = await apiService.uploadFile(mapping.targetFile)
+          const sourceResponse = await apiService.uploadFile(mapping.sourceFile)
           if (!sourceResponse.success || !sourceResponse.data) {
             throw new Error(`替换人脸 ${i + 1} 上传失败`)
           }
@@ -132,13 +141,28 @@ export default function MultiImagePage() {
 
       if (processResponse.success && processResponse.data) {
         const jobId = processResponse.data.jobId
-        setProcessingStatus({
+        
+        const initialStatus: ProcessingJob = {
           id: jobId,
-          status: 'pending',
+          status: 'pending' as const,
           progress: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
+        }
+        
+        setProcessingStatus(initialStatus)
+        
+        // Add to task history
+        const historyTask: TaskHistoryItem = {
+          ...initialStatus,
+          title: `多人换脸 - ${targetImage.name} (${faceMappings.length}个人脸)`,
+          type: 'multi-image',
+          files: {
+            target: targetImage.name,
+            source: faceMappings.map(m => m.sourceFile?.name).filter(Boolean).join(', ')
+          }
+        }
+        taskHistory.addTask(historyTask)
         
         setTimeout(() => pollJobStatus(jobId), 2000)
       } else {
@@ -161,16 +185,41 @@ export default function MultiImagePage() {
     }
   }
 
-  const canDetect = sourceImage && !isDetecting && !detectedFaces
-  const canProcess = sourceImage && detectedFaces && faceMappings.every(m => m.targetFile) && !isProcessing
+  const handleTaskSelect = (task: TaskHistoryItem) => {
+    setSelectedHistoryTask(task)
+    // Clear current processing state to show historical result
+    setProcessingStatus(null)
+    setIsProcessing(false)
+    setError(null)
+  }
+
+  const handleDownloadHistory = (task: TaskHistoryItem) => {
+    if (task.result_url) {
+      const link = document.createElement('a')
+      link.href = apiService.getDownloadUrl(task.result_url.split('/').pop() || '')
+      const extension = task.type === 'video' ? 'mp4' : 'jpg'
+      link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`
+      link.click()
+    }
+  }
+
+  const canDetect = targetImage && !isDetecting && !detectedFaces
+  const canProcess = targetImage && detectedFaces && faceMappings.every(m => m.sourceFile) && !isProcessing
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">多人图片换脸</h1>
         <p className="mt-2 text-lg text-gray-600">
-          上传包含多人的图片，系统将识别所有人脸并允许您分别替换
+          上传包含多人的目标图片，系统将识别所有人脸并允许您为每个人脸选择替换的源人脸
         </p>
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-center">
+            <div className="text-blue-800 text-sm">
+              💡 <strong>操作流程：</strong>1. 上传目标图片（包含多人） → 2. 检测人脸 → 3. 为每个人脸选择替换的源人脸图片 → 4. 开始换脸
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -186,31 +235,31 @@ export default function MultiImagePage() {
         </div>
       )}
 
-      {/* Step 1: Upload Source Image */}
+      {/* Step 1: Upload Target Image */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">第一步：上传原图</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">第一步：上传目标图片</h2>
         <FileUpload
-          label="包含多人的原图"
-          description="上传包含多个人脸的图片"
-          onFileSelect={setSourceImage}
-          currentFile={sourceImage}
+          label="包含多人的目标图片"
+          description="上传包含多个人脸的目标图片"
+          onFileSelect={setTargetImage}
+          currentFile={targetImage}
           onRemove={() => {
-            setSourceImage(null)
+            setTargetImage(null)
             setDetectedFaces(null)
             setFaceMappings([])
           }}
           accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
         />
-        {sourceImage && (
+        {targetImage && (
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <img
-                src={URL.createObjectURL(sourceImage)}
+                src={URL.createObjectURL(targetImage)}
                 alt="原图"
                 className="w-full h-64 object-cover rounded-lg"
               />
               <p className="text-sm text-gray-500 mt-2">
-                文件大小: {(sourceImage.size / 1024 / 1024).toFixed(2)} MB
+                文件大小: {(targetImage.size / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
             <div className="flex flex-col justify-center">
@@ -247,7 +296,7 @@ export default function MultiImagePage() {
       {detectedFaces && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            第二步：为每个人脸选择替换图片 (检测到 {detectedFaces.faces.length} 个人脸)
+            第二步：为每个检测到的人脸选择替换的源人脸 (检测到 {detectedFaces.faces.length} 个人脸)
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -295,7 +344,7 @@ export default function MultiImagePage() {
                   label={`替换人脸 ${index + 1}`}
                   description="上传要替换的人脸图片"
                   onFileSelect={(file) => handleFaceFileSelect(index, file)}
-                  currentFile={faceMappings[index]?.targetFile || null}
+                  currentFile={faceMappings[index]?.sourceFile || null}
                   onRemove={() => handleFaceFileSelect(index, null)}
                   accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
                 />
@@ -344,7 +393,7 @@ export default function MultiImagePage() {
             )}
           </button>
           
-          {faceMappings.some(m => !m.targetFile) && (
+          {faceMappings.some(m => !m.sourceFile) && (
             <p className="mt-2 text-sm text-red-600">
               请为所有检测到的人脸上传替换图片
             </p>
@@ -406,6 +455,45 @@ export default function MultiImagePage() {
           </div>
         </div>
       )}
+
+      {/* Historical Result */}
+      {selectedHistoryTask?.status === 'completed' && selectedHistoryTask.result_url && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">历史任务结果</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <img
+                src={apiService.getDownloadUrl(selectedHistoryTask.result_url.split('/').pop() || '')}
+                alt="历史多人换脸结果"
+                className="w-full rounded-lg shadow-sm"
+                onError={(e) => {
+                  console.error('Historical image load error:', e);
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+加载失败</dGV4dD48L3N2Zz4=';
+                }}
+              />
+            </div>
+            <div className="flex flex-col justify-center">
+              <h4 className="text-lg font-medium text-gray-900 mb-2">{selectedHistoryTask.title}</h4>
+              <p className="text-gray-600 mb-2">
+                任务类型: {selectedHistoryTask.type}
+              </p>
+              <p className="text-gray-600 mb-4">
+                完成时间: {new Date(selectedHistoryTask.updated_at).toLocaleString('zh-CN')}
+              </p>
+              <button
+                onClick={() => handleDownloadHistory(selectedHistoryTask)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                下载结果
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task History */}
+      <TaskHistory onTaskSelect={handleTaskSelect} />
 
       {/* Tips */}
       <div className="mt-8 bg-gray-50 rounded-lg p-6">
