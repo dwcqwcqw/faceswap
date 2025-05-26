@@ -1,0 +1,56 @@
+# RunPod Volume - 额外模型下载命令
+# 在Volume终端中逐个运行这些命令，或者运行 download_additional_models.sh 脚本
+
+# 1. 进入faceswap目录
+cd faceswap
+
+# 2. 创建GFPGAN weights目录
+mkdir -p gfpgan/weights
+
+# 3. 下载额外模型 (总计约1.2GB)
+
+# GFPGAN v1.3 (332MB) - 更自然的人脸修复结果
+wget -c "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth"
+
+# GFPGAN v1.4 (332MB) - 最新版本人脸增强
+wget -c "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth"
+
+# RetinaFace ResNet50 (109MB) - 高精度人脸检测，用于多人视频处理
+wget -c "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"
+
+# MobileNet 检测模型 (1.7MB) - 轻量级快速人脸检测
+wget -c "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_mobilenet0.25_Final.pth"
+
+# ParseNet 人脸解析 (85MB) - 详细人脸解析，用于多人视频处理
+wget -c "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth"
+
+# WFLW 人脸对齐 (59MB) - 精确人脸关键点检测
+wget -c "https://github.com/xinntao/facexlib/releases/download/v0.2.0/alignment_WFLW_4HG.pth"
+
+# HopeNet 头部姿态估计 (23MB) - 头部姿态估计，用于更好的人脸对齐
+wget -c "https://github.com/xinntao/facexlib/releases/download/v0.2.0/headpose_hopenet_alpha1.pth"
+
+# MODNet 肖像抠图 (24MB) - 背景分离，用于肖像处理
+wget -c "https://github.com/xinntao/facexlib/releases/download/v0.2.0/matting_modnet_photographic_portrait_matting.ckpt"
+
+# ArcFace 人脸识别 (92MB) - 人脸身份验证和匹配
+wget -c "https://github.com/xinntao/facexlib/releases/download/v0.2.0/recognition_arcface_ir_se50.pth"
+
+# HyperIQA 质量评估 (112MB) - 图像质量评估和优化
+wget -c "https://github.com/xinntao/facexlib/releases/download/v0.2.0/assessment_hyperIQA.pth"
+
+# 4. 创建软链接到gfpgan/weights目录
+ln -sf "$(pwd)/detection_Resnet50_Final.pth" "gfpgan/weights/detection_Resnet50_Final.pth"
+ln -sf "$(pwd)/parsing_parsenet.pth" "gfpgan/weights/parsing_parsenet.pth"
+ln -sf "$(pwd)/detection_mobilenet0.25_Final.pth" "gfpgan/weights/detection_mobilenet0.25_Final.pth"
+ln -sf "$(pwd)/alignment_WFLW_4HG.pth" "gfpgan/weights/alignment_WFLW_4HG.pth"
+ln -sf "$(pwd)/headpose_hopenet_alpha1.pth" "gfpgan/weights/headpose_hopenet_alpha1.pth"
+ln -sf "$(pwd)/matting_modnet_photographic_portrait_matting.ckpt" "gfpgan/weights/matting_modnet_photographic_portrait_matting.ckpt"
+ln -sf "$(pwd)/recognition_arcface_ir_se50.pth" "gfpgan/weights/recognition_arcface_ir_se50.pth"
+ln -sf "$(pwd)/assessment_hyperIQA.pth" "gfpgan/weights/assessment_hyperIQA.pth"
+
+# 5. 验证下载
+ls -la *.pth *.ckpt
+ls -la gfpgan/weights/
+
+echo "✅ 所有额外模型下载完成！总计约1.2GB" 
