@@ -159,7 +159,7 @@ def setup_volume_models():
         'detection_mobilenet0.25_Final.pth': 'Mobile face detection model (lightweight)',
         'alignment_WFLW_4HG.pth': 'Face alignment model (WFLW)',
         'headpose_hopenet.pth': 'Head pose estimation model',
-        'matting_modnet_portrait.pth': 'Portrait matting model',
+        'matting_modnet_photographic_portrait_matting.ckpt': 'Portrait matting model',
         'recognition_arcface_ir_se50.pth': 'Face recognition model (ArcFace)',
         'assessment_hyperIQA.pth': 'Image quality assessment model'
     }
@@ -197,7 +197,7 @@ def setup_volume_models():
         'detection_mobilenet0.25_Final.pth': 'Mobile face detection model (lightweight)',
         'alignment_WFLW_4HG.pth': 'Face alignment model (WFLW)',
         'headpose_hopenet.pth': 'Head pose estimation model',
-        'matting_modnet_portrait.pth': 'Portrait matting model',
+        'matting_modnet_photographic_portrait_matting.ckpt': 'Portrait matting model',
         'recognition_arcface_ir_se50.pth': 'Face recognition model (ArcFace)',
         'assessment_hyperIQA.pth': 'Image quality assessment model'
     }
