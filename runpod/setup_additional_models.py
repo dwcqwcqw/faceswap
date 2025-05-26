@@ -25,7 +25,13 @@ def setup_gfpgan_models(volume_path='/runpod-volume/faceswap'):
     # Models to setup
     models_to_setup = [
         'detection_Resnet50_Final.pth',
-        'parsing_parsenet.pth'
+        'parsing_parsenet.pth',
+        'detection_mobilenet0.25_Final.pth',
+        'alignment_WFLW_4HG.pth',
+        'headpose_hopenet_alpha1.pth',
+        'matting_modnet_photographic_portrait_matting.ckpt',
+        'recognition_arcface_ir_se50.pth',
+        'assessment_hyperIQA.pth'
     ]
     
     for model_name in models_to_setup:
@@ -83,7 +89,15 @@ def download_missing_models(volume_path='/runpod-volume/faceswap'):
     
     models_urls = {
         'detection_Resnet50_Final.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth',
-        'parsing_parsenet.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth'
+        'parsing_parsenet.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth',
+        'detection_mobilenet0.25_Final.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_mobilenet0.25_Final.pth',
+        'alignment_WFLW_4HG.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.2.0/alignment_WFLW_4HG.pth',
+        'headpose_hopenet_alpha1.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.2.0/headpose_hopenet_alpha1.pth',
+        'matting_modnet_photographic_portrait_matting.ckpt': 'https://github.com/xinntao/facexlib/releases/download/v0.2.0/matting_modnet_photographic_portrait_matting.ckpt',
+        'recognition_arcface_ir_se50.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.2.0/recognition_arcface_ir_se50.pth',
+        'assessment_hyperIQA.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.2.0/assessment_hyperIQA.pth',
+        'GFPGANv1.3.pth': 'https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth',
+        'GFPGANv1.4.pth': 'https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth'
     }
     
     for model_name, url in models_urls.items():

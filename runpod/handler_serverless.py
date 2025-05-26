@@ -148,13 +148,20 @@ def setup_volume_models():
     # 检查必需模型是否存在
     essential_models = {
         'inswapper_128_fp16.onnx': 'Face swapper model',
-        'GFPGANv1.4.pth': 'Face enhancer model', 
+        'GFPGANv1.4.pth': 'Face enhancer model (GFPGAN v1.4)', 
+        'GFPGANv1.3.pth': 'Face enhancer model (GFPGAN v1.3 - alternative)',
         'RealESRGAN_x4plus.pth': 'Super resolution model (4x)',
         'RealESRGAN_x2plus.pth': 'Super resolution model (2x)',
-        '79999_iter.pth': 'Face parsing model',
+        '79999_iter.pth': 'Face parsing model (BiSeNet)',
         'buffalo_l': 'Face analysis model (directory)',
-        'detection_Resnet50_Final.pth': 'Face detection model (for video processing)',
-        'parsing_parsenet.pth': 'Face parsing model (for video processing)'
+        'detection_Resnet50_Final.pth': 'Face detection model (RetinaFace - for video processing)',
+        'parsing_parsenet.pth': 'Face parsing model (ParseNet - for video processing)',
+        'detection_mobilenet0.25_Final.pth': 'Mobile face detection model (lightweight)',
+        'alignment_WFLW_4HG.pth': 'Face alignment model (WFLW)',
+        'headpose_hopenet_alpha1.pth': 'Head pose estimation model',
+        'matting_modnet_photographic_portrait_matting.ckpt': 'Portrait matting model',
+        'recognition_arcface_ir_se50.pth': 'Face recognition model (ArcFace)',
+        'assessment_hyperIQA.pth': 'Image quality assessment model'
     }
     
     found_models = []
@@ -185,8 +192,14 @@ def setup_volume_models():
     
     # 检查额外的GFPGAN模型文件
     gfpgan_models = {
-        'detection_Resnet50_Final.pth': 'Face detection model (for video processing)',
-        'parsing_parsenet.pth': 'Face parsing model (for video processing)'
+        'detection_Resnet50_Final.pth': 'Face detection model (RetinaFace - for video processing)',
+        'parsing_parsenet.pth': 'Face parsing model (ParseNet - for video processing)',
+        'detection_mobilenet0.25_Final.pth': 'Mobile face detection model (lightweight)',
+        'alignment_WFLW_4HG.pth': 'Face alignment model (WFLW)',
+        'headpose_hopenet_alpha1.pth': 'Head pose estimation model',
+        'matting_modnet_photographic_portrait_matting.ckpt': 'Portrait matting model',
+        'recognition_arcface_ir_se50.pth': 'Face recognition model (ArcFace)',
+        'assessment_hyperIQA.pth': 'Image quality assessment model'
     }
     
     for model_name, description in gfpgan_models.items():
