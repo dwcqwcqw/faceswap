@@ -57,8 +57,8 @@ export function analyzeError(error: string): ErrorSuggestion {
       title: '📁 格式问题的解决方案：',
       suggestions: [
         '确保使用支持的文件格式',
-        '图片：JPG、PNG格式',
-        '视频：MP4、AVI、MOV格式',
+        '图片：JPG、PNG、BMP、TIFF、WebP、GIF、HEIC等',
+        '视频：MP4、AVI、MOV、MKV、WMV、FLV、3GP、WebM等',
         '避免使用损坏或特殊格式的文件',
         '尝试重新保存或编码文件'
       ],

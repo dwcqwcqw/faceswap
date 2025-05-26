@@ -271,7 +271,9 @@ export default function SingleImagePage() {
             onFileSelect={setSourceImage}
             currentFile={sourceImage}
             onRemove={() => setSourceImage(null)}
-            accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
+            accept={{ 
+              'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
+            }}
           />
           {sourceImage && (
             <div className="mt-4">
@@ -295,7 +297,9 @@ export default function SingleImagePage() {
             onFileSelect={setTargetFace}
             currentFile={targetFace}
             onRemove={() => setTargetFace(null)}
-            accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
+            accept={{ 
+              'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
+            }}
           />
           {targetFace && (
             <div className="mt-4">
@@ -419,7 +423,7 @@ export default function SingleImagePage() {
           <li>• 确保目标人脸图片中的人脸朝向正前方</li>
           <li>• 单人换脸请避免使用多人脸图片</li>
           <li>• 尽量使用光线条件相似的图片</li>
-          <li>• 支持 JPG、PNG 格式，建议文件大小不超过10MB</li>
+          <li>• 支持多种图片格式：JPG、PNG、BMP、TIFF、WebP、GIF、HEIC等</li>
         </ul>
       </div>
     </div>

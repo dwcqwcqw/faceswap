@@ -173,8 +173,6 @@ export default function VideoPage() {
 
 
   const canProcess = sourceVideo && targetFace && !isProcessing
-  const videoSizeLimit = 100 * 1024 * 1024 // 100MB
-  const isVideoTooLarge = targetFace ? targetFace.size > videoSizeLimit : false
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -186,7 +184,7 @@ export default function VideoPage() {
         <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center justify-center">
             <div className="text-blue-800 text-sm">
-              💡 <strong>上传要求：</strong>左侧上传人脸图片（JPG/PNG），右侧上传目标视频（MP4/AVI/MOV）
+              💡 <strong>上传要求：</strong>左侧上传人脸图片，右侧上传目标视频
             </div>
           </div>
         </div>
@@ -252,7 +250,7 @@ export default function VideoPage() {
                 >
                   关闭错误信息
                 </button>
-                {canProcess && !isVideoTooLarge && (
+                {canProcess && (
                   <button
                     onClick={handleProcess}
                     className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -267,32 +265,19 @@ export default function VideoPage() {
         </div>
       )}
 
-      {/* Video Size Warning */}
-      {isVideoTooLarge && targetFace && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <div className="flex">
-            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 mr-2" />
-            <div>
-              <h3 className="text-sm font-medium text-yellow-800">文件大小警告</h3>
-              <p className="text-sm text-yellow-700">
-                视频文件过大 ({(targetFace.size / 1024 / 1024).toFixed(2)} MB)，建议压缩到100MB以下以获得更快的处理速度。
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Video Size Warning - Removed size restrictions */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Source Face Upload */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <FileUpload
             label="人脸图片"
-            description="上传要替换的人脸图片（仅限JPG/PNG格式）"
+            description="上传要替换的人脸图片"
             onFileSelect={setSourceVideo}
             currentFile={sourceVideo}
             onRemove={() => setSourceVideo(null)}
             accept={{ 
-              'image/*': ['.png', '.jpg', '.jpeg']
+              'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
             }}
           />
           {sourceVideo && (
@@ -323,12 +308,12 @@ export default function VideoPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <FileUpload
             label="目标视频"
-            description="上传需要换脸的视频文件（仅限MP4/AVI/MOV格式）"
+            description="上传需要换脸的视频文件"
             onFileSelect={setTargetFace}
             currentFile={targetFace}
             onRemove={() => setTargetFace(null)}
             accept={{ 
-              'video/*': ['.mp4', '.avi', '.mov', '.mkv']
+              'video/*': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.3gp', '.m4v', '.webm', '.ogg', '.mpg', '.mpeg']
             }}
           />
           {targetFace && (
@@ -361,10 +346,10 @@ export default function VideoPage() {
       <div className="text-center mb-8">
         <button
           onClick={handleProcess}
-          disabled={!canProcess || isVideoTooLarge}
+          disabled={!canProcess}
           className={`
             inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md
-            ${canProcess && !isVideoTooLarge
+            ${canProcess
               ? 'text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
               : 'text-gray-400 bg-gray-200 cursor-not-allowed'
             }
@@ -383,12 +368,7 @@ export default function VideoPage() {
             </>
           )}
         </button>
-        
-        {isVideoTooLarge && (
-          <p className="mt-2 text-sm text-red-600">
-            请上传小于100MB的视频文件
-          </p>
-        )}
+
       </div>
 
       {/* Processing Status */}
@@ -485,10 +465,9 @@ export default function VideoPage() {
       <div className="mt-8 bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-3">视频换脸最佳实践:</h3>
         <ul className="text-sm text-gray-600 space-y-2">
-          <li>• <strong>严格格式要求：</strong>人脸图片仅支持 JPG、PNG 格式，目标视频仅支持 MP4、AVI、MOV 格式</li>
+          <li>• <strong>格式支持：</strong>人脸图片支持 JPG、PNG、BMP、TIFF、WebP、GIF、HEIC等格式</li>
+          <li>• <strong>视频格式：</strong>支持 MP4、AVI、MOV、MKV、WMV、FLV、3GP、WebM等格式</li>
           <li>• <strong>上传顺序：</strong>左侧上传人脸图片，右侧上传目标视频</li>
-          <li>• 建议视频分辨率不超过1080p，文件大小不超过100MB</li>
-          <li>• <strong>AI超分辨率：</strong>自动为低分辨率视频（&lt;1024px）提供2x高清增强</li>
           <li>• 确保视频中的人脸清晰可见，避免快速移动或模糊</li>
           <li>• 人脸图片最好与视频中的人脸角度和光线相似</li>
           <li>• 视频处理时间较长，通常需要几分钟到几十分钟</li>

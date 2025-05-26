@@ -86,46 +86,61 @@ export const apiService = {
         throw new Error('文件为空或无效')
       }
 
-      // 2. 文件大小检查
-      const maxSize = 200 * 1024 * 1024 // 200MB
-      if (file.size > maxSize) {
-        throw new Error(`文件过大，请选择小于 ${Math.round(maxSize / 1024 / 1024)}MB 的文件`)
+      // 2. 文件大小检查 - 移除严格限制，只警告超大文件
+      const warnSize = 1024 * 1024 * 1024 // 1GB 警告阈值
+      if (file.size > warnSize) {
+        console.warn(`⚠️ 文件较大: ${(file.size / 1024 / 1024 / 1024).toFixed(2)}GB，上传可能需要较长时间`)
       }
 
-      // 3. 文件格式验证
+      // 3. 文件格式验证 - 扩展支持格式
       const isImage = file.type.startsWith('image/')
       const isVideo = file.type.startsWith('video/')
       
       if (!isImage && !isVideo) {
-        throw new Error('只支持图片（JPG、PNG）和视频（MP4、AVI、MOV）格式')
+        throw new Error('只支持图片和视频文件格式')
       }
 
-      // 4. 详细格式检查
-      const supportedImageTypes = ['image/jpeg', 'image/jpg', 'image/png']
-      const supportedVideoTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/quicktime']
+      // 4. 详细格式检查 - 大幅扩展支持的格式
+      const supportedImageTypes = [
+        'image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/tiff', 'image/tif',
+        'image/webp', 'image/gif', 'image/svg+xml', 'image/x-icon', 'image/heic', 'image/heif'
+      ]
+      const supportedVideoTypes = [
+        'video/mp4', 'video/avi', 'video/mov', 'video/quicktime', 'video/mkv', 'video/x-matroska',
+        'video/wmv', 'video/x-ms-wmv', 'video/flv', 'video/x-flv', 'video/3gp', 'video/3gpp',
+        'video/m4v', 'video/webm', 'video/ogg', 'video/mp2t', 'video/mpeg', 'video/x-msvideo'
+      ]
       
       if (isImage && !supportedImageTypes.includes(file.type)) {
-        throw new Error('图片格式不支持，请使用 JPG 或 PNG 格式')
+        console.warn(`⚠️ 图片格式 ${file.type} 可能不被完全支持，但将尝试处理`)
       }
       
       if (isVideo && !supportedVideoTypes.includes(file.type)) {
-        throw new Error('视频格式不支持，请使用 MP4、AVI 或 MOV 格式')
+        console.warn(`⚠️ 视频格式 ${file.type} 可能不被完全支持，但将尝试处理`)
       }
 
-      // 5. 文件头验证 (Magic Bytes)
-      await this.validateFileHeader(file)
+      // 5. 文件头验证 (Magic Bytes) - 可选验证，不阻止上传
+      try {
+        await this.validateFileHeader(file)
+        console.log('✅ 文件头验证通过')
+      } catch (error) {
+        console.warn('⚠️ 文件头验证失败，但将继续上传:', error)
+        // 不抛出错误，允许继续上传
+      }
 
       console.log(`📤 开始上传文件: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)}MB)`)
 
       const formData = new FormData()
       formData.append('file', file)
       
-      // 添加超时和重试机制
+      // 添加超时和重试机制 - 根据文件大小动态调整超时时间
+      const timeoutDuration = Math.max(120000, Math.min(file.size / 1024 / 1024 * 10000, 600000)) // 最少2分钟，最多10分钟
+      
       const response = await api.post('/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 120000, // 2分钟超时
+        timeout: timeoutDuration,
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
@@ -151,13 +166,13 @@ export const apiService = {
       
       // 提供更友好的错误信息
       if (error.code === 'ECONNABORTED') {
-        throw new Error('上传超时，请检查网络连接并重试')
+        throw new Error('上传超时，请检查网络连接并重试，或尝试压缩文件大小')
       } else if (error.code === 'ERR_NETWORK') {
         throw new Error('网络错误，请检查网络连接')
       } else if (error.response?.status === 413) {
-        throw new Error('文件过大，服务器拒绝接收')
+        throw new Error('文件过大，服务器拒绝接收，请尝试压缩文件')
       } else if (error.response?.status === 415) {
-        throw new Error('文件格式不支持')
+        throw new Error('文件格式可能不受支持，但可以尝试上传')
       } else if (error.response?.data?.error) {
         throw new Error(error.response.data.error)
       } else {
@@ -166,7 +181,7 @@ export const apiService = {
     }
   },
 
-  // 文件头验证函数
+  // 文件头验证函数 - 扩展支持更多格式
   async validateFileHeader(file: File): Promise<void> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -179,7 +194,7 @@ export const apiService = {
             return
           }
 
-          const bytes = new Uint8Array(arrayBuffer.slice(0, 12))
+          const bytes = new Uint8Array(arrayBuffer.slice(0, 16)) // 读取更多字节
           const header = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
           
           // 验证文件头是否与扩展名匹配
@@ -187,54 +202,97 @@ export const apiService = {
           const isValidVideo = this.validateVideoHeader(header, file.type)
           
           if (!isValidImage && !isValidVideo) {
-            reject(new Error('文件已损坏或格式不正确，请重新选择文件'))
-            return
+            // 降级为警告而不是错误
+            console.warn('文件头验证失败，但允许继续上传')
           }
 
           resolve()
         } catch (error) {
-          reject(new Error('文件验证失败，文件可能已损坏'))
+          console.warn('文件验证过程中出现问题:', error)
+          resolve() // 不阻止上传
         }
       }
       
       reader.onerror = () => {
-        reject(new Error('无法读取文件，文件可能已损坏'))
+        console.warn('无法读取文件，但允许继续上传')
+        resolve() // 不阻止上传
       }
       
-      // 只读取前12字节用于验证
-      reader.readAsArrayBuffer(file.slice(0, 12))
+      // 读取前16字节用于验证
+      reader.readAsArrayBuffer(file.slice(0, 16))
     })
   },
 
-  // 图片文件头验证
+  // 图片文件头验证 - 扩展支持更多格式
   validateImageHeader(header: string, mimeType: string): boolean {
-    const jpegHeaders = ['ffd8ff', 'ffd8ffe0', 'ffd8ffe1', 'ffd8ffe2', 'ffd8ffe3', 'ffd8ffe8']
-    const pngHeader = '89504e47'
-    
-    if (mimeType.includes('jpeg') || mimeType.includes('jpg')) {
-      return jpegHeaders.some(jpegHeader => header.startsWith(jpegHeader))
-    } else if (mimeType.includes('png')) {
-      return header.startsWith(pngHeader)
+    const imageSignatures = {
+      jpeg: ['ffd8ff', 'ffd8ffe0', 'ffd8ffe1', 'ffd8ffe2', 'ffd8ffe3', 'ffd8ffe8'],
+      png: ['89504e47'],
+      bmp: ['424d'],
+      gif: ['474946383761', '474946383961'], // GIF87a, GIF89a
+      tiff: ['49492a00', '4d4d002a'], // TIFF little/big endian
+      webp: ['52494646'], // RIFF (WebP starts with RIFF)
+      heic: ['66747970686569'], // ftyp followed by heic
+      ico: ['00000100'], // ICO format
     }
     
-    return false
+    // 更宽松的验证策略
+    if (mimeType.includes('jpeg') || mimeType.includes('jpg')) {
+      return imageSignatures.jpeg.some(sig => header.startsWith(sig)) || header.startsWith('ffd8')
+    } else if (mimeType.includes('png')) {
+      return header.startsWith(imageSignatures.png[0])
+    } else if (mimeType.includes('bmp')) {
+      return header.startsWith(imageSignatures.bmp[0])
+    } else if (mimeType.includes('gif')) {
+      return imageSignatures.gif.some(sig => header.startsWith(sig))
+    } else if (mimeType.includes('tiff') || mimeType.includes('tif')) {
+      return imageSignatures.tiff.some(sig => header.startsWith(sig))
+    } else if (mimeType.includes('webp')) {
+      return header.startsWith(imageSignatures.webp[0])
+    } else if (mimeType.includes('heic') || mimeType.includes('heif')) {
+      return header.includes('6865696') // contains 'hei'
+    } else if (mimeType.includes('icon')) {
+      return header.startsWith(imageSignatures.ico[0])
+    }
+    
+    // 对于其他格式或无法识别的格式，返回true（允许上传）
+    return true
   },
 
-  // 视频文件头验证
+  // 视频文件头验证 - 扩展支持更多格式
   validateVideoHeader(header: string, mimeType: string): boolean {
-    const mp4Headers = ['66747970', '00000018', '00000020']
-    const aviHeader = '52494646'
-    const movHeaders = ['66747970', '6d6f6f76', '6d646174']
-    
-    if (mimeType.includes('mp4')) {
-      return mp4Headers.some(mp4Header => header.includes(mp4Header))
-    } else if (mimeType.includes('avi')) {
-      return header.startsWith(aviHeader)
-    } else if (mimeType.includes('mov') || mimeType.includes('quicktime')) {
-      return movHeaders.some(movHeader => header.includes(movHeader))
+    const videoSignatures = {
+      mp4: ['66747970', '00000018', '00000020'],
+      avi: ['52494646'], // RIFF
+      mkv: ['1a45dfa3'], // EBML signature
+      wmv: ['3026b275'], // ASF signature
+      flv: ['464c5601'], // FLV signature
+      '3gp': ['66747970'], // ftyp
+      webm: ['1a45dfa3'], // EBML (same as MKV)
+      mov: ['66747970', '6d6f6f76', '6d646174'], // QuickTime
     }
     
-    return true // 对于其他视频格式，暂时放行
+    // 更宽松的验证策略
+    if (mimeType.includes('mp4')) {
+      return videoSignatures.mp4.some(sig => header.includes(sig)) || header.includes('6674797')
+    } else if (mimeType.includes('avi')) {
+      return header.startsWith(videoSignatures.avi[0])
+    } else if (mimeType.includes('mkv') || mimeType.includes('matroska')) {
+      return header.startsWith(videoSignatures.mkv[0])
+    } else if (mimeType.includes('wmv') || mimeType.includes('asf')) {
+      return header.startsWith(videoSignatures.wmv[0])
+    } else if (mimeType.includes('flv')) {
+      return header.startsWith(videoSignatures.flv[0])
+    } else if (mimeType.includes('3gp') || mimeType.includes('3gpp')) {
+      return header.includes('66747970')
+    } else if (mimeType.includes('webm')) {
+      return header.startsWith(videoSignatures.webm[0])
+    } else if (mimeType.includes('mov') || mimeType.includes('quicktime')) {
+      return videoSignatures.mov.some(sig => header.includes(sig))
+    }
+    
+    // 对于其他格式或无法识别的格式，返回true（允许上传）
+    return true
   },
 
   // Face detection

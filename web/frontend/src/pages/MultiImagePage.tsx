@@ -350,7 +350,9 @@ export default function MultiImagePage() {
             setDetectedFaces(null)
             setFaceMappings([])
           }}
-          accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
+          accept={{ 
+            'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
+          }}
         />
         {targetImage && (
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -464,7 +466,9 @@ export default function MultiImagePage() {
                   onFileSelect={(file) => handleFaceFileSelect(index, file)}
                   currentFile={faceMappings[index]?.sourceFile || null}
                   onRemove={() => handleFaceFileSelect(index, null)}
-                  accept={{ 'image/*': ['.png', '.jpg', '.jpeg'] }}
+                  accept={{ 
+              'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
+            }}
                 />
 
                 {/* Target face preview */}
