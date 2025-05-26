@@ -139,7 +139,7 @@ def check_and_download_models():
             'description': 'Super Resolution Model (Real-ESRGAN 4x)'
         },
         'RealESRGAN_x2plus.pth': {
-            'url': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth', 
+            'url': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth', 
             'description': 'Super Resolution Model (Real-ESRGAN 2x)'
         },
         '79999_iter.pth': {

@@ -23,7 +23,7 @@ This directory should contain the following model files for the face swap applic
 
 - **File**: `RealESRGAN_x2plus.pth`  
 - **Size**: ~64MB
-- **Download**: [GitHub](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth)
+- **Download**: [GitHub](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth)
 - **Description**: AI Super Resolution model for 2x upscaling
 
 ## Download Instructions
@@ -54,7 +54,7 @@ curl -L https://huggingface.co/hacksider/deep-live-cam/resolve/main/GFPGANv1.4.p
 
 # Download RealESRGAN models (optional, for super resolution)
 curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o RealESRGAN_x4plus.pth
-curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth -o RealESRGAN_x2plus.pth
+curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth -o RealESRGAN_x2plus.pth
 ```
 
 ### Option 3: Using wget
@@ -63,7 +63,7 @@ cd models/
 wget https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx
 wget https://huggingface.co/hacksider/deep-live-cam/resolve/main/GFPGANv1.4.pth
 wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
-wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth
 ```
 
 ## Verification

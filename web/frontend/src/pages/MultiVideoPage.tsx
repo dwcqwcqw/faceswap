@@ -242,17 +242,19 @@ export default function MultiVideoPage() {
       
       console.log('🎯 最终映射结果:', uploadedMappings)
 
-      // Start processing (using multi-video processing)
-      console.log('开始处理多人视频换脸...')
-      console.log('📋 Face mappings:', uploadedMappings)
-      console.log('📋 Target file:', targetResponse.data.fileId)
-      
       // 确保face_mappings不为空
       if (Object.keys(uploadedMappings).length === 0) {
         throw new Error('没有有效的人脸映射，请确保所有人脸都已上传替换图片')
       }
       
-      const processResponse = await apiService.processMultiVideo({
+      // 详细日志检查
+      console.log('🔍 多人视频处理请求详情:')
+      console.log('  - 目标文件ID:', targetResponse.data.fileId)
+      console.log('  - Face mappings 对象:', uploadedMappings)
+      console.log('  - Face mappings 键值对数量:', Object.keys(uploadedMappings).length)
+      console.log('  - Face mappings JSON:', JSON.stringify(uploadedMappings, null, 2))
+      
+      const processRequest = {
         source_file: '', // Not used for multi-face - individual mappings are used instead
         target_file: targetResponse.data.fileId,
         face_mappings: uploadedMappings,
@@ -263,7 +265,11 @@ export default function MultiVideoPage() {
           mouth_mask: false,  // 使用新的优化配置
           use_face_enhancer: true,  // 使用新的优化配置
         }
-      })
+      }
+      
+      console.log('🚀 发送到API的完整请求:', JSON.stringify(processRequest, null, 2))
+      
+      const processResponse = await apiService.processMultiVideo(processRequest)
 
       if (processResponse.success && processResponse.data) {
         const jobId = processResponse.data.jobId

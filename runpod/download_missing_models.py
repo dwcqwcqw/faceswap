@@ -75,7 +75,7 @@ def ensure_models_available():
             "description": "Super resolution model (4x upscale)"
         },
         "RealESRGAN_x2plus.pth": {
-            "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRGAN_x2plus.pth",
+            "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
             "description": "Super resolution model (2x upscale)"
         }
     }
