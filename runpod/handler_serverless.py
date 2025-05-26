@@ -1588,34 +1588,34 @@ def handler(job):
             
         elif process_type == "single_image_base64":
             # Single image face swap with base64 data (backward compatibility)
-            source_data = job_input.get("source_image")
-            target_data = job_input.get("target_image")
+            source_data = job_input.get("source_image") or job_input.get("source_file")
+            target_data = job_input.get("target_image") or job_input.get("target_file")
             
             if not source_data or not target_data:
-                return {"error": "Missing source_image or target_image for single_image_base64 processing"}
+                return {"error": "Missing source_image/source_file or target_image/target_file for single_image_base64 processing"}
             
             logger.info(f"📸 Processing single image face swap (base64)")
             result = process_image_swap_from_base64(source_data, target_data)
             return result
             
         elif process_type == "video":
-            # Video face swap
-            source_data = job_input.get("source_image")  # Can be URL or base64
-            target_data = job_input.get("target_video")   # Can be URL or base64
+            # Video face swap - support both field name formats
+            source_data = job_input.get("source_image") or job_input.get("source_file")  # Can be URL or base64
+            target_data = job_input.get("target_video") or job_input.get("target_file")   # Can be URL or base64
             
             if not source_data or not target_data:
-                return {"error": "Missing source_image or target_video for video processing"}
+                return {"error": "Missing source_image/source_file or target_video/target_file for video processing"}
             
             logger.info(f"🎬 Processing video face swap")
             result = process_video_swap(source_data, target_data)
             return result
             
         elif process_type == "detect_faces":
-            # Face detection
-            image_url = job_input.get("image_url")
+            # Face detection - support both field name formats
+            image_url = job_input.get("image_url") or job_input.get("image_file")
             
             if not image_url:
-                return {"error": "Missing image_url for detect_faces processing"}
+                return {"error": "Missing image_url/image_file for detect_faces processing"}
             
             logger.info(f"🔍 Processing face detection")
             logger.info(f"   Image: {image_url}")
@@ -1624,12 +1624,12 @@ def handler(job):
             return result
             
         elif process_type == "multi_image":
-            # Multi-person face swap
-            target_url = job_input.get("target_url")
+            # Multi-person face swap - support both field name formats
+            target_url = job_input.get("target_url") or job_input.get("target_file")
             face_mappings = job_input.get("face_mappings", {})
             
             if not target_url or not face_mappings:
-                return {"error": "Missing target_url or face_mappings for multi_image processing"}
+                return {"error": "Missing target_url/target_file or face_mappings for multi_image processing"}
             
             logger.info(f"👥 Processing multi-person face swap")
             logger.info(f"   Target: {target_url}")
