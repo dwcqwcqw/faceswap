@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import FileUpload from '../components/FileUpload'
 import TaskHistory from '../components/TaskHistory'
 import TaskDetail from '../components/TaskDetail'
-import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon, PlayIcon, VideoCameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon, PlayIcon, VideoCameraIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
-import { ProcessingJob, DetectedFaces } from '../types'
+import { ProcessingJob, DetectedFaces, ApiResponse } from '../types'
 import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
 
 interface FaceMapping {
@@ -74,15 +74,28 @@ export default function MultiVideoPage() {
       const ctx = canvas.getContext('2d')
       
       video.addEventListener('loadedmetadata', () => {
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        video.currentTime = 1 // 获取第1秒的帧
+        // 降低缩略图分辨率以提高速度
+        const maxWidth = 640  // 限制最大宽度
+        const maxHeight = 480 // 限制最大高度
+        
+        let { videoWidth, videoHeight } = video
+        
+        // 按比例缩放
+        if (videoWidth > maxWidth || videoHeight > maxHeight) {
+          const ratio = Math.min(maxWidth / videoWidth, maxHeight / videoHeight)
+          videoWidth = Math.floor(videoWidth * ratio)
+          videoHeight = Math.floor(videoHeight * ratio)
+        }
+        
+        canvas.width = videoWidth
+        canvas.height = videoHeight
+        video.currentTime = 0.5 // 获取0.5秒的帧，更快
       })
       
       video.addEventListener('seeked', () => {
         if (ctx) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-          const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.8)
+          const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.6) // 降低质量到0.6
           resolve(thumbnailDataUrl)
         } else {
           reject(new Error('无法创建canvas context'))
@@ -92,6 +105,15 @@ export default function MultiVideoPage() {
       video.addEventListener('error', () => {
         reject(new Error('视频加载失败'))
       })
+      
+      // 添加超时机制
+      const timeout = setTimeout(() => {
+        reject(new Error('缩略图生成超时'))
+      }, 10000) // 10秒超时
+      
+      video.onloadedmetadata = () => {
+        clearTimeout(timeout)
+      }
       
       video.src = URL.createObjectURL(videoFile)
     })
@@ -131,9 +153,15 @@ export default function MultiVideoPage() {
         throw new Error('缩略图上传失败')
       }
 
-      // Detect faces
+      // Detect faces with timeout and retry
       console.log('检测人脸...')
-      const detectResponse = await apiService.detectFaces(uploadResponse.data.fileId)
+      const detectResponse = await Promise.race([
+        apiService.detectFaces(uploadResponse.data.fileId),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('人脸检测超时，请重试')), 30000) // 30秒超时
+        )
+      ]) as ApiResponse<DetectedFaces>
+      
       if (!detectResponse.success || !detectResponse.data) {
         throw new Error('人脸检测失败')
       }
@@ -142,7 +170,7 @@ export default function MultiVideoPage() {
       setDetectedFaces(faces)
       
       // Initialize face mappings
-      const mappings: FaceMapping[] = faces.faces.map((_, index) => ({
+      const mappings: FaceMapping[] = faces.faces.map((_: any, index: number) => ({
         faceId: `face_${index}`,
         sourceFile: null
       }))
@@ -150,7 +178,21 @@ export default function MultiVideoPage() {
       
     } catch (error: any) {
       console.error('人脸检测错误:', error)
-      setError(error.message || '人脸检测过程中出现错误')
+      
+      // 提供更具体的错误信息和解决建议
+      let errorMessage = '人脸检测过程中出现错误'
+      
+      if (error.message?.includes('timeout') || error.message?.includes('超时')) {
+        errorMessage = '人脸检测超时，请确保网络连接稳定后重试'
+      } else if (error.message?.includes('500')) {
+        errorMessage = '服务器处理错误，请稍后重试或更换视频文件'
+      } else if (error.message?.includes('upload') || error.message?.includes('上传')) {
+        errorMessage = '缩略图上传失败，请检查网络连接'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      setError(errorMessage)
     } finally {
       setIsDetecting(false)
     }
@@ -264,8 +306,6 @@ export default function MultiVideoPage() {
   const handleCloseTaskDetail = () => {
     setSelectedHistoryTask(null)
   }
-
-
 
   const canDetect = targetVideo && targetVideoThumbnail && !isDetecting && !detectedFaces
   const canProcess = targetVideo && detectedFaces && faceMappings.every(m => m.sourceFile) && !isProcessing
@@ -658,9 +698,11 @@ export default function MultiVideoPage() {
           <li>• 确保视频中的人脸清晰可见，避免被遮挡或模糊</li>
           <li>• 为每个检测到的人脸准备相应的高质量替换图片</li>
           <li>• 替换图片中的人脸最好与视频中的角度和光线相似</li>
-          <li>• 处理多人视频换脸需要很长时间，请耐心等待</li>
-          <li>• 建议使用人脸较少且较短的视频以获得更好的效果</li>
+          <li>• <strong>⚡ 优化建议：</strong>使用较短的视频（15秒内）和较少人脸（2-3人）可显著减少处理时间</li>
+          <li>• <strong>🎬 质量设置：</strong>系统平衡了质量和速度，保留人脸增强，多人处理需要较长时间</li>
+          <li>• <strong>📱 移动设备：</strong>强烈建议在WiFi环境下使用，避免使用移动数据</li>
           <li>• 💡 人脸检测按位置排序：从上到下，从左到右</li>
+          <li>• <strong>⏰ 超时提示：</strong>如果人脸检测超时，请尝试更换更清晰的视频或图片</li>
         </ul>
       </div>
     </div>

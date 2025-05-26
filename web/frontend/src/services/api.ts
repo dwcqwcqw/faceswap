@@ -298,10 +298,22 @@ export const apiService = {
   // Face detection
   async detectFaces(fileId: string): Promise<ApiResponse<DetectedFaces>> {
     return this.withRetry(async () => {
-      const response = await api.post('/detect-faces', { fileId })
+      // 为人脸检测设置较短的超时时间
+      const response = await api.post('/detect-faces', { fileId }, {
+        timeout: 45000  // 45秒超时，比默认的60秒短
+      })
       
       if (!response.data?.success) {
-        throw new Error(response.data?.error || '人脸检测失败')
+        const errorMessage = response.data?.error || '人脸检测失败'
+        
+        // 针对特定错误提供更好的错误信息
+        if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+          throw new Error('服务器暂时繁忙，请稍后重试')
+        } else if (errorMessage.includes('timeout')) {
+          throw new Error('人脸检测超时，请重试或更换图片')
+        } else {
+          throw new Error(errorMessage)
+        }
       }
       
       if (!response.data?.data?.faces) {
@@ -309,7 +321,7 @@ export const apiService = {
       }
       
       return response.data
-    }, 'detectFaces')
+    }, 'detectFaces', 2)  // 减少重试次数到2次
   },
 
   // Single image face swap
@@ -357,13 +369,13 @@ export const apiService = {
 
   // Single video face swap
   async processSingleVideo(request: FaceSwapRequest): Promise<ApiResponse<{ jobId: string }>> {
-    // Add high quality default options for video
+    // 优化的视频处理选项 - 保持人脸增强以确保质量
     const defaultOptions = {
       keep_fps: true,
-      video_quality: 18,  // High quality
+      video_quality: 20,  // 平衡质量和速度（20是一个不错的中间值）
       video_encoder: 'libx264' as const,
-      mouth_mask: true,
-      use_face_enhancer: true,
+      mouth_mask: false,  // 关闭嘴部遮罩以提高速度
+      use_face_enhancer: true,  // 保留人脸增强以确保质量
       execution_provider: 'CPUExecutionProvider',
       ...request.options
     }
@@ -381,14 +393,14 @@ export const apiService = {
 
   // Multi-person video face swap
   async processMultiVideo(request: FaceSwapRequest): Promise<ApiResponse<{ jobId: string }>> {
-    // Add high quality default options for multi-video
+    // 优化的多人视频处理选项 - 保持人脸增强
     const defaultOptions = {
       many_faces: true,
       keep_fps: true,
-      video_quality: 18,  // High quality
+      video_quality: 20,  // 平衡质量和速度
       video_encoder: 'libx264' as const,
-      mouth_mask: true,
-      use_face_enhancer: true,
+      mouth_mask: false,  // 关闭嘴部遮罩以提高速度
+      use_face_enhancer: true,  // 保留人脸增强以确保质量
       execution_provider: 'CPUExecutionProvider',
       ...request.options
     }

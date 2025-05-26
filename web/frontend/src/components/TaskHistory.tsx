@@ -56,8 +56,11 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
       ? taskHistory.getActiveTasksByType(taskType)
       : taskHistory.getActiveTasks()
     
+    console.log(`🔄 刷新${taskType || '所有'}活跃任务，共${activeTasks.length}个`)
+    
     for (const task of activeTasks) {
       try {
+        console.log(`📋 检查任务 ${task.id} 状态...`)
         const response = await apiService.getJobStatus(task.id)
         if (response.success && response.data) {
           const updatedTask = {
@@ -65,10 +68,22 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
             ...response.data,
             updated_at: new Date().toISOString()
           }
+          
+          console.log(`📊 任务 ${task.id} 状态更新: ${task.status} -> ${response.data.status}`)
           taskHistory.updateTask(task.id, updatedTask)
         }
-      } catch (error) {
-        console.error(`Failed to refresh task ${task.id}:`, error)
+      } catch (error: any) {
+        console.error(`❌ 刷新任务 ${task.id} 失败:`, error)
+        
+        // 如果是网络错误，可能需要标记任务为失败状态
+        if (error.message?.includes('Network Error') || error.message?.includes('500')) {
+          console.log(`⚠️ 标记任务 ${task.id} 为失败状态`)
+          taskHistory.updateTask(task.id, {
+            status: 'failed',
+            error_message: '网络错误或服务器错误',
+            updated_at: new Date().toISOString()
+          })
+        }
       }
     }
     

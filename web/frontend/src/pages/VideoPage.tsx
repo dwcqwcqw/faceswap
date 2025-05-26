@@ -467,12 +467,12 @@ export default function VideoPage() {
         <ul className="text-sm text-gray-600 space-y-2">
           <li>• <strong>格式支持：</strong>人脸图片支持 JPG、PNG、BMP、TIFF、WebP、GIF、HEIC等格式</li>
           <li>• <strong>视频格式：</strong>支持 MP4、AVI、MOV、MKV、WMV、FLV、3GP、WebM等格式</li>
-          <li>• <strong>上传顺序：</strong>左侧上传人脸图片，右侧上传目标视频</li>
-          <li>• 确保视频中的人脸清晰可见，避免快速移动或模糊</li>
-          <li>• 人脸图片最好与视频中的人脸角度和光线相似</li>
-          <li>• 视频处理时间较长，通常需要几分钟到几十分钟</li>
-          <li>• 较短的视频片段能获得更快的处理速度和更好的效果</li>
-          <li>• <strong>结果格式：</strong>视频换脸结果始终为MP4格式的高质量视频</li>
+          <li>• 确保视频中的人脸清晰可见，避免被遮挡或模糊</li>
+          <li>• 使用高质量的人脸图片作为替换源，效果更佳</li>
+          <li>• 替换图片中的人脸最好与视频中的角度和光线相似</li>
+          <li>• <strong>⚡ 优化建议：</strong>使用较短的视频（30秒内）和较低分辨率（720p）可显著减少处理时间</li>
+          <li>• <strong>🎬 质量设置：</strong>系统平衡了质量和速度，保留人脸增强以确保最佳效果</li>
+          <li>• <strong>📱 移动设备：</strong>建议在WiFi环境下使用，避免使用移动数据</li>
         </ul>
       </div>
     </div>

@@ -17,7 +17,7 @@ export default function FileUpload({
   onFileSelect,
   accept = { 'image/*': ['.png', '.jpg', '.jpeg'] },
   multiple = false,
-  maxSize = 10 * 1024 * 1024,
+  maxSize,
   currentFile,
   onRemove,
   label,
@@ -60,7 +60,7 @@ export default function FileUpload({
     onDrop,
     accept,
     multiple,
-    maxSize
+    ...(maxSize && { maxSize })
   })
 
   const formatFileSize = (bytes: number) => {
@@ -114,9 +114,11 @@ export default function FileUpload({
               <p className="text-sm text-gray-600 mt-1">
                 {description || 'Drag and drop a file here, or click to select'}
               </p>
-              <p className="text-xs text-gray-500 mt-2">
-                Max file size: {formatFileSize(maxSize)}
-              </p>
+              {maxSize && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Max file size: {formatFileSize(maxSize)}
+                </p>
+              )}
             </div>
           </div>
         </div>
