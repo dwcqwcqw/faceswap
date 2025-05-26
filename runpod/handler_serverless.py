@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-RunPod Serverless Handler - No GUI Version
-Handles face swap requests without GUI dependencies
+RunPod Serverless Handler - Optimized for Volume Models
+Uses pre-downloaded models from Volume, no download logic
 """
 
 import runpod
@@ -24,22 +24,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ====== RunPod Serverless Path Compatibility Fix ======
-# Handle difference between RunPod Pod (/workspace) and Serverless (/runpod-volume) environments
 def setup_runpod_serverless_compatibility():
     """Setup path compatibility for RunPod Serverless environment"""
     
     logger.info("🔧 Setting up RunPod Serverless path compatibility...")
     
-    # Check if we're in RunPod Serverless environment
     if os.path.exists('/runpod-volume') and not os.path.exists('/workspace'):
         logger.info("🚀 Detected RunPod Serverless environment")
-        
-        # Create symbolic link: /runpod-volume -> /workspace
         try:
             os.symlink('/runpod-volume', '/workspace')
             logger.info("✅ Created symbolic link: /runpod-volume -> /workspace")
             
-            # Verify the link works
             if os.path.exists('/workspace/faceswap'):
                 logger.info("✅ Path compatibility verified: /workspace/faceswap accessible")
             else:
@@ -52,49 +47,81 @@ def setup_runpod_serverless_compatibility():
             
     elif os.path.exists('/workspace'):
         logger.info("🔍 Detected traditional RunPod Pod environment")
-        logger.info("ℹ️ No path conversion needed")
         
     else:
         logger.info("🏠 Detected local development environment")
-        logger.info("ℹ️ No path conversion needed")
 
-# Apply RunPod Serverless compatibility fix immediately
+# ====== 优化：直接使用Volume中的预下载模型 ======
+def setup_volume_models():
+    """直接使用Volume中预下载的模型，无需下载"""
+    
+    logger.info("🚀 Setting up Volume models (no download)...")
+    
+    # 优先检查环境变量指定的模型目录
+    volume_models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+    
+    logger.info(f"📁 Using models directory: {volume_models_dir}")
+    
+    # 检查必需模型是否存在
+    essential_models = {
+        'inswapper_128_fp16.onnx': 'Face swapper model',
+        'GFPGANv1.4.pth': 'Face enhancer model', 
+        'RealESRGAN_x4plus.pth': 'Super resolution model (4x)',
+        'RealESRGAN_x2plus.pth': 'Super resolution model (2x)',
+        '79999_iter.pth': 'Face parsing model',
+        'buffalo_l': 'Face analysis model (directory)'
+    }
+    
+    found_models = []
+    missing_models = []
+    
+    for model_name, description in essential_models.items():
+        model_path = os.path.join(volume_models_dir, model_name)
+        
+        if os.path.exists(model_path):
+            if os.path.isfile(model_path):
+                size_mb = os.path.getsize(model_path) / (1024 * 1024)
+                logger.info(f"✅ Found {description}: {model_name} ({size_mb:.1f}MB)")
+            else:
+                logger.info(f"✅ Found {description}: {model_name} (directory)")
+            found_models.append(model_name)
+        else:
+            logger.warning(f"⚠️ Missing {description}: {model_name}")
+            missing_models.append(model_name)
+    
+    # 设置环境变量
+    os.environ['MODELS_DIR'] = volume_models_dir
+    
+    # 报告模型状态
+    if len(found_models) >= 4:  # 至少有核心模型
+        logger.info(f"🎉 Ready! Found {len(found_models)}/{len(essential_models)} models")
+        logger.info(f"✅ Found models: {found_models}")
+        if missing_models:
+            logger.info(f"⚠️ Missing (optional): {missing_models}")
+        return True
+    else:
+        logger.error(f"❌ Critical models missing! Found only {len(found_models)} models")
+        logger.error(f"❌ Missing: {missing_models}")
+        return False
+
+# 执行设置
 setup_runpod_serverless_compatibility()
+models_ready = setup_volume_models()
 
-# Add the app directory to Python path
+# Set paths
 sys.path.insert(0, '/app')
 sys.path.insert(0, '/app/runpod')
-
-# Set headless mode before importing any modules
 os.environ['DISPLAY'] = ''
 os.environ['HEADLESS'] = '1'
 
-# Initialize models before importing face swap modules
+# Import face swap functionality
 try:
-    from init_models import init_models
-    models_dir = init_models()
-    logger.info(f"🎯 Models initialization completed: {models_dir}")
-except Exception as e:
-    logger.warning(f"⚠️ Model initialization error: {e}")
-    logger.info("🔄 Will attempt model setup during request processing")
-
-# Ensure models are available in workspace before proceeding
-try:
-    from download_missing_models import ensure_models_available
-    logger.info("🔄 Checking and downloading missing models...")
-    ensure_models_available()
-    logger.info("✅ Model availability check completed")
-except Exception as e:
-    logger.warning(f"⚠️ Model download check failed: {e}")
-    logger.info("🔄 Proceeding anyway, will check models during processing")
-
-# Import face swap functionality without GUI modules
-try:
-    # Import core modules (avoid UI modules)
     from modules.face_analyser import get_one_face, get_many_faces
-    from modules.processors.frame.face_swapper import swap_face
-    from modules.processors.frame.face_swapper import process_frame
+    from modules.processors.frame.face_swapper import swap_face, process_frame
     import modules.globals
+    
+    # 更新模型目录
+    modules.globals.models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
     
     # Import super resolution module
     try:
@@ -105,7 +132,6 @@ try:
         logger.warning(f"⚠️ Super resolution module not available: {e}")
         SR_AVAILABLE = False
         def enhance_resolution(frame, scale_factor=4, max_size=2048):
-            """Fallback function when super resolution is not available"""
             return frame
     
     logger.info("✅ Core modules imported successfully")
@@ -123,119 +149,28 @@ except ImportError as e:
         return frame
     SR_AVAILABLE = False
 
-def download_models():
-    """Download required models if not present"""
+def verify_models():
+    """验证模型是否可用（不下载）"""
     try:
-        models_dir = modules.globals.get_models_dir()
-        logger.info(f"🔍 Using models directory: {models_dir}")
+        models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+        logger.info(f"🔍 Verifying models in: {models_dir}")
         
-        # Ensure models directory exists
-        os.makedirs(models_dir, exist_ok=True)
-        
-        # Check essential models
-        essential_models = {
-            'inswapper_128_fp16.onnx': 'Face swapper model',
-            'GFPGANv1.4.pth': 'Face enhancer model',
-            'RealESRGAN_x4plus.pth': 'Super resolution model (4x)',
-            'RealESRGAN_x2plus.pth': 'Super resolution model (2x)'
-        }
-        
-        all_found = True
-        for model_name, description in essential_models.items():
+        # 检查核心模型
+        core_models = ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth']
+        for model_name in core_models:
             model_path = os.path.join(models_dir, model_name)
             if os.path.exists(model_path):
-                logger.info(f"✅ Found {description}: {model_name}")
+                size_mb = os.path.getsize(model_path) / (1024 * 1024)
+                logger.info(f"✅ Verified {model_name} ({size_mb:.1f}MB)")
             else:
-                logger.warning(f"⚠️ Missing {description}: {model_name}")
-                all_found = False
+                logger.error(f"❌ Missing critical model: {model_name}")
+                return False
         
-        # If essential models are found, proceed without downloading additional ones
-        if all_found:
-            logger.info("✅ Essential models found, ready for face swapping")
-            # Update environment variable to ensure consistent model directory access
-            os.environ['MODELS_DIR'] = models_dir
-            return True
-        
-        # Try to download models using the download script if available
-        try:
-            from download_models import check_and_download_models
-            actual_models_dir = check_and_download_models()
-            logger.info(f"✅ Models ready in: {actual_models_dir}")
-            
-            # Update environment variable and modules.globals to use the actual models directory
-            os.environ['MODELS_DIR'] = actual_models_dir
-            
-            # Force refresh of models directory in modules.globals
-            import importlib
-            importlib.reload(modules.globals)
-            
-            return True
-        except ImportError:
-            logger.warning("⚠️ Model download script not found")
-        except Exception as e:
-            logger.error(f"❌ Model download script failed: {e}")
-        
-        # Try to check if models exist in workspace/faceswap directly
-        workspace_models = ['/workspace/faceswap/inswapper_128_fp16.onnx', '/workspace/faceswap/GFPGANv1.4.pth']
-        workspace_found = []
-        
-        for model_path in workspace_models:
-            if os.path.exists(model_path):
-                model_name = os.path.basename(model_path)
-                workspace_found.append(model_name)
-                logger.info(f"✅ Found workspace model: {model_path}")
-                
-                # Create symlink or copy to models directory
-                target_path = os.path.join(models_dir, model_name)
-                if not os.path.exists(target_path):
-                    try:
-                        os.symlink(model_path, target_path)
-                        logger.info(f"🔗 Linked {model_name} from workspace")
-                    except:
-                        import shutil
-                        shutil.copy2(model_path, target_path)
-                        logger.info(f"📋 Copied {model_name} from workspace")
-        
-        # Also check for super resolution models
-        sr_models_workspace = [
-            '/workspace/faceswap/RealESRGAN_x4plus.pth', 
-            '/workspace/faceswap/RealESRGAN_x2plus.pth'
-        ]
-        
-        for model_path in sr_models_workspace:
-            if os.path.exists(model_path):
-                model_name = os.path.basename(model_path)
-                workspace_found.append(model_name)
-                logger.info(f"✅ Found workspace SR model: {model_path}")
-                
-                # Create symlink or copy to models directory
-                target_path = os.path.join(models_dir, model_name)
-                if not os.path.exists(target_path):
-                    try:
-                        os.symlink(model_path, target_path)
-                        logger.info(f"🔗 Linked {model_name} from workspace")
-                    except:
-                        import shutil
-                        shutil.copy2(model_path, target_path)
-                        logger.info(f"📋 Copied {model_name} from workspace")
-        
-        if workspace_found:
-            logger.info(f"✅ Found {len(workspace_found)} models in workspace: {workspace_found}")
-            # Update environment variable
-            os.environ['MODELS_DIR'] = models_dir
-            return True
-        
-        # If we reach here, some models are missing but we can try to proceed
-        logger.warning("⚠️ Some models may be missing, but attempting to proceed")
-        logger.info("💡 Face swapping may work if essential models are mounted in workspace")
-        # Still update environment variable
-        os.environ['MODELS_DIR'] = models_dir
         return True
         
     except Exception as e:
-        logger.error(f"❌ Model setup failed: {e}")
-        # Don't fail completely, allow handler to try anyway
-        return True
+        logger.error(f"❌ Model verification failed: {e}")
+        return False
 
 def download_image_from_url(url):
     """Download image from URL and return as OpenCV format"""
@@ -1559,492 +1494,165 @@ def process_multi_image_swap_from_urls(target_url, face_mappings):
                     if enhanced_frame is not None:
                         result_frame = enhanced_frame
                         final_height, final_width = result_frame.shape[:2]
-                        logger.info(f"✅ AI Super Resolution completed for multi-person: {final_width}x{final_height}")
+                        logger.info(f"✅ AI Super Resolution completed: {final_width}x{final_height}")
                     else:
                         logger.warning("⚠️ Super resolution failed, using original")
             else:
                 logger.info("⚠️ Super resolution not available, using traditional upscaling...")
                 # Fallback to traditional high-quality upscaling
                 height, width = result_frame.shape[:2]
-                if max(width, height) < 1024:  # More conservative for multi-person
-                    scale = min(1.5, 2048 / max(width, height))  # Target at least 2048px for multi-person
+                if max(width, height) < 768:
+                    scale = min(2.0, 1536 / max(width, height))  # Target at least 1536px
                     new_width = int(width * scale)
                     new_height = int(height * scale)
                     result_frame = cv2.resize(result_frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
-                    logger.info(f"✅ Traditional upscaling for multi-person: {new_width}x{new_height}")
+                    logger.info(f"✅ Traditional upscaling: {new_width}x{new_height}")
                     
         except Exception as e:
             logger.warning(f"⚠️ Super resolution failed: {e}")
         
-        # Convert to ultra-high quality image
-        logger.info("📸 Converting result to ultra-high quality image...")
+        # Convert back to PIL with ultra-high quality settings
+        logger.info("📸 Converting result to ultra-high quality multi-person image...")
         result_image = Image.fromarray(cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB))
         
-        # Quality upscaling if needed
+        # Resize if the image is too small (upscale for better quality)
         width, height = result_image.size
-        if width < 768 or height < 768:  # Higher threshold for multi-person images
-            scale_factor = max(768 / width, 768 / height)
+        if width < 512 or height < 512:
+            # Calculate new size maintaining aspect ratio
+            scale_factor = max(512 / width, 512 / height)
             new_width = int(width * scale_factor)
             new_height = int(height * scale_factor)
             
-            logger.info(f"🔍 Upscaling image from {width}x{height} to {new_width}x{new_height}")
+            logger.info(f"🔍 Upscaling multi-person image from {width}x{height} to {new_width}x{new_height}")
             result_image = result_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # Encode to high-quality JPEG
+        # Encode to base64 with ultra-high quality JPEG
         buffer = BytesIO()
-        result_image.save(buffer, format='JPEG', quality=98, optimize=True)  # Higher quality for multi-person
+        result_image.save(buffer, format='JPEG', quality=95, optimize=True)
         result_data = base64.b64encode(buffer.getvalue()).decode()
         
         logger.info("✅ Ultra-high quality multi-person face swap completed successfully")
         return {
             "result": result_data,
-            "faces_processed": len(face_mapping_pairs),
-            "total_target_faces": len(target_faces),
-            "processing_rounds": 3,
-            "enhancement_passes": 3,
-            "quality_level": "ultra-high"
+            "total_faces_mapped": len(face_mapping_pairs),
+            "processing_type": "multi-person",
+            "quality_level": "ultra-high",
+            "enhanced": True
         }
         
     except Exception as e:
         logger.error(f"❌ Multi-person face swap failed: {e}")
-        return {"error": f"Multi-person face swap failed: {str(e)}"}
+        return {"error": f"Multi-person processing failed: {str(e)}"}
 
-def process_multi_video_swap_from_urls(target_url, face_mappings):
-    """Process multi-person video face swap with individual face mappings - Enhanced with multi-round processing"""
-    try:
-        logger.info("🚀 Starting enhanced multi-person video face swap processing...")
-        logger.info(f"📋 Target video URL: {target_url}")
-        logger.info(f"📋 Face mappings: {json.dumps(face_mappings, indent=2)}")
-        
-        # Download target video
-        logger.info("🔄 Downloading target video...")
-        target_video_path = download_video_from_url(target_url)
-        if target_video_path is None:
-            return {"error": "Failed to download target video"}
-        
-        logger.info(f"✅ Target video downloaded: {target_video_path}")
-        
-        # Open video to get first frame for face detection
-        cap = cv2.VideoCapture(target_video_path)
-        if not cap.isOpened():
-            return {"error": "Failed to open target video"}
-        
-        # Get video properties
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
-        logger.info(f"🎬 Video properties: {frame_width}x{frame_height}, {fps} FPS, {frame_count} frames")
-        
-        # Get first frame for face detection
-        ret, first_frame = cap.read()
-        if not ret:
-            cap.release()
-            return {"error": "Failed to read first frame from video"}
-        
-        # Detect all faces in first frame
-        logger.info("🔍 Detecting faces in first frame...")
-        target_faces = get_many_faces(first_frame)
-        
-        if target_faces is None or len(target_faces) == 0:
-            cap.release()
-            return {"error": "No faces detected in video"}
-        
-        logger.info(f"✅ Detected {len(target_faces)} face(s) in video")
-        
-        # 稳定排序：使用与人脸检测相同的排序逻辑，确保索引一致
-        def get_face_position(face):
-            if hasattr(face, 'bbox'):
-                x1, y1, x2, y2 = face.bbox
-                center_x = (x1 + x2) / 2
-                center_y = (y1 + y2) / 2
-                return (center_y, center_x)  # 先按y排序，再按x排序
-            return (0, 0)
-        
-        # 对目标视频中的人脸进行稳定排序
-        target_faces = sorted(target_faces, key=get_face_position)
-        logger.info("✅ Target faces sorted by position (top-to-bottom, left-to-right)")
-        
-        # 记录排序后的人脸位置信息用于调试
-        for i, face in enumerate(target_faces):
-            if hasattr(face, 'bbox'):
-                center_x = int((face.bbox[0] + face.bbox[2]) / 2)
-                center_y = int((face.bbox[1] + face.bbox[3]) / 2)
-                logger.info(f"   Target face {i}: center=({center_x}, {center_y})")
-        
-        # Download and process each source face
-        source_faces = []
-        face_mapping_pairs = []
-        
-        for face_id, source_url in face_mappings.items():
-            try:
-                logger.info(f"🔄 Processing source face for {face_id}: {source_url}")
-                
-                # Download source image
-                source_frame = download_image_from_url(source_url)
-                if source_frame is None:
-                    logger.warning(f"⚠️ Failed to download source image for {face_id}")
-                    continue
-                
-                # Get the main face from source image
-                source_face = get_one_face(source_frame)
-                if source_face is None:
-                    logger.warning(f"⚠️ No face detected in source image for {face_id}")
-                    continue
-                
-                # Parse face_id to get target face index
-                face_index = int(face_id.replace('face_', ''))
-                
-                if face_index < len(target_faces):
-                    face_mapping_pairs.append({
-                        'source_face': source_face,
-                        'target_face': target_faces[face_index],
-                        'face_id': face_id,
-                        'face_index': face_index
-                    })
-                    logger.info(f"✅ Mapped {face_id} (index {face_index}) successfully")
-                else:
-                    logger.warning(f"⚠️ Face index {face_index} out of range for {face_id}")
-                    
-            except Exception as e:
-                logger.warning(f"⚠️ Error processing source face {face_id}: {e}")
-                continue
-        
-        if not face_mapping_pairs:
-            cap.release()
-            return {"error": "No valid face mappings could be processed"}
-        
-        logger.info(f"🎯 Processing {len(face_mapping_pairs)} face swap(s) in video...")
-        
-        # Create output video file
-        output_video = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-        output_video.close()
-        
-        # Setup video writer with improved encoding for browser compatibility
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_video.name, fourcc, fps, (frame_width, frame_height))
-        
-        if not out.isOpened():
-            # Fallback to a more compatible codec
-            logger.warning("⚠️ Primary codec failed, trying fallback...")
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            output_video_avi = tempfile.NamedTemporaryFile(delete=False, suffix='.avi')
-            output_video_avi.close()
-            out = cv2.VideoWriter(output_video_avi.name, fourcc, fps, (frame_width, frame_height))
-            
-            if not out.isOpened():
-                cap.release()
-                return {"error": "Failed to initialize video writer"}
-            
-            temp_output_path = output_video_avi.name
-        else:
-            temp_output_path = output_video.name
-        
-        # Configure enhancement settings
-        modules.globals.use_face_enhancer = True
-        modules.globals.mouth_mask = True
-        modules.globals.color_correction = True
-        
-        # Reset video to beginning
-        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        
-        # Process video frame by frame
-        processed_frames = 0
-        successful_swaps = 0
-        
-        logger.info("🚀 Starting frame-by-frame multi-person processing...")
-        
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            
-            try:
-                # Detect faces in current frame
-                current_faces = get_many_faces(frame)
-                
-                if current_faces and len(current_faces) >= len(face_mapping_pairs):
-                    # Sort current faces using same logic
-                    current_faces = sorted(current_faces, key=get_face_position)
-                    
-                    # Apply face swaps for all mapped faces
-                    swapped_frame = frame.copy()
-                    frame_swaps = 0
-                    
-                    for mapping in face_mapping_pairs:
-                        face_index = mapping['face_index']
-                        if face_index < len(current_faces):
-                            current_face = current_faces[face_index]
-                            
-                            # Perform face swap
-                            swapped_frame = swap_face(
-                                mapping['source_face'], 
-                                current_face, 
-                                swapped_frame
-                            )
-                            frame_swaps += 1
-                    
-                    # Apply enhancement if available (conservative for video)
-                    try:
-                        from modules.processors.frame.face_enhancer import enhance_face
-                        enhanced_frame = enhance_face(swapped_frame)
-                        if enhanced_frame is not None:
-                            # Very conservative blending for video stability
-                            swapped_frame = cv2.addWeighted(swapped_frame, 0.8, enhanced_frame, 0.2, 0)
-                    except ImportError:
-                        pass
-                    except Exception as e:
-                        logger.warning(f"⚠️ Frame enhancement failed: {e}")
-                    
-                    out.write(swapped_frame)
-                    successful_swaps += frame_swaps
-                else:
-                    # No faces detected or insufficient faces, write original frame
-                    out.write(frame)
-                
-                processed_frames += 1
-                
-                # Log progress every 30 frames (roughly every second at 30fps)
-                if processed_frames % 30 == 0:
-                    progress = (processed_frames / frame_count) * 100
-                    logger.info(f"📹 Processing progress: {progress:.1f}% ({processed_frames}/{frame_count} frames, {successful_swaps} total swaps)")
-                    
-            except Exception as e:
-                logger.warning(f"⚠️ Error processing frame {processed_frames}: {e}")
-                # Write original frame on error
-                out.write(frame)
-                processed_frames += 1
-        
-        # Cleanup
-        cap.release()
-        out.release()
-        
-        logger.info(f"✅ Multi-person video processing completed: {processed_frames} frames processed, {successful_swaps} total face swaps")
-        
-        # Preserve audio from original video using FFmpeg
-        final_video_path = temp_output_path
-        try:
-            logger.info("🎵 Preserving audio from original video...")
-            
-            # Create final video with audio
-            final_video_with_audio = tempfile.NamedTemporaryFile(delete=False, suffix='_with_audio.mp4')
-            final_video_with_audio.close()
-            
-            # Use FFmpeg to combine processed video with original audio and ensure H.264 encoding
-            ffmpeg_cmd = [
-                'ffmpeg', '-i', final_video_path,  # Processed video (no audio)
-                '-i', target_video_path,            # Original video (with audio)
-                '-c:v', 'libx264',                  # Use H.264 for video
-                '-preset', 'fast',                  # Encoding speed preset
-                '-crf', '23',                       # Quality (lower = better)
-                '-c:a', 'aac',                      # Use AAC for audio  
-                '-b:a', '128k',                     # Audio bitrate
-                '-map', '0:v',                      # Use video from first input
-                '-map', '1:a',                      # Use audio from second input
-                '-shortest',                        # Match shortest stream
-                '-movflags', '+faststart',          # Optimize for web streaming
-                '-y',                               # Overwrite output
-                final_video_with_audio.name
-            ]
-            
-            logger.info(f"🔄 Running FFmpeg command: {' '.join(ffmpeg_cmd)}")
-            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=600)  # 10 minute timeout for multi-person
-            
-            if result.returncode == 0:
-                logger.info("✅ Audio preservation successful")
-                final_video_path = final_video_with_audio.name
-            else:
-                logger.warning(f"⚠️ FFmpeg failed: {result.stderr}")
-                logger.info("🔄 Proceeding with video-only output")
-                try:
-                    os.unlink(final_video_with_audio.name)
-                except:
-                    pass
-                    
-        except subprocess.TimeoutExpired:
-            logger.warning("⚠️ FFmpeg timeout, proceeding with video-only output")
-        except FileNotFoundError:
-            logger.warning("⚠️ FFmpeg not found, proceeding with video-only output")
-        except Exception as e:
-            logger.warning(f"⚠️ Audio preservation failed: {e}, proceeding with video-only output")
-        
-        # Read the final video file
-        with open(final_video_path, 'rb') as f:
-            video_data = f.read()
-        
-        result_data = base64.b64encode(video_data).decode()
-        
-        # Cleanup temporary files
-        try:
-            if target_video_path:
-                os.unlink(target_video_path)
-            os.unlink(final_video_path)
-            
-            # Cleanup audio-merged video file if it's different
-            if final_video_path != temp_output_path and os.path.exists(final_video_path):
-                os.unlink(final_video_path)
-        except Exception as cleanup_error:
-            logger.warning(f"⚠️ Cleanup error: {cleanup_error}")
-        
-        logger.info("✅ Multi-person video face swap with audio preservation completed successfully")
-        return {
-            "result": result_data,
-            "total_frames": processed_frames,
-            "successful_swaps": successful_swaps,
-            "faces_processed": len(face_mapping_pairs),
-            "fps": fps,
-            "resolution": f"{frame_width}x{frame_height}",
-            "processing_type": "multi-video",
-            "quality_level": "high"
-        }
-        
-    except Exception as e:
-        logger.error(f"❌ Multi-person video face swap failed: {e}")
-        return {"error": f"Multi-person video face swap failed: {str(e)}"}
-
-def handler(event):
+# ====== Main RunPod Handler Function ======
+def handler(job):
     """
-    RunPod serverless handler function
+    RunPod Serverless Handler - Optimized for Volume Models
+    Processes various face swap operations with ultra-high quality
     """
     try:
-        logger.info("🚀 Face Swap Handler started")
-        logger.info(f"📋 Received event: {json.dumps(event, indent=2)}")
+        logger.info("🚀 RunPod Serverless Handler started")
+        logger.info(f"📋 Job input: {json.dumps(job.get('input', {}), indent=2)}")
         
-        # Check models (don't fail if download doesn't work)
-        download_models()
+        # 验证模型是否准备就绪
+        if not models_ready:
+            logger.error("❌ Models not ready, cannot process job")
+            return {"error": "Models not ready. Please ensure all required models are available in the Volume."}
         
-        # Get request data
-        input_data = event.get("input", {})
+        # 快速验证核心模型
+        if not verify_models():
+            logger.error("❌ Model verification failed")
+            return {"error": "Model verification failed. Some required models are missing."}
         
-        # Handle health check
-        if input_data.get("type") == "health_check":
-            return {
-                "status": "healthy",
-                "message": "RunPod Serverless Face Swap Handler is running",
-                "modules_imported": True,
-                "models_directory": modules.globals.get_models_dir()
-            }
+        job_input = job.get("input", {})
+        process_type = job_input.get("process_type", "")
         
-        # Determine swap type - support both new format and legacy format
-        swap_type = input_data.get("type") or input_data.get("process_type", "single_image")
+        logger.info(f"🎯 Processing job type: {process_type}")
         
-        logger.info(f"🔍 Raw input type: '{input_data.get('type')}'")
-        logger.info(f"🔍 Raw process_type: '{input_data.get('process_type')}'")
-        logger.info(f"🔍 Determined swap_type before normalization: '{swap_type}'")
-        
-        # Normalize type format (convert single-image to single_image)
-        if swap_type == "single-image":
-            swap_type = "single_image"
-        elif swap_type == "multi-image":
-            swap_type = "multi_image"
-        elif swap_type == "multi-video":
-            swap_type = "multi_video"
-        elif swap_type == "detect-faces":
-            swap_type = "detect_faces"
-        
-        logger.info(f"🎯 Final processing type: '{swap_type}'")
-        
-        # Log which branch will be taken
-        if swap_type == "detect_faces":
-            logger.info("🔀 Taking detect_faces branch")
-        elif swap_type == "multi_image":
-            logger.info("🔀 Taking multi_image branch")
-        elif swap_type == "multi_video":
-            logger.info("🔀 Taking multi_video branch")
-        elif swap_type == "single_image":
-            logger.info("🔀 Taking single_image branch")
-        elif swap_type == "video":
-            logger.info("🔀 Taking video branch")
-        else:
-            logger.info(f"🔀 Taking unsupported type branch: '{swap_type}'")
-        
-        # Handle face detection
-        if swap_type == "detect_faces":
-            image_url = input_data.get("image_file")
+        # Process different types of requests
+        if process_type == "single_image":
+            # Single image face swap with URLs
+            source_url = job_input.get("source_url")
+            target_url = job_input.get("target_url")
+            
+            if not source_url or not target_url:
+                return {"error": "Missing source_url or target_url for single_image processing"}
+            
+            logger.info(f"📸 Processing single image face swap")
+            logger.info(f"   Source: {source_url}")
+            logger.info(f"   Target: {target_url}")
+            
+            result = process_image_swap_from_urls(source_url, target_url)
+            return result
+            
+        elif process_type == "single_image_base64":
+            # Single image face swap with base64 data (backward compatibility)
+            source_data = job_input.get("source_image")
+            target_data = job_input.get("target_image")
+            
+            if not source_data or not target_data:
+                return {"error": "Missing source_image or target_image for single_image_base64 processing"}
+            
+            logger.info(f"📸 Processing single image face swap (base64)")
+            result = process_image_swap_from_base64(source_data, target_data)
+            return result
+            
+        elif process_type == "video":
+            # Video face swap
+            source_data = job_input.get("source_image")  # Can be URL or base64
+            target_data = job_input.get("target_video")   # Can be URL or base64
+            
+            if not source_data or not target_data:
+                return {"error": "Missing source_image or target_video for video processing"}
+            
+            logger.info(f"🎬 Processing video face swap")
+            result = process_video_swap(source_data, target_data)
+            return result
+            
+        elif process_type == "detect_faces":
+            # Face detection
+            image_url = job_input.get("image_url")
+            
             if not image_url:
-                return {"error": "Missing image_file parameter for face detection"}
+                return {"error": "Missing image_url for detect_faces processing"}
             
-            return process_detect_faces_from_url(image_url)
-        
-        # Handle multi-person image face swap
-        elif swap_type == "multi_image":
-            target_url = input_data.get("target_file")
-            face_mappings = input_data.get("face_mappings", {})
+            logger.info(f"🔍 Processing face detection")
+            logger.info(f"   Image: {image_url}")
             
-            if not target_url:
-                return {"error": "Missing target_file parameter for multi-image processing"}
+            result = process_detect_faces_from_url(image_url)
+            return result
             
-            if not face_mappings:
-                return {"error": "Missing face_mappings parameter for multi-image processing"}
+        elif process_type == "multi_image":
+            # Multi-person face swap
+            target_url = job_input.get("target_url")
+            face_mappings = job_input.get("face_mappings", {})
             
-            return process_multi_image_swap_from_urls(target_url, face_mappings)
-        
-        # Handle multi-person video face swap
-        elif swap_type == "multi_video":
-            target_url = input_data.get("target_file")
-            face_mappings = input_data.get("face_mappings", {})
+            if not target_url or not face_mappings:
+                return {"error": "Missing target_url or face_mappings for multi_image processing"}
             
-            if not target_url:
-                return {"error": "Missing target_file parameter for multi-video processing"}
+            logger.info(f"👥 Processing multi-person face swap")
+            logger.info(f"   Target: {target_url}")
+            logger.info(f"   Face mappings: {len(face_mappings)} faces")
             
-            if not face_mappings:
-                return {"error": "Missing face_mappings parameter for multi-video processing"}
-            
-            return process_multi_video_swap_from_urls(target_url, face_mappings)
-        
-        # Handle single image face swap
-        elif swap_type == "single_image":
-            # Check for new format (URLs from Cloudflare Worker)
-            if input_data.get("source_file") and input_data.get("target_file"):
-                logger.info("📡 Processing URLs from Cloudflare Worker for single_image")
-                source_url = input_data.get("source_file")
-                target_url = input_data.get("target_file")
-                
-                return process_image_swap_from_urls(source_url, target_url)
-            
-            # Check for legacy format (base64 data)
-            elif input_data.get("source_image") and input_data.get("target_image"):
-                logger.info("📄 Processing base64 data (legacy format)")
-                source_image = input_data.get("source_image")
-                target_image = input_data.get("target_image")
-                
-                return process_image_swap_from_base64(source_image, target_image)
-            
-            else:
-                logger.error("❌ Missing required image data")
-                return {"error": "Missing source_file/target_file or source_image/target_image"}
-            
-        elif swap_type == "video":
-            logger.info("🎬 Processing video face swap request...")
-            
-            # For video processing, we expect source_file (image) and target_file (video)
-            source_file = input_data.get("source_file")  # Should be image
-            target_file = input_data.get("target_file")   # Should be video
-            
-            if not source_file or not target_file:
-                # Fallback to legacy parameter names
-                source_file = input_data.get("source_image")
-                target_file = input_data.get("target_video")
-                
-                if not source_file or not target_file:
-                    return {"error": "Missing source_file/target_file for video processing"}
-            
-            logger.info(f"🎬 Video processing: source={source_file}, target={target_file}")
-            return process_video_swap(source_file, target_file)
+            result = process_multi_image_swap_from_urls(target_url, face_mappings)
+            return result
             
         else:
-            return {"error": f"Unsupported swap type: {swap_type}"}
+            error_msg = f"Unknown or unsupported process_type: {process_type}"
+            logger.error(f"❌ {error_msg}")
+            return {"error": error_msg}
             
     except Exception as e:
-        logger.error(f"❌ Handler error: {e}")
-        return {"error": str(e)}
+        error_msg = f"Handler error: {str(e)}"
+        logger.error(f"❌ {error_msg}")
+        logger.error(f"❌ Exception details: {e}")
+        return {"error": error_msg}
 
+# ====== RunPod Serverless Startup ======
 if __name__ == "__main__":
-    logger.info("🚀 Starting RunPod Serverless Face Swap Handler...")
+    logger.info("🚀 Starting RunPod Serverless with Volume-optimized handler...")
+    logger.info(f"📁 Models directory: {os.getenv('MODELS_DIR', '/runpod-volume/faceswap')}")
+    logger.info(f"🎯 Models ready: {models_ready}")
     
-    # Download models on startup
-    download_models()
-    
-    # Start RunPod handler
-    runpod.serverless.start({"handler": handler}) 
+    # Start RunPod serverless
+    runpod.serverless.start({"handler": handler})
