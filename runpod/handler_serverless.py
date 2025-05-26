@@ -257,7 +257,9 @@ def download_image_from_url(url):
             
             # Check if it's a video file
             if 'video' in content_type.lower():
-                logger.error("❌ Video file detected in image download function. Use download_video_from_url instead.")
+                logger.error(f"❌ Video file detected in image download function. URL: {url}")
+                logger.error(f"❌ Content-Type: {content_type}")
+                logger.error("❌ This suggests incorrect file type routing. Check if video files are being sent to image processing.")
                 return None
             
             # Check if it's a valid image format
@@ -782,10 +784,26 @@ def process_video_swap(source_image_data, target_video_data):
     """Process video face swap with enhanced quality"""
     try:
         logger.info("🎬 Starting video face swap processing...")
+        logger.info(f"📋 Source data type: {type(source_image_data)}")
+        logger.info(f"📋 Target data type: {type(target_video_data)}")
         
         # Handle source image (could be URL or base64)
         if source_image_data.startswith('http'):
             logger.info("📡 Downloading source image from URL...")
+            
+            # Check content type first to ensure it's an image
+            try:
+                head_response = requests.head(source_image_data, timeout=10)
+                source_content_type = head_response.headers.get('content-type', '').lower()
+                logger.info(f"📋 Source content-type: {source_content_type}")
+                
+                if 'video' in source_content_type:
+                    return {"error": "Source file is a video but should be an image. Please upload an image for the face source."}
+                elif 'image' not in source_content_type:
+                    logger.warning(f"⚠️ Unexpected source content-type: {source_content_type}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not check source content-type: {e}")
+            
             source_frame = download_image_from_url(source_image_data)
             if source_frame is None:
                 return {"error": "Failed to download source image"}
@@ -800,6 +818,20 @@ def process_video_swap(source_image_data, target_video_data):
         # Handle target video (could be URL or base64)
         if target_video_data.startswith('http'):
             logger.info("🎬 Downloading target video from URL...")
+            
+            # Check content type first to ensure it's a video
+            try:
+                head_response = requests.head(target_video_data, timeout=10)
+                target_content_type = head_response.headers.get('content-type', '').lower()
+                logger.info(f"📋 Target content-type: {target_content_type}")
+                
+                if 'image' in target_content_type:
+                    return {"error": "Target file is an image but should be a video. Please upload a video for the target."}
+                elif 'video' not in target_content_type:
+                    logger.warning(f"⚠️ Unexpected target content-type: {target_content_type}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not check target content-type: {e}")
+            
             target_video_path = download_video_from_url(target_video_data)
             if target_video_path is None:
                 return {"error": "Failed to download target video"}
@@ -1542,13 +1574,21 @@ def handler(event):
             
         elif swap_type == "video":
             logger.info("🎬 Processing video face swap request...")
-            source_image = input_data.get("source_image") or input_data.get("source_file")
-            target_video = input_data.get("target_video") or input_data.get("target_file")
             
-            if not source_image or not target_video:
-                return {"error": "Missing source_image/source_file or target_video/target_file"}
+            # For video processing, we expect source_file (image) and target_file (video)
+            source_file = input_data.get("source_file")  # Should be image
+            target_file = input_data.get("target_file")   # Should be video
             
-            return process_video_swap(source_image, target_video)
+            if not source_file or not target_file:
+                # Fallback to legacy parameter names
+                source_file = input_data.get("source_image")
+                target_file = input_data.get("target_video")
+                
+                if not source_file or not target_file:
+                    return {"error": "Missing source_file/target_file for video processing"}
+            
+            logger.info(f"🎬 Video processing: source={source_file}, target={target_file}")
+            return process_video_swap(source_file, target_file)
             
         else:
             return {"error": f"Unsupported swap type: {swap_type}"}
