@@ -1,0 +1,25 @@
+# Minimal Dockerfile for quick container creation - troubleshooting timeout issues
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Minimal environment variables
+ENV PYTHONUNBUFFERED=1
+ENV HEADLESS=1
+
+# Install only absolutely essential system dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install minimal Python dependencies
+RUN pip install --no-cache-dir runpod
+
+# Create a simple test handler
+RUN echo 'import runpod\nimport json\n\ndef handler(job):\n    return {"status": "success", "message": "Container is working!"}\n\nif __name__ == "__main__":\n    runpod.serverless.start({"handler": handler})' > /app/handler.py
+
+# Simple test command
+CMD ["python", "-u", "handler.py"] 
