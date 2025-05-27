@@ -69,7 +69,7 @@ export default function GlobalTaskStatus() {
         return '单图换脸'
       case 'multi-image':
         return '多图换脸'
-      case 'video':
+      case 'single-video':
         return '视频换脸'
       case 'multi-video':
         return '多人视频换脸'

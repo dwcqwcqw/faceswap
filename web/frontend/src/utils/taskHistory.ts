@@ -2,7 +2,7 @@ import { ProcessingJob } from '../types'
 
 export interface TaskHistoryItem extends ProcessingJob {
   title: string;
-  type: 'single-image' | 'multi-image' | 'video' | 'multi-video';
+  type: 'single-image' | 'multi-image' | 'single-video' | 'multi-video';
   thumbnail?: string;
   files: {
     source?: string;

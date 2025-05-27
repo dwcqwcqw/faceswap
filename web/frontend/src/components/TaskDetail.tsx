@@ -12,7 +12,7 @@ export default function TaskDetail({ task, onClose }: TaskDetailProps) {
     if (task.result_url) {
       const link = document.createElement('a')
       link.href = apiService.getDownloadUrl(task.result_url.split('/').pop() || '')
-      const extension = task.type === 'video' || task.type === 'multi-video' ? 'mp4' : 'jpg'
+      const extension = task.type === 'single-video' || task.type === 'multi-video' ? 'mp4' : 'jpg'
       link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`
       link.click()
     }
@@ -24,7 +24,7 @@ export default function TaskDetail({ task, onClose }: TaskDetailProps) {
         return '单人图片换脸'
       case 'multi-image':
         return '多人图片换脸'
-      case 'video':
+      case 'single-video':
         return '视频换脸'
       case 'multi-video':
         return '多人视频换脸'
@@ -141,7 +141,7 @@ export default function TaskDetail({ task, onClose }: TaskDetailProps) {
           <h4 className="text-sm font-medium text-gray-900 mb-2">处理结果</h4>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <div className="order-2 lg:order-1">
-              {task.type === 'video' || task.type === 'multi-video' ? (
+              {task.type === 'single-video' || task.type === 'multi-video' ? (
                 <div className="relative">
                   <video
                     src={apiService.getDownloadUrl(task.result_url.split('/').pop() || '')}

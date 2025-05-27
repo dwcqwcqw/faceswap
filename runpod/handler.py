@@ -133,8 +133,9 @@ def process_single_image_swap(input_data):
         options = input_data.get('options', {})
         output_path = os.path.join(temp_dir, f'result_{uuid.uuid4()}.jpg')
         
-        # High quality settings
+        # High quality settings - Always enable face enhancement for better results
         frame_processors = ['face_swapper', 'face_enhancer']
+        enhance_quality = True
         
         # Load images
         print("📂 Loading images...")
@@ -169,14 +170,13 @@ def process_single_image_swap(input_data):
         )
         print("✅ Face swap completed")
         
-        # Enhance faces if requested
-        if 'face_enhancer' in frame_processors:
-            print("✨ Enhancing faces...")
-            result_image = enhance_faces(
-                image=result_image,
-                model_path=get_model_path('GFPGANv1.4.pth')
-            )
-            print("✅ Face enhancement completed")
+        # Always enhance faces for better quality
+        print("✨ Enhancing faces for better quality...")
+        result_image = enhance_faces(
+            image=result_image,
+            model_path=get_model_path('GFPGANv1.4.pth')
+        )
+        print("✅ Face enhancement completed")
         
         # Save result and convert to base64
         print("💾 Saving result...")
@@ -187,6 +187,8 @@ def process_single_image_swap(input_data):
         with open(output_path, 'rb') as f:
             import base64
             result_data = base64.b64encode(f.read()).decode('utf-8')
+            # Add proper data URL prefix for JPEG images
+            result_data = f"data:image/jpeg;base64,{result_data}"
         
         # Upload result to R2 (for backup storage)
         job_id = input_data.get('job_id', str(uuid.uuid4()))
@@ -268,8 +270,15 @@ def process_multi_image_swap(input_data):
         
         target_faces = get_many_faces(target_image)
         if not target_faces or len(target_faces) == 0:
-            raise Exception("❌ No faces detected in target image")
-        print(f"✅ {len(target_faces)} target face(s) detected")
+            # Try single face detection as fallback
+            single_face = get_one_face(target_image)
+            if single_face is not None:
+                target_faces = [single_face]
+                print("✅ 1 target face detected (fallback to single face detection)")
+            else:
+                raise Exception("❌ No faces detected in target image")
+        else:
+            print(f"✅ {len(target_faces)} target face(s) detected")
         
         # Swap all faces
         print("🔄 Starting multi-face swap...")
@@ -286,14 +295,13 @@ def process_multi_image_swap(input_data):
         
         print("✅ All face swaps completed")
         
-        # Enhance faces if requested
-        if 'face_enhancer' in frame_processors:
-            print("✨ Enhancing faces...")
-            result_image = enhance_faces(
-                image=result_image,
-                model_path=get_model_path('GFPGANv1.4.pth')
-            )
-            print("✅ Face enhancement completed")
+        # Always enhance faces for better quality
+        print("✨ Enhancing faces for better quality...")
+        result_image = enhance_faces(
+            image=result_image,
+            model_path=get_model_path('GFPGANv1.4.pth')
+        )
+        print("✅ Face enhancement completed")
         
         # Save result and convert to base64
         print("💾 Saving result...")
@@ -304,6 +312,8 @@ def process_multi_image_swap(input_data):
         with open(output_path, 'rb') as f:
             import base64
             result_data = base64.b64encode(f.read()).decode('utf-8')
+            # Add proper data URL prefix for JPEG images
+            result_data = f"data:image/jpeg;base64,{result_data}"
         
         # Upload result to R2 (for backup storage)
         job_id = input_data.get('job_id', str(uuid.uuid4()))
@@ -361,14 +371,15 @@ def process_single_video_swap(input_data):
         options = input_data.get('options', {})
         output_path = os.path.join(temp_dir, f'result_{uuid.uuid4()}.mp4')
         
-        # High quality video settings
+        # High quality video settings - Optimized for best quality
         video_settings = {
             'frame_processors': ['face_swapper', 'face_enhancer'],
             'mouth_mask': True,
-            'video_quality': 18,
+            'video_quality': 15,  # Lower value = higher quality (15 is very high quality)
             'video_encoder': 'libx264',
             'keep_fps': True,
-            'keep_audio': True
+            'keep_audio': True,
+            'enhance_every_frame': True  # Enable enhancement for every frame
         }
         
         # Load source image and detect face
@@ -423,12 +434,11 @@ def process_single_video_swap(input_data):
                         temp_frame=frame
                     )
                     
-                    # Enhance face if requested
-                    if 'face_enhancer' in video_settings['frame_processors']:
-                        result_frame = enhance_faces(
-                            image=result_frame,
-                            model_path=get_model_path('GFPGANv1.4.pth')
-                        )
+                    # Always enhance faces for better quality
+                    result_frame = enhance_faces(
+                        image=result_frame,
+                        model_path=get_model_path('GFPGANv1.4.pth')
+                    )
                     
                     out.write(result_frame)
                     success_count += 1
@@ -457,6 +467,8 @@ def process_single_video_swap(input_data):
         with open(output_path, 'rb') as f:
             import base64
             result_data = base64.b64encode(f.read()).decode('utf-8')
+            # Add proper data URL prefix for MP4 videos
+            result_data = f"data:video/mp4;base64,{result_data}"
         
         # Upload result to R2 (for backup storage)
         job_id = input_data.get('job_id', str(uuid.uuid4()))
@@ -514,14 +526,15 @@ def process_multi_video_swap(input_data):
         options = input_data.get('options', {})
         output_path = os.path.join(temp_dir, f'result_{uuid.uuid4()}.mp4')
         
-        # High quality video settings
+        # High quality video settings - Optimized for best quality
         video_settings = {
             'frame_processors': ['face_swapper', 'face_enhancer'],
             'mouth_mask': True,
-            'video_quality': 18,
+            'video_quality': 15,  # Lower value = higher quality (15 is very high quality)
             'video_encoder': 'libx264',
             'keep_fps': True,
-            'keep_audio': True
+            'keep_audio': True,
+            'enhance_every_frame': True  # Enable enhancement for every frame
         }
         
         # Load source image
@@ -567,12 +580,11 @@ def process_multi_video_swap(input_data):
                 # No faces detected, keep original frame
                 result_frame = frame
             
-            # Enhance faces if requested
-            if 'face_enhancer' in video_settings['frame_processors']:
-                result_frame = enhance_faces(
-                    image=result_frame,
-                    model_path=get_model_path('GFPGANv1.4.pth')
-                )
+            # Always enhance faces for better quality
+            result_frame = enhance_faces(
+                image=result_frame,
+                model_path=get_model_path('GFPGANv1.4.pth')
+            )
             
             out.write(result_frame)
             frame_count += 1
@@ -588,6 +600,8 @@ def process_multi_video_swap(input_data):
         with open(output_path, 'rb') as f:
             import base64
             result_data = base64.b64encode(f.read()).decode('utf-8')
+            # Add proper data URL prefix for MP4 videos
+            result_data = f"data:video/mp4;base64,{result_data}"
         
         # Upload result to R2 (for backup storage)
         job_id = input_data.get('job_id', str(uuid.uuid4()))

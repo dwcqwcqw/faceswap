@@ -65,7 +65,7 @@ export default function VideoPage() {
         // 使用任务管理器启动任务
         await taskManager.startTask(
           jobId,
-          'video',
+          'single-video',
           `视频换脸 - ${targetFace.name} → ${sourceVideo.name}`,
           {
             source: sourceVideo.name,
@@ -241,7 +241,7 @@ export default function VideoPage() {
       {/* Task History - 只显示视频换脸的任务历史 */}
       <TaskHistory 
         onTaskSelect={handleTaskSelect} 
-        taskType="video"
+        taskType="single-video"
       />
 
       {/* Tips */}

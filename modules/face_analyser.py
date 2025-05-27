@@ -34,9 +34,13 @@ def get_one_face(frame: Frame) -> Any:
 
 def get_many_faces(frame: Frame) -> Any:
     try:
-        return get_face_analyser().get(frame)
-    except IndexError:
-        return None
+        faces = get_face_analyser().get(frame)
+        if faces is None:
+            return []
+        return faces
+    except (IndexError, Exception) as e:
+        print(f"Error in get_many_faces: {str(e)}")
+        return []
 
 def has_valid_map() -> bool:
     for map in modules.globals.source_target_map:
