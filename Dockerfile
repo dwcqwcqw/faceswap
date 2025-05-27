@@ -50,7 +50,7 @@ COPY locales/ /app/locales/
 COPY runpod/ /app/runpod/
 
 # Copy handler to root for easier access
-COPY runpod/handler_serverless.py /app/handler.py
+COPY runpod/handler.py /app/handler.py
 
 # Create necessary directories
 RUN mkdir -p /app/models /tmp/faceswap

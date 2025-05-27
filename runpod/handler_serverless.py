@@ -216,7 +216,7 @@ def setup_insightface_paths_early(volume_models_dir):
         else:
             logger.warning("⚠️ buffalo_l directory not found for early InsightFace setup")
             
-except Exception as e:
+    except Exception as e:
         logger.error(f"❌ Error in early InsightFace setup: {e}")
 
 def setup_volume_models():
