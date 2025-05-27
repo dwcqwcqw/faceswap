@@ -18,7 +18,7 @@ export interface ActiveTask {
 class TaskManager {
   private activeTasks: Map<string, ActiveTask> = new Map()
   private readonly MAX_CONCURRENT_TASKS = 5 // 最大并发任务数
-  private readonly POLL_INTERVAL = 3000 // 轮询间隔（毫秒）
+  private readonly POLL_INTERVAL = 10000 // 轮询间隔（毫秒）- 10秒
 
   // 获取所有活跃任务
   getActiveTasks(): ActiveTask[] {

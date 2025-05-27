@@ -51,10 +51,13 @@ export default function HomePage() {
           提供专业级的处理效果和用户体验。
         </p>
         <div className="mt-8">
-          <div className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors">
+          <Link
+            to="/single-image"
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+          >
             <SparklesIcon className="h-5 w-5 mr-2" />
             立即开始
-          </div>
+          </Link>
         </div>
       </div>
 
