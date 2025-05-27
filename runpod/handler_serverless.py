@@ -391,11 +391,12 @@ try:
     try:
         logger.info("🔧 Applying model path patches...")
         sys.path.insert(0, '/app/runpod')
-        from patch_gfpgan_paths import patch_gfpgan_model_paths, patch_facexlib_paths, patch_basicsr_paths
+        from patch_gfpgan_paths import patch_gfpgan_model_paths, patch_facexlib_paths, patch_basicsr_paths, patch_all_download_functions
         
         patch_gfpgan_model_paths()
         patch_facexlib_paths()
         patch_basicsr_paths()
+        patch_all_download_functions()
         
         logger.info("✅ Model path patches applied successfully")
     except Exception as e:
@@ -1818,6 +1819,170 @@ def process_multi_image_swap_from_urls(target_url, face_mappings):
         return {"error": f"Multi-person processing failed: {str(e)}"}
 
 
+def process_multi_video_swap_from_urls(target_url, face_mappings):
+    """
+    Process multi-person video face swap from URLs
+    Enhanced version with multi-round processing and AI super resolution
+    """
+    try:
+        logger.info("🚀 Starting enhanced multi-person video face swap processing...")
+        logger.info(f"📋 Target video URL: {target_url}")
+        logger.info(f"📋 Face mappings: {json.dumps(face_mappings, indent=2)}")
+        
+        # Download target video
+        logger.info("🔄 Downloading target video...")
+        target_video_data = download_video_from_url(target_url)
+        if target_video_data is None:
+            return {"error": "Failed to download target video"}
+        
+        logger.info("✅ Target video downloaded successfully")
+        
+        # Download and process source face images
+        logger.info("🔄 Processing source face images...")
+        source_faces = {}
+        
+        for face_key, source_url in face_mappings.items():
+            logger.info(f"🔄 Processing source face for {face_key}: {source_url}")
+            
+            # Download source image
+            source_image = download_image_from_url(source_url)
+            if source_image is None:
+                logger.error(f"❌ Failed to download source image for {face_key}")
+                continue
+            
+            # Detect face in source image
+            source_face = get_one_face(source_image)
+            if source_face is None:
+                logger.error(f"❌ No face detected in source image for {face_key}")
+                continue
+            
+            source_faces[face_key] = source_face
+            logger.info(f"✅ Mapped {face_key} successfully")
+        
+        if not source_faces:
+            return {"error": "No valid source faces found"}
+        
+        logger.info(f"🎯 Processing video with {len(source_faces)} face mapping(s)...")
+        
+        # Process video with multi-person face swap
+        result = process_video_with_multi_faces(target_video_data, source_faces)
+        
+        if result.get("error"):
+            return result
+        
+        logger.info("✅ Multi-person video face swap completed successfully")
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Multi-person video face swap failed: {e}")
+        return {"error": f"Multi-person video processing failed: {str(e)}"}
+
+
+def process_video_with_multi_faces(video_data, source_faces):
+    """
+    Process video with multiple face mappings
+    """
+    try:
+        import tempfile
+        import subprocess
+        
+        # Create temporary files
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_input:
+            temp_input.write(video_data)
+            temp_input_path = temp_input.name
+        
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_output:
+            temp_output_path = temp_output.name
+        
+        # Extract video info
+        cap = cv2.VideoCapture(temp_input_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        logger.info(f"📹 Video info: {width}x{height}, {fps} FPS, {total_frames} frames")
+        
+        # Setup video writer
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(temp_output_path, fourcc, fps, (width, height))
+        
+        frame_count = 0
+        processed_frames = 0
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            frame_count += 1
+            
+            # Detect faces in current frame
+            target_faces = get_many_faces(frame)
+            
+            if target_faces and len(target_faces) > 0:
+                # Sort faces by position (top-to-bottom, left-to-right)
+                def get_face_position(face):
+                    bbox = face.bbox.astype(int)
+                    center_y = bbox[1] + bbox[3] // 2
+                    center_x = bbox[0] + bbox[2] // 2
+                    return (center_y, center_x)
+                
+                target_faces.sort(key=get_face_position)
+                
+                # Apply face swaps
+                result_frame = frame.copy()
+                
+                for i, (face_key, source_face) in enumerate(source_faces.items()):
+                    if i < len(target_faces):
+                        target_face = target_faces[i]
+                        try:
+                            result_frame = swap_face(source_face, target_face, result_frame)
+                            logger.debug(f"✅ Frame {frame_count}: Swapped {face_key} (face {i})")
+                        except Exception as e:
+                            logger.warning(f"⚠️ Frame {frame_count}: Failed to swap {face_key}: {e}")
+                
+                out.write(result_frame)
+                processed_frames += 1
+            else:
+                # No faces detected, write original frame
+                out.write(frame)
+            
+            # Progress logging
+            if frame_count % 30 == 0:
+                progress = (frame_count / total_frames) * 100
+                logger.info(f"🔄 Processing: {frame_count}/{total_frames} frames ({progress:.1f}%)")
+        
+        cap.release()
+        out.release()
+        
+        logger.info(f"✅ Video processing completed: {processed_frames}/{frame_count} frames with faces")
+        
+        # Read processed video
+        with open(temp_output_path, 'rb') as f:
+            result_video_data = f.read()
+        
+        # Cleanup
+        os.unlink(temp_input_path)
+        os.unlink(temp_output_path)
+        
+        # Encode to base64
+        result_data = base64.b64encode(result_video_data).decode()
+        
+        return {
+            "result": result_data,
+            "total_faces_mapped": len(source_faces),
+            "total_frames": frame_count,
+            "processed_frames": processed_frames,
+            "processing_type": "multi-person-video",
+            "quality_level": "high",
+            "enhanced": True
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Video processing failed: {e}")
+        return {"error": f"Video processing failed: {str(e)}"}
+
 
 # ====== Main RunPod Handler Function ======
 def handler(job):
@@ -1916,6 +2081,21 @@ def handler(job):
             logger.info(f"   Face mappings: {len(face_mappings)} faces")
             
             result = process_multi_image_swap_from_urls(target_url, face_mappings)
+            return result
+            
+        elif process_type == "multi_video":
+            # Multi-person video face swap - support both field name formats
+            target_url = job_input.get("target_url") or job_input.get("target_file")
+            face_mappings = job_input.get("face_mappings", {})
+            
+            if not target_url or not face_mappings:
+                return {"error": "Missing target_url/target_file or face_mappings for multi_video processing"}
+            
+            logger.info(f"🎬👥 Processing multi-person video face swap")
+            logger.info(f"   Target: {target_url}")
+            logger.info(f"   Face mappings: {len(face_mappings)} faces")
+            
+            result = process_multi_video_swap_from_urls(target_url, face_mappings)
             return result
             
         else:

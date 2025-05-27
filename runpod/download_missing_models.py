@@ -1,144 +1,99 @@
 #!/usr/bin/env python3
 """
-Download missing models directly to workspace
-This script can be run independently to ensure models are available
+Download missing GFPGAN models to volume directory
+This script downloads the models that are still missing from the volume
 """
 
 import os
-import requests
+import sys
 import logging
-from urllib.parse import urlparse
+import requests
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def download_file(url, destination_path, description="file"):
-    """Download a file from URL to destination path"""
+def download_file(url, destination):
+    """Download a file from URL to destination"""
     try:
-        logger.info(f"📥 Downloading {description} from: {url}")
-        logger.info(f"   → Destination: {destination_path}")
+        logger.info(f"📥 Downloading {url}")
+        logger.info(f"📁 Destination: {destination}")
         
         # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
         
-        # Download with streaming to handle large files
-        response = requests.get(url, stream=True, timeout=60)
+        response = requests.get(url, stream=True)
         response.raise_for_status()
         
         total_size = int(response.headers.get('content-length', 0))
-        downloaded_size = 0
+        downloaded = 0
         
-        with open(destination_path, 'wb') as f:
+        with open(destination, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
-                    downloaded_size += len(chunk)
+                    downloaded += len(chunk)
                     
-                    # Show progress for large files
                     if total_size > 0:
-                        progress = (downloaded_size / total_size) * 100
-                        if downloaded_size % (1024 * 1024) == 0:  # Log every MB
-                            logger.info(f"   Progress: {progress:.1f}% ({downloaded_size // (1024*1024)}MB/{total_size // (1024*1024)}MB)")
+                        progress = (downloaded / total_size) * 100
+                        if downloaded % (1024 * 1024) == 0:  # Log every MB
+                            logger.info(f"📊 Progress: {progress:.1f}% ({downloaded / (1024*1024):.1f}MB / {total_size / (1024*1024):.1f}MB)")
         
-        # Verify file was downloaded
-        if os.path.exists(destination_path) and os.path.getsize(destination_path) > 0:
-            file_size = os.path.getsize(destination_path)
-            logger.info(f"✅ Successfully downloaded {description}: {file_size} bytes")
-            return True
-        else:
-            logger.error(f"❌ Download verification failed for {description}")
-            return False
-            
+        logger.info(f"✅ Downloaded successfully: {destination}")
+        return True
+        
     except Exception as e:
-        logger.error(f"❌ Failed to download {description}: {e}")
+        logger.error(f"❌ Failed to download {url}: {e}")
         return False
 
-def ensure_models_available():
-    """Ensure all required models are available in workspace/faceswap"""
+def main():
+    """Download missing models"""
     
-    # Target directory (where user confirmed the model should be)
-    target_dir = "/workspace/faceswap"
+    models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+    logger.info(f"📁 Models directory: {models_dir}")
     
-    # Required models with download URLs
-    models = {
-        "inswapper_128_fp16.onnx": {
-            "url": "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128_fp16.onnx",
-            "description": "Face swapper model"
-        },
-        "GFPGANv1.4.pth": {
-            "url": "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth", 
-            "description": "Face enhancer model"
-        },
-        "RealESRGAN_x4plus.pth": {
-            "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
-            "description": "Super resolution model (4x upscale)"
-        },
-        "RealESRGAN_x2plus.pth": {
-            "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
-            "description": "Super resolution model (2x upscale)"
-        }
+    # Models that need to be downloaded
+    models_to_download = {
+        'detection_Resnet50_Final.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth',
+        'parsing_parsenet.pth': 'https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth'
     }
     
-    logger.info(f"🔍 Checking models in: {target_dir}")
-    
-    # Check if target directory exists
-    if not os.path.exists(target_dir):
-        logger.info(f"📁 Creating directory: {target_dir}")
-        os.makedirs(target_dir, exist_ok=True)
-    
+    # Check which models are missing
     missing_models = []
-    
-    # Check each required model
-    for model_name, model_info in models.items():
-        model_path = os.path.join(target_dir, model_name)
-        
-        if os.path.exists(model_path) and os.path.getsize(model_path) > 0:
-            file_size = os.path.getsize(model_path)
-            logger.info(f"✅ Found {model_info['description']}: {model_name} ({file_size} bytes)")
+    for model_name, url in models_to_download.items():
+        model_path = os.path.join(models_dir, model_name)
+        if not os.path.exists(model_path):
+            missing_models.append((model_name, url, model_path))
+            logger.info(f"❌ Missing: {model_name}")
         else:
-            logger.warning(f"❌ Missing {model_info['description']}: {model_name}")
-            missing_models.append((model_name, model_info))
+            size_mb = os.path.getsize(model_path) / (1024 * 1024)
+            logger.info(f"✅ Found: {model_name} ({size_mb:.1f}MB)")
+    
+    if not missing_models:
+        logger.info("🎉 All models are already present!")
+        return True
+    
+    logger.info(f"📥 Need to download {len(missing_models)} models...")
     
     # Download missing models
-    if missing_models:
-        logger.info(f"📥 Downloading {len(missing_models)} missing models...")
-        
-        for model_name, model_info in missing_models:
-            model_path = os.path.join(target_dir, model_name)
-            success = download_file(
-                model_info["url"], 
-                model_path, 
-                model_info["description"]
-            )
-            
-            if not success:
-                logger.error(f"❌ Failed to download {model_name}")
-                return False
+    success_count = 0
+    for model_name, url, destination in missing_models:
+        logger.info(f"🔄 Downloading {model_name}...")
+        if download_file(url, destination):
+            success_count += 1
+        else:
+            logger.error(f"❌ Failed to download {model_name}")
+    
+    logger.info(f"📊 Download summary: {success_count}/{len(missing_models)} models downloaded successfully")
+    
+    if success_count == len(missing_models):
+        logger.info("🎉 All missing models downloaded successfully!")
+        return True
     else:
-        logger.info("✅ All required models are available")
-    
-    # Final verification
-    logger.info(f"🔍 Final verification of models in {target_dir}:")
-    try:
-        files = os.listdir(target_dir)
-        for file in files:
-            file_path = os.path.join(target_dir, file)
-            if os.path.isfile(file_path):
-                size = os.path.getsize(file_path)
-                logger.info(f"   {file}: {size} bytes")
-    except Exception as e:
-        logger.warning(f"⚠️ Could not list directory contents: {e}")
-    
-    return True
+        logger.error(f"❌ Failed to download {len(missing_models) - success_count} models")
+        return False
 
 if __name__ == "__main__":
-    logger.info("🚀 Starting model download script...")
-    success = ensure_models_available()
-    
-    if success:
-        logger.info("🎉 All models are ready!")
-        exit(0)
-    else:
-        logger.error("❌ Model setup failed")
-        exit(1) 
+    success = main()
+    sys.exit(0 if success else 1) 

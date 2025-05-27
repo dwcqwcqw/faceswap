@@ -89,8 +89,11 @@ def patch_facexlib_paths():
                 logger.info(f"✅ Using GFPGAN model: {gfpgan_path}")
                 return gfpgan_path
             else:
-                logger.warning(f"⚠️ Model not found locally, falling back to download: {file_name}")
-                return original_load_file_from_url(url, model_dir, progress, file_name)
+                logger.error(f"❌ Model not found locally and downloads are disabled: {file_name}")
+                logger.error(f"❌ Expected locations:")
+                logger.error(f"   - {local_path}")
+                logger.error(f"   - {gfpgan_path}")
+                raise FileNotFoundError(f"Model {file_name} not found in volume and downloads are disabled")
         
         # Replace the function
         facexlib.utils.load_file_from_url = patched_load_file_from_url
@@ -129,8 +132,9 @@ def patch_basicsr_paths():
                 logger.info(f"✅ Using local BasicSR model: {local_path}")
                 return local_path
             else:
-                logger.warning(f"⚠️ BasicSR model not found locally, falling back to download: {file_name}")
-                return original_load_file_from_url(url, model_dir, progress, file_name)
+                logger.error(f"❌ BasicSR model not found locally and downloads are disabled: {file_name}")
+                logger.error(f"❌ Expected location: {local_path}")
+                raise FileNotFoundError(f"BasicSR model {file_name} not found in volume and downloads are disabled")
         
         # Replace the function
         basicsr.utils.download_util.load_file_from_url = patched_load_file_from_url
@@ -142,11 +146,49 @@ def patch_basicsr_paths():
     except Exception as e:
         logger.error(f"❌ Failed to patch BasicSR: {e}")
 
+def patch_all_download_functions():
+    """Aggressively patch all known download functions to prevent model downloads"""
+    
+    models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+    
+    # Patch urllib and requests to block downloads
+    try:
+        import urllib.request
+        import requests
+        
+        original_urlretrieve = urllib.request.urlretrieve
+        original_requests_get = requests.get
+        
+        def blocked_urlretrieve(url, filename=None, reporthook=None, data=None):
+            """Block urllib downloads"""
+            if 'github.com' in url or 'huggingface.co' in url:
+                logger.error(f"❌ Blocked download attempt via urllib: {url}")
+                raise RuntimeError(f"Downloads are disabled. Model should be in volume: {models_dir}")
+            return original_urlretrieve(url, filename, reporthook, data)
+        
+        def patched_requests_get(url, **kwargs):
+            """Patch requests.get to block model downloads"""
+            if ('github.com' in url and ('.pth' in url or '.onnx' in url)) or \
+               ('huggingface.co' in url and ('.pth' in url or '.onnx' in url)):
+                logger.error(f"❌ Blocked download attempt via requests: {url}")
+                raise RuntimeError(f"Downloads are disabled. Model should be in volume: {models_dir}")
+            return original_requests_get(url, **kwargs)
+        
+        # Apply patches
+        urllib.request.urlretrieve = blocked_urlretrieve
+        requests.get = patched_requests_get
+        
+        logger.info("✅ Download blocking patches applied successfully")
+        
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to apply download blocking patches: {e}")
+
 if __name__ == "__main__":
     logger.info("🚀 Starting model path patching...")
     
     patch_gfpgan_model_paths()
     patch_facexlib_paths()
     patch_basicsr_paths()
+    patch_all_download_functions()
     
     logger.info("✅ Model path patching completed") 
