@@ -491,9 +491,9 @@ def verify_models():
                 logger.error(f"❌ Missing critical model: {model_name}")
                 return False
         
-            return True
+        return True
         
-        except Exception as e:
+    except Exception as e:
         logger.error(f"❌ Model verification failed: {e}")
         return False
 
