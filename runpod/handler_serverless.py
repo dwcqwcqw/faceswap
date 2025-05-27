@@ -173,6 +173,52 @@ def extract_buffalo_l_if_needed(volume_models_dir):
     logger.warning("⚠️ Failed to extract buffalo_l from any archive")
     return False
 
+def setup_insightface_paths_early(volume_models_dir):
+    """Setup InsightFace paths early to prevent downloads"""
+    try:
+        buffalo_dir = os.path.join(volume_models_dir, 'buffalo_l')
+        
+        if os.path.exists(buffalo_dir):
+            # Set InsightFace environment variables
+            insightface_home = os.path.join(volume_models_dir, '.insightface')
+            os.environ['INSIGHTFACE_HOME'] = insightface_home
+            
+            # Create .insightface directory structure
+            insightface_models_dir = os.path.join(insightface_home, 'models')
+            insightface_buffalo_dir = os.path.join(insightface_models_dir, 'buffalo_l')
+            
+            os.makedirs(insightface_models_dir, exist_ok=True)
+            
+            # Create symlink if it doesn't exist
+            if not os.path.exists(insightface_buffalo_dir):
+                try:
+                    os.symlink(buffalo_dir, insightface_buffalo_dir)
+                    logger.info(f"🔗 Created early InsightFace symlink: {insightface_buffalo_dir}")
+                except OSError as e:
+                    if e.errno != 17:  # Not "File exists"
+                        logger.warning(f"⚠️ Failed to create early InsightFace symlink: {e}")
+            
+            # Also create symlink in /root/.insightface for compatibility
+            root_insightface = '/root/.insightface/models'
+            root_buffalo = os.path.join(root_insightface, 'buffalo_l')
+            
+            os.makedirs(root_insightface, exist_ok=True)
+            
+            if not os.path.exists(root_buffalo):
+                try:
+                    os.symlink(buffalo_dir, root_buffalo)
+                    logger.info(f"🔗 Created early root InsightFace symlink: {root_buffalo}")
+                except OSError as e:
+                    if e.errno != 17:  # Not "File exists"
+                        logger.warning(f"⚠️ Failed to create early root InsightFace symlink: {e}")
+            
+            logger.info("✅ Early InsightFace paths configured successfully")
+        else:
+            logger.warning("⚠️ buffalo_l directory not found for early InsightFace setup")
+            
+    except Exception as e:
+        logger.error(f"❌ Error in early InsightFace setup: {e}")
+
 def setup_volume_models():
     """直接使用Volume中预下载的模型，无需下载"""
     
@@ -204,6 +250,9 @@ def setup_volume_models():
     
     # Try to extract buffalo_l if needed
     extract_buffalo_l_if_needed(volume_models_dir)
+    
+    # Setup InsightFace paths early
+    setup_insightface_paths_early(volume_models_dir)
     
     # 检查必需模型是否存在
     essential_models = {
@@ -391,12 +440,13 @@ try:
     try:
         logger.info("🔧 Applying model path patches...")
         sys.path.insert(0, '/app/runpod')
-        from patch_gfpgan_paths import patch_gfpgan_model_paths, patch_facexlib_paths, patch_basicsr_paths, patch_all_download_functions, ensure_buffalo_l_extracted
+        from patch_gfpgan_paths import patch_insightface_paths, patch_gfpgan_model_paths, patch_facexlib_paths, patch_basicsr_paths, patch_download_functions, ensure_buffalo_l_extracted
         
+        patch_insightface_paths()
         patch_gfpgan_model_paths()
         patch_facexlib_paths()
         patch_basicsr_paths()
-        patch_all_download_functions()
+        patch_download_functions()
         ensure_buffalo_l_extracted()
         
         logger.info("✅ Model path patches applied successfully")

@@ -12,6 +12,54 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def patch_insightface_paths():
+    """Patch InsightFace to use Volume models"""
+    try:
+        models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+        buffalo_dir = os.path.join(models_dir, 'buffalo_l')
+        
+        # Set InsightFace environment variables
+        insightface_home = os.path.join(models_dir, '.insightface')
+        os.environ['INSIGHTFACE_HOME'] = insightface_home
+        
+        # Create .insightface directory structure
+        insightface_models_dir = os.path.join(insightface_home, 'models')
+        insightface_buffalo_dir = os.path.join(insightface_models_dir, 'buffalo_l')
+        
+        os.makedirs(insightface_models_dir, exist_ok=True)
+        
+        # Create symlink if buffalo_l exists and symlink doesn't exist
+        if os.path.exists(buffalo_dir) and not os.path.exists(insightface_buffalo_dir):
+            try:
+                os.symlink(buffalo_dir, insightface_buffalo_dir)
+                logger.info(f"🔗 Created InsightFace symlink: {insightface_buffalo_dir}")
+            except OSError as e:
+                if e.errno == 17:  # File exists
+                    logger.info(f"🔗 InsightFace symlink already exists")
+                else:
+                    logger.warning(f"⚠️ Failed to create InsightFace symlink: {e}")
+        
+        # Also create symlink in /root/.insightface for compatibility
+        root_insightface = '/root/.insightface/models'
+        root_buffalo = os.path.join(root_insightface, 'buffalo_l')
+        
+        os.makedirs(root_insightface, exist_ok=True)
+        
+        if os.path.exists(buffalo_dir) and not os.path.exists(root_buffalo):
+            try:
+                os.symlink(buffalo_dir, root_buffalo)
+                logger.info(f"🔗 Created root InsightFace symlink: {root_buffalo}")
+            except OSError as e:
+                if e.errno == 17:  # File exists
+                    logger.info(f"🔗 Root InsightFace symlink already exists")
+                else:
+                    logger.warning(f"⚠️ Failed to create root InsightFace symlink: {e}")
+        
+        logger.info("✅ InsightFace paths configured successfully")
+        
+    except Exception as e:
+        logger.error(f"❌ Error configuring InsightFace paths: {e}")
+
 def patch_gfpgan_model_paths():
     """Patch GFPGAN to use Volume models instead of downloading"""
     
@@ -98,9 +146,9 @@ def patch_facexlib_paths():
                 logger.info(f"✅ Using local model: {file_name} from {gfpgan_path}")
                 return gfpgan_path
             
-            # If not found locally, block the download
-            logger.error(f"❌ Model {file_name} not found in volume, blocking download from {url}")
-            raise FileNotFoundError(f"Model {file_name} not found in volume at {local_path} or {gfpgan_path}")
+            # If not found locally, allow download as fallback
+            logger.warning(f"⚠️ Model {file_name} not found in volume, allowing download from {url}")
+            return original_load_file_from_url(url, model_dir, progress, file_name)
         
         # Replace the function
         facexlib.utils.load_file_from_url = patched_load_file_from_url
@@ -142,9 +190,9 @@ def patch_basicsr_paths():
                 logger.info(f"✅ Using local model: {file_name} from {gfpgan_path}")
                 return gfpgan_path
             
-            # If not found locally, block the download
-            logger.error(f"❌ Model {file_name} not found in volume, blocking download from {url}")
-            raise FileNotFoundError(f"Model {file_name} not found in volume at {local_path} or {gfpgan_path}")
+            # If not found locally, allow download as fallback
+            logger.warning(f"⚠️ Model {file_name} not found in volume, allowing download from {url}")
+            return original_load_file_from_url(url, model_dir, progress, file_name)
         
         # Replace the function
         basicsr.utils.download_util.load_file_from_url = patched_load_file_from_url
@@ -156,8 +204,8 @@ def patch_basicsr_paths():
     except Exception as e:
         logger.error(f"❌ Error patching BasicSR: {e}")
 
-def patch_all_download_functions():
-    """Patch all possible download functions to prevent model downloads"""
+def patch_download_functions():
+    """Patch download functions to allow fallback downloads if models not found"""
     try:
         import urllib.request
         import requests
@@ -168,29 +216,26 @@ def patch_all_download_functions():
         original_urlretrieve = urllib.request.urlretrieve
         original_requests_get = requests.get
         
-        def blocked_urlretrieve(url, filename=None, reporthook=None, data=None):
-            """Block all urllib downloads"""
-            logger.error(f"🚫 Blocked urllib download attempt: {url}")
-            raise RuntimeError(f"Model downloads are disabled. All models should be in volume: {models_dir}")
+        def smart_urlretrieve(url, filename=None, reporthook=None, data=None):
+            """Allow downloads but log them"""
+            logger.info(f"📥 Allowing urllib download: {url}")
+            return original_urlretrieve(url, filename, reporthook, data)
         
-        def patched_requests_get(url, **kwargs):
-            """Intercept requests.get calls for model downloads"""
-            # Allow normal HTTP requests but block known model download URLs
+        def smart_requests_get(url, **kwargs):
+            """Allow requests but log model downloads"""
             if any(domain in url for domain in ['github.com', 'huggingface.co', 'drive.google.com']) and any(ext in url for ext in ['.pth', '.onnx', '.zip']):
-                logger.error(f"🚫 Blocked requests download attempt: {url}")
-                raise RuntimeError(f"Model downloads are disabled. All models should be in volume: {models_dir}")
+                logger.info(f"📥 Allowing model download via requests: {url}")
             
-            # Allow other requests to proceed
             return original_requests_get(url, **kwargs)
         
         # Replace functions
-        urllib.request.urlretrieve = blocked_urlretrieve
-        requests.get = patched_requests_get
+        urllib.request.urlretrieve = smart_urlretrieve
+        requests.get = smart_requests_get
         
-        logger.info("✅ All download functions patched successfully")
+        logger.info("✅ Download functions configured for smart fallback")
         
     except Exception as e:
-        logger.error(f"❌ Error patching download functions: {e}")
+        logger.error(f"❌ Error configuring download functions: {e}")
 
 def ensure_buffalo_l_extracted():
     """Ensure buffalo_l.zip is extracted to buffalo_l directory"""
@@ -214,8 +259,9 @@ def ensure_buffalo_l_extracted():
         logger.error(f"❌ Error extracting buffalo_l.zip: {e}")
 
 if __name__ == "__main__":
+    patch_insightface_paths()
     patch_gfpgan_model_paths()
     patch_facexlib_paths()
     patch_basicsr_paths()
-    patch_all_download_functions()
+    patch_download_functions()
     ensure_buffalo_l_extracted() 
