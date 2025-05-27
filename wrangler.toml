@@ -1,0 +1,13 @@
+name = "faceswap-frontend"
+compatibility_date = "2024-01-15"
+
+[env.production]
+pages_build_output_dir = "web/frontend/dist"
+
+[build]
+command = "cd web/frontend && rm -rf node_modules package-lock.json && npm cache clean --force && npm install --verbose && npm ls react-router-dom && npm run build"
+cwd = "/"
+
+[build.environment_variables]
+NODE_VERSION = "18"
+NPM_VERSION = "latest" 
