@@ -11,51 +11,96 @@ export default {
     try {
       // Route handling
       if (path.startsWith('/api/upload')) {
-        return await handleUpload(request, env)
+        return addCorsHeaders(await handleUpload(request, env), request)
       } else if (path.startsWith('/api/process/')) {
-        return await handleProcess(request, env, path)
+        return addCorsHeaders(await handleProcess(request, env, path), request)
       } else if (path.startsWith('/api/status/')) {
-        return await handleStatus(request, env, path)
+        return addCorsHeaders(await handleStatus(request, env, path), request)
       } else if (path.startsWith('/api/download/')) {
-        return await handleDownload(request, env, path)
+        return addCorsHeaders(await handleDownload(request, env, path), request)
       } else if (path.startsWith('/api/detect-faces')) {
-        return await handleDetectFaces(request, env)
+        return addCorsHeaders(await handleDetectFaces(request, env), request)
       } else if (path.startsWith('/api/cancel/')) {
-        return await handleCancel(request, env, path)
+        return addCorsHeaders(await handleCancel(request, env, path), request)
       } else {
         return new Response('Not Found', { status: 404 })
       }
     } catch (error) {
       console.error('Worker error:', error)
-      return new Response(JSON.stringify({
+      const errorResponse = new Response(JSON.stringify({
         success: false,
         error: error.message || 'Internal server error'
       }), {
         status: 500,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Content-Type': 'application/json'
         }
       })
+      return addCorsHeaders(errorResponse, request)
     }
   }
 }
 
 // CORS handler
-export function handleCORS(request, env) {
+function handleCORS(request, env) {
+  const origin = request.headers.get('Origin')
+  const allowedOrigins = [
+    'https://5e75fa24.faceswap-ce9.pages.dev',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001'
+  ]
+  
+  const responseHeaders = {
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'false'
+  }
+
+  if (origin && allowedOrigins.includes(origin)) {
+    responseHeaders['Access-Control-Allow-Origin'] = origin
+  } else if (!origin) {
+    // For same-origin requests or when no origin header is present
+    responseHeaders['Access-Control-Allow-Origin'] = allowedOrigins[0]
+  }
+
   return new Response(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400'
-    }
+    headers: responseHeaders
   })
 }
 
+// Add CORS headers to responses
+function addCorsHeaders(response, request) {
+  const origin = request.headers.get('Origin')
+  const allowedOrigins = [
+    'https://5e75fa24.faceswap-ce9.pages.dev',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001'
+  ]
+
+  const newResponse = new Response(response.body, response)
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    newResponse.headers.set('Access-Control-Allow-Origin', origin)
+  } else if (!origin) {
+    // For same-origin requests or when no origin header is present
+    newResponse.headers.set('Access-Control-Allow-Origin', allowedOrigins[0])
+  }
+  
+  newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+  newResponse.headers.set('Access-Control-Allow-Credentials', 'false')
+  
+  return newResponse
+}
+
 // Upload file to R2
-export async function handleUpload(request, env) {
+async function handleUpload(request, env) {
   try {
     console.log('Upload request received');
     console.log('Content-Type:', request.headers.get('content-type'));
@@ -66,7 +111,7 @@ export async function handleUpload(request, env) {
       return new Response(JSON.stringify({
         success: false,
         error: 'Content-Type must be multipart/form-data'
-      }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+      }), { status: 400, headers: { 'Content-Type': 'application/json' }})
     }
     
     const formData = await request.formData()
@@ -78,7 +123,7 @@ export async function handleUpload(request, env) {
       return new Response(JSON.stringify({
         success: false,
         error: 'No file provided'
-      }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+      }), { status: 400, headers: { 'Content-Type': 'application/json' }})
     }
 
     // Generate unique file ID
@@ -121,8 +166,7 @@ export async function handleUpload(request, env) {
       }
     }), {
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
 
@@ -134,15 +178,14 @@ export async function handleUpload(request, env) {
     }), {
       status: 500,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
   }
 }
 
 // Process face swap request
-export async function handleProcess(request, env, path) {
+async function handleProcess(request, env, path) {
   try {
     const processType = path.split('/').pop() // single-image, multi-image, etc.
     const requestBody = await request.json()
@@ -264,21 +307,23 @@ export async function handleProcess(request, env, path) {
     console.log(`📊 RunPod response:`, JSON.stringify(runpodResult, null, 2));
     
     if (!runpodResponse.ok) {
+      console.error('❌ RunPod error:', runpodResult);
       throw new Error(`RunPod error: ${runpodResult.error || 'Unknown error'}`)
     }
 
-    // Update job with RunPod ID
+    // Update job with RunPod ID and processing status
     jobData.runpod_id = runpodResult.id
     jobData.status = 'processing'
     await env.JOBS.put(jobId, JSON.stringify(jobData))
 
+    console.log(`✅ Job ${jobId} created and started with RunPod ID: ${runpodResult.id}`);
+
     return new Response(JSON.stringify({
       success: true,
-      data: { jobId }
+      data: { jobId: jobId }
     }), {
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
 
@@ -290,15 +335,14 @@ export async function handleProcess(request, env, path) {
     }), {
       status: 500,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
   }
 }
 
 // Get job status
-export async function handleStatus(request, env, path) {
+async function handleStatus(request, env, path) {
   try {
     const jobId = path.split('/').pop()
     console.log(`📋 Checking status for job: ${jobId}`);
@@ -310,7 +354,7 @@ export async function handleStatus(request, env, path) {
       return new Response(JSON.stringify({
         success: false,
         error: 'Job not found'
-      }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+      }), { status: 404, headers: { 'Content-Type': 'application/json' }})
     }
 
     const job = JSON.parse(jobData)
@@ -326,24 +370,18 @@ export async function handleStatus(request, env, path) {
         }
       })
 
-      if (!runpodResponse.ok) {
-        console.log(`⚠️ RunPod API error: ${runpodResponse.status} ${runpodResponse.statusText}`);
-        // Don't fail completely, just return current job status
-      } else {
+      if (runpodResponse.ok) {
         const runpodResult = await runpodResponse.json()
-        console.log(`📊 RunPod result:`, JSON.stringify(runpodResult, null, 2));
+        console.log(`📊 RunPod status response:`, JSON.stringify(runpodResult, null, 2));
         
-        // Update job based on RunPod status
         if (runpodResult.status === 'COMPLETED') {
-          console.log(`✅ RunPod job completed, processing result...`);
-          
+          console.log(`✅ Job completed`);
           job.status = 'completed'
           job.progress = 100
           job.completed_at = new Date().toISOString()
           
-          // Handle different result formats from RunPod
+          // Process result from RunPod
           if (runpodResult.output) {
-            console.log(`🔍 Processing RunPod output...`);
             
             try {
               // Format 1: result_url (from old handler)
@@ -381,151 +419,114 @@ export async function handleStatus(request, env, path) {
           console.log(`💾 Job updated with new status: ${job.status}`);
           
         } else if (runpodResult.status === 'FAILED') {
-          console.log(`❌ RunPod job failed: ${runpodResult.error || 'Unknown error'}`);
+          console.log(`❌ Job failed`);
           job.status = 'failed'
-          job.error_message = runpodResult.error || 'Processing failed'
+          job.error_message = runpodResult.error || 'Processing failed on RunPod'
           await env.JOBS.put(jobId, JSON.stringify(job))
-        } else {
-          console.log(`🔄 RunPod job still in progress: ${runpodResult.status}`);
+        } else if (runpodResult.status === 'IN_PROGRESS') {
+          // Update progress if available
+          if (runpodResult.progress) {
+            job.progress = Math.round(runpodResult.progress * 100)
+            await env.JOBS.put(jobId, JSON.stringify(job))
+          }
         }
+      } else {
+        console.log(`⚠️ RunPod status check failed: ${runpodResponse.status}`);
       }
     }
 
-    console.log(`📤 Returning job status: ${job.status}`);
     return new Response(JSON.stringify({
       success: true,
       data: job
     }), {
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
 
   } catch (error) {
-    console.error('❌ Status error:', error);
+    console.error('Status error:', error)
     return new Response(JSON.stringify({
       success: false,
       error: error.message || 'Status check failed'
     }), {
       status: 500,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
   }
 }
 
 // Download file from R2
-export async function handleDownload(request, env, path) {
+async function handleDownload(request, env, path) {
   try {
     const fileId = path.split('/').pop()
-    console.log('Download request for fileId:', fileId);
-    
-    // Try both uploads and results folders with different extensions
-    const possiblePaths = [
-      `uploads/${fileId}.jpg`,
-      `uploads/${fileId}.jpeg`, 
-      `uploads/${fileId}.png`,
-      `uploads/${fileId}.webp`,
-      `uploads/${fileId}.gif`,
-      `uploads/${fileId}.bmp`,
-      `uploads/${fileId}.svg`,
-      `uploads/${fileId}.mp4`,
-      `uploads/${fileId}.avi`,
-      `uploads/${fileId}.mov`,
-      `uploads/${fileId}`,
-      `results/${fileId}.jpg`,
-      `results/${fileId}.jpeg`,
-      `results/${fileId}.png`,
-      `results/${fileId}.webp`,
-      `results/${fileId}.gif`,
-      `results/${fileId}.bmp`, 
-      `results/${fileId}.svg`,
-      `results/${fileId}.mp4`,
-      `results/${fileId}.avi`,
-      `results/${fileId}.mov`,
-      `results/${fileId}`
-    ];
-    
-    let r2Object = null;
-    let foundPath = null;
-    
-    for (const testPath of possiblePaths) {
-      console.log('Trying path:', testPath);
-      r2Object = await env.FACESWAP_BUCKET.get(testPath);
-      if (r2Object) {
-        foundPath = testPath;
-        console.log('Found file at:', foundPath);
-        break;
-      }
-    }
-    
-    if (!r2Object) {
-      console.log('File not found in any path');
-      return new Response('File not found', { 
-        status: 404,
-        headers: { 'Access-Control-Allow-Origin': '*' }
-      })
+    console.log(`📥 Download request for file: ${fileId}`);
+
+    // Try different file extensions to find the file
+    const extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp', 'm4v', 'webm']
+    let file = null
+    let fileName = null
+
+    // First try uploads directory
+    for (const ext of extensions) {
+      fileName = `uploads/${fileId}.${ext}`
+      file = await env.FACESWAP_BUCKET.get(fileName)
+      if (file) break
     }
 
+    // If not found in uploads, try results directory
+    if (!file) {
+      for (const ext of extensions) {
+        fileName = `results/${fileId}.${ext}`
+        file = await env.FACESWAP_BUCKET.get(fileName)
+        if (file) break
+      }
+    }
+
+    if (!file) {
+      console.log(`❌ File not found: ${fileId}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'File not found'
+      }), { status: 404, headers: { 'Content-Type': 'application/json' }})
+    }
+
+    console.log(`✅ File found: ${fileName}`);
+    
+    // Get file metadata
+    const metadata = file.customMetadata || {}
+    const contentType = file.httpMetadata?.contentType || 'application/octet-stream'
+    
+    // Set response headers for file download
     const headers = new Headers()
-    headers.set('Access-Control-Allow-Origin', '*')
-    headers.set('Content-Type', r2Object.httpMetadata?.contentType || 'application/octet-stream')
+    headers.set('Content-Type', contentType)
+    headers.set('Content-Disposition', `attachment; filename="${metadata.originalName || fileId}"`)
+    headers.set('Cache-Control', 'public, max-age=3600') // Cache for 1 hour
     
-    // Set filename for download
-    let downloadFilename;
-    
-    if (foundPath.startsWith('results/')) {
-      // For result files, use the detected file extension from metadata or path
-      const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      
-      // Try to get extension from custom metadata first
-      const storedExtension = r2Object.customMetadata?.fileExtension;
-      if (storedExtension) {
-        downloadFilename = `face_swap_result_${timestamp}.${storedExtension}`;
-        console.log(`📁 Using stored extension: ${storedExtension}`);
-      } else {
-        // Fallback: extract extension from the found path
-        const pathParts = foundPath.split('.');
-        const extension = pathParts.length > 1 ? pathParts.pop() : 'jpg';
-        downloadFilename = `face_swap_result_${timestamp}.${extension}`;
-        console.log(`📁 Using path extension: ${extension}`);
-      }
-    } else {
-      // For uploaded files, use original name or generate one with extension
-      const originalName = r2Object.customMetadata?.originalName;
-      if (originalName) {
-        downloadFilename = originalName;
-      } else {
-        // Extract extension from the found path
-        const pathParts = foundPath.split('.');
-        const extension = pathParts.length > 1 ? pathParts.pop() : 'jpg';
-        downloadFilename = `file_${fileId}.${extension}`;
-      }
-    }
-    
-    headers.set('Content-Disposition', `attachment; filename="${downloadFilename}"`)
-
-    console.log('Serving file:', foundPath, 'as:', downloadFilename);
-    return new Response(r2Object.body, { headers })
+    return new Response(file.body, { headers })
 
   } catch (error) {
     console.error('Download error:', error)
-    return new Response('Download failed', { 
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Download failed'
+    }), {
       status: 500,
-      headers: { 'Access-Control-Allow-Origin': '*' }
+      headers: {
+        'Content-Type': 'application/json'
+      }
     })
   }
 }
 
-// Cancel/Stop job
-export async function handleCancel(request, env, path) {
+// Cancel job
+async function handleCancel(request, env, path) {
   try {
     const jobId = path.split('/').pop()
-    console.log(`🛑 Cancelling job: ${jobId}`);
-    
+    console.log(`🚫 Cancel request for job: ${jobId}`);
+
     // Get job from KV
     const jobData = await env.JOBS.get(jobId)
     if (!jobData) {
@@ -533,79 +534,61 @@ export async function handleCancel(request, env, path) {
       return new Response(JSON.stringify({
         success: false,
         error: 'Job not found'
-      }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+      }), { status: 404, headers: { 'Content-Type': 'application/json' }})
     }
 
     const job = JSON.parse(jobData)
-    console.log(`🔍 Job status: ${job.status}, RunPod ID: ${job.runpod_id}`);
 
-    // If job is already completed or failed, can't cancel
-    if (job.status === 'completed' || job.status === 'failed') {
-      console.log(`⚠️ Job already finished: ${job.status}`);
-      return new Response(JSON.stringify({
-        success: false,
-        error: `Job already ${job.status}`
-      }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
-    }
-
-    // Try to cancel RunPod job if it exists
-    if (job.runpod_id) {
+    // If job is still processing and has a RunPod ID, try to cancel it on RunPod
+    if (job.status === 'processing' && job.runpod_id) {
+      console.log(`🔄 Attempting to cancel RunPod job: ${job.runpod_id}`);
+      
       try {
-        console.log(`🔄 Cancelling RunPod job: ${job.runpod_id}`);
-        const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/cancel/${job.runpod_id}`, {
+        const cancelResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/cancel/${job.runpod_id}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${env.RUNPOD_TOKEN}`
           }
         })
-
-        if (runpodResponse.ok) {
-          console.log(`✅ RunPod job cancelled successfully`);
-        } else {
-          console.log(`⚠️ RunPod cancel failed: ${runpodResponse.status} ${runpodResponse.statusText}`);
-          // Continue anyway - we'll mark our job as cancelled
-        }
-      } catch (runpodError) {
-        console.log(`⚠️ RunPod cancel error: ${runpodError.message}`);
-        // Continue anyway - we'll mark our job as cancelled
+        
+        console.log(`📊 RunPod cancel response status: ${cancelResponse.status}`);
+      } catch (cancelError) {
+        console.log(`⚠️ Failed to cancel on RunPod: ${cancelError.message}`);
       }
     }
 
     // Update job status to cancelled
-    job.status = 'failed'
-    job.error_message = '任务已被用户取消'
-    job.updated_at = new Date().toISOString()
-    
+    job.status = 'cancelled'
+    job.cancelled_at = new Date().toISOString()
     await env.JOBS.put(jobId, JSON.stringify(job))
-    console.log(`✅ Job marked as cancelled: ${jobId}`);
+
+    console.log(`✅ Job cancelled: ${jobId}`);
 
     return new Response(JSON.stringify({
       success: true,
-      data: { message: 'Job cancelled successfully' }
+      data: { message: 'Job cancelled' }
     }), {
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
 
   } catch (error) {
-    console.error('❌ Cancel error:', error);
+    console.error('Cancel error:', error)
     return new Response(JSON.stringify({
       success: false,
       error: error.message || 'Cancel failed'
     }), {
       status: 500,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
   }
 }
 
 // Face detection handler
-export async function handleDetectFaces(request, env) {
+async function handleDetectFaces(request, env) {
   try {
     const requestBody = await request.json()
     const fileId = requestBody.fileId
@@ -614,7 +597,7 @@ export async function handleDetectFaces(request, env) {
       return new Response(JSON.stringify({
         success: false,
         error: 'No file ID provided'
-      }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+      }), { status: 400, headers: { 'Content-Type': 'application/json' }})
     }
 
     // Prepare RunPod request for face detection
@@ -644,54 +627,22 @@ export async function handleDetectFaces(request, env) {
       throw new Error(`RunPod error: ${runpodResult.error || 'Unknown error'}`)
     }
 
-    // Check if this is a synchronous response (has output) or asynchronous (has id)
-    if (runpodResult.output) {
-      // Synchronous response - return immediately
-      console.log('✅ Synchronous response received')
+    // Wait for result since face detection is usually quick
+    console.log('⏳ Waiting for face detection result...')
+    const result = await pollRunPodResult(env, runpodResult.id)
+    
+    if (result.status === 'COMPLETED') {
+      console.log('✅ Face detection completed')
       return new Response(JSON.stringify({
         success: true,
-        data: runpodResult.output
+        data: result.output
       }), {
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Content-Type': 'application/json'
         }
       })
-    } else if (runpodResult.id) {
-      // Asynchronous response - poll for result
-      console.log('🔄 Asynchronous response, polling for result...')
-      const pollResult = await pollRunPodResult(env, runpodResult.id, 60) // Increase to 60 second timeout
-      
-      if (pollResult.success) {
-        return new Response(JSON.stringify({
-          success: true,
-          data: pollResult.output
-        }), {
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        })
-      } else {
-        throw new Error(pollResult.error || 'Polling failed')
-      }
     } else {
-      // Unknown response format
-      console.log('⚠️ Unknown RunPod response format')
-      return new Response(JSON.stringify({
-        success: true,
-        data: {
-          faces: [],
-          total_faces: 0,
-          image_path: await getR2FileUrl(env, fileId),
-          message: 'Face detection completed but no faces found'
-        }
-      }), {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
+      throw new Error('Face detection failed or timed out')
     }
 
   } catch (error) {
@@ -702,96 +653,54 @@ export async function handleDetectFaces(request, env) {
     }), {
       status: 500,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     })
   }
 }
 
-// Helper function to poll RunPod result
-async function pollRunPodResult(env, jobId, timeoutSeconds = 60) {
-  const maxAttempts = Math.ceil(timeoutSeconds / 3) // Poll every 3 seconds for longer jobs
+// Poll RunPod for result
+async function pollRunPodResult(env, runpodJobId, timeoutSeconds = 60) {
+  const startTime = Date.now()
+  const timeoutMs = timeoutSeconds * 1000
   
-  console.log(`🔄 Starting polling for job ${jobId}, max attempts: ${maxAttempts}`)
-  
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  while (Date.now() - startTime < timeoutMs) {
     try {
-      console.log(`🔄 Polling attempt ${attempt}/${maxAttempts} for job ${jobId}`)
-      
-      const response = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${jobId}`, {
-        method: 'GET',
+      const response = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/status/${runpodJobId}`, {
         headers: {
-          'Authorization': `Bearer ${env.RUNPOD_TOKEN}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${env.RUNPOD_TOKEN}`
         }
       })
-
-      if (!response.ok) {
-        console.log(`⚠️ Polling failed with HTTP ${response.status}: ${response.statusText}`)
-        const errorText = await response.text()
-        console.log(`⚠️ Error response: ${errorText}`)
-        
-        // Don't fail immediately on HTTP errors, continue polling
-        if (attempt < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
-          continue
-        } else {
-          return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
-        }
-      }
-
-      const result = await response.json()
-      console.log(`📊 Job ${jobId} status: ${result.status}`)
-      console.log(`📋 Full response:`, JSON.stringify(result, null, 2))
       
-      if (result.status === 'COMPLETED') {
-        console.log('✅ Job completed successfully')
-        if (result.output) {
-          return { success: true, output: result.output }
-        } else {
-          console.log('⚠️ Job completed but no output found')
-          return { success: false, error: 'Job completed but no output found' }
+      if (response.ok) {
+        const result = await response.json()
+        
+        if (result.status === 'COMPLETED' || result.status === 'FAILED') {
+          return result
         }
-      } else if (result.status === 'FAILED') {
-        console.log('❌ Job failed')
-        const errorMsg = result.error || result.output?.error || 'Job failed without specific error'
-        return { success: false, error: errorMsg }
-      } else if (result.status === 'IN_PROGRESS' || result.status === 'IN_QUEUE') {
-        console.log(`⏳ Job still ${result.status.toLowerCase()}, continuing to poll...`)
-        // Still running, wait before next attempt
-        if (attempt < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
-        }
+        
+        // Wait 2 seconds before next poll
+        await new Promise(resolve => setTimeout(resolve, 2000))
       } else {
-        console.log(`🤔 Unknown status: ${result.status}`)
-        // Unknown status, continue polling
-        if (attempt < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
-        }
+        console.log(`Poll failed with status: ${response.status}`)
+        await new Promise(resolve => setTimeout(resolve, 2000))
       }
-
     } catch (error) {
-      console.log(`⚠️ Polling error on attempt ${attempt}: ${error.message}`)
-      if (attempt < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 3000)) // Wait 3 seconds
-      } else {
-        return { success: false, error: `Polling failed: ${error.message}` }
-      }
+      console.log(`Poll error: ${error.message}`)
+      await new Promise(resolve => setTimeout(resolve, 2000))
     }
   }
   
-  console.log(`⏰ Polling timeout after ${maxAttempts} attempts`)
-  return { success: false, error: 'Polling timeout - job may still be processing' }
+  throw new Error('Polling timed out')
 }
 
-// Helper functions
+// Utility functions
 function generateFileId() {
-  return crypto.randomUUID()
+  return Date.now().toString(36) + Math.random().toString(36).substr(2)
 }
 
 function generateJobId() {
-  return `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return Date.now().toString(36) + Math.random().toString(36).substr(2)
 }
 
 function getFileExtension(filename) {
@@ -805,124 +714,96 @@ async function getR2FileUrl(env, fileId) {
 }
 
 async function storeResultFromUrl(env, resultUrl, jobId) {
-  try {
-    // Download the result from RunPod
-    const response = await fetch(resultUrl)
-    if (!response.ok) {
-      throw new Error('Failed to fetch result file')
-    }
-
-    // Generate result file ID
-    const resultFileId = `result_${jobId}_${Date.now()}`
-    const fileName = `results/${resultFileId}.jpg` // Assume JPG for now
-
-    // Store in R2
-    await env.FACESWAP_BUCKET.put(fileName, response.body, {
-      customMetadata: {
-        jobId: jobId,
-        createdAt: new Date().toISOString(),
-        originalUrl: resultUrl
-      }
-    })
-
-    // Set expiration for result files (7 days)
-    await scheduleFileDeletion(env, fileName, 7 * 24 * 60 * 60 * 1000) // 7 days
-
-    return resultFileId
-
-  } catch (error) {
-    console.error('Failed to store result:', error)
-    throw error
+  console.log(`📥 Downloading result from URL: ${resultUrl}`);
+  
+  // Download the result file
+  const response = await fetch(resultUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to download result: ${response.status}`)
   }
+  
+  // Get content type to determine file extension
+  const contentType = response.headers.get('content-type') || 'application/octet-stream'
+  let extension = 'bin'
+  if (contentType.includes('image/jpeg')) extension = 'jpg'
+  else if (contentType.includes('image/png')) extension = 'png'
+  else if (contentType.includes('image/gif')) extension = 'gif'
+  else if (contentType.includes('video/mp4')) extension = 'mp4'
+  else if (contentType.includes('video/')) extension = 'mp4' // Default video extension
+  else if (contentType.includes('image/')) extension = 'jpg' // Default image extension
+  
+  const resultFileId = generateFileId()
+  const fileName = `results/${resultFileId}.${extension}`
+  
+  console.log(`💾 Storing result as: ${fileName}`);
+  
+  // Store in R2
+  await env.FACESWAP_BUCKET.put(fileName, response.body, {
+    httpMetadata: {
+      contentType: contentType
+    },
+    customMetadata: {
+      jobId: jobId,
+      originalUrl: resultUrl,
+      storeTime: new Date().toISOString()
+    }
+  })
+  
+  return resultFileId
 }
 
 async function storeResultFromBase64(env, base64Data, jobId) {
-  try {
-    console.log(`🔄 Storing base64 result for job ${jobId}...`);
-    
-    // Decode base64 data to detect file type
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    // Detect file type from magic bytes
-    let fileExtension = 'jpg';  // Default
-    let contentType = 'image/jpeg';  // Default
-    
-    if (bytes.length >= 4) {
-      // Check for common video file signatures
-      const header = Array.from(bytes.slice(0, 12)).map(b => b.toString(16).padStart(2, '0')).join('');
-      
-      // MP4 signatures
-      if (header.includes('66747970') || header.includes('6d703430') || header.includes('6d703431') || 
-          header.includes('6d703432') || header.includes('69736f6d') || header.includes('6d70342')) {
-        fileExtension = 'mp4';
-        contentType = 'video/mp4';
-        console.log(`🎬 Detected MP4 video file`);
-      }
-      // AVI signature
-      else if (header.startsWith('52494646') && header.includes('41564920')) {
-        fileExtension = 'avi';
-        contentType = 'video/x-msvideo';
-        console.log(`🎬 Detected AVI video file`);
-      }
-      // MOV/QuickTime signature
-      else if (header.includes('6d6f6f76') || header.includes('6d646174') || header.includes('66726565')) {
-        fileExtension = 'mov';
-        contentType = 'video/quicktime';
-        console.log(`🎬 Detected MOV video file`);
-      }
-      // JPEG signature
-      else if (header.startsWith('ffd8ff')) {
-        fileExtension = 'jpg';
-        contentType = 'image/jpeg';
-        console.log(`📸 Detected JPEG image file`);
-      }
-      // PNG signature
-      else if (header.startsWith('89504e47')) {
-        fileExtension = 'png';
-        contentType = 'image/png';
-        console.log(`📸 Detected PNG image file`);
-      }
-      else {
-        console.log(`🔍 Unknown file signature: ${header}, defaulting to JPEG`);
-      }
-    }
-    
-    // Generate result file ID
-    const resultFileId = `result_${jobId}_${Date.now()}`;
-    const fileName = `results/${resultFileId}.${fileExtension}`;
-
-    console.log(`💾 Storing result file: ${fileName} (${bytes.length} bytes) as ${contentType}`);
-
-    // Store in R2
-    await env.FACESWAP_BUCKET.put(fileName, bytes, {
-      httpMetadata: {
-        contentType: contentType
-      },
-      customMetadata: {
-        jobId: jobId,
-        createdAt: new Date().toISOString(),
-        type: 'result',
-        fileExtension: fileExtension
-      }
-    });
-
-    console.log(`💾 Result stored successfully as ${fileExtension.toUpperCase()}`);
-
-    return resultFileId;
-
-  } catch (error) {
-    console.error('Failed to store result:', error);
-    throw error;
+  console.log(`📄 Storing base64 result (${base64Data.length} chars)`);
+  
+  // Remove data URL prefix if present
+  let cleanBase64 = base64Data
+  if (base64Data.startsWith('data:')) {
+    cleanBase64 = base64Data.split(',')[1]
   }
+  
+  // Convert base64 to binary
+  const binaryData = atob(cleanBase64)
+  const bytes = new Uint8Array(binaryData.length)
+  for (let i = 0; i < binaryData.length; i++) {
+    bytes[i] = binaryData.charCodeAt(i)
+  }
+  
+  // Determine file type from base64 header or default to jpg
+  let contentType = 'image/jpeg'
+  let extension = 'jpg'
+  
+  if (base64Data.startsWith('data:image/png')) {
+    contentType = 'image/png'
+    extension = 'png'
+  } else if (base64Data.startsWith('data:video/mp4')) {
+    contentType = 'video/mp4'
+    extension = 'mp4'
+  }
+  
+  const resultFileId = generateFileId()
+  const fileName = `results/${resultFileId}.${extension}`
+  
+  console.log(`💾 Storing base64 result as: ${fileName}`);
+  
+  // Store in R2
+  await env.FACESWAP_BUCKET.put(fileName, bytes, {
+    httpMetadata: {
+      contentType: contentType
+    },
+    customMetadata: {
+      jobId: jobId,
+      storeTime: new Date().toISOString(),
+      source: 'base64'
+    }
+  })
+  
+  return resultFileId
 }
 
+// File cleanup scheduler
 async function scheduleFileDeletion(env, fileName, delayMs) {
-  // Use Cloudflare's lifecycle policies or external service for file cleanup
-  // For now, we'll rely on manual cleanup or R2 lifecycle policies
+  // This would typically use Durable Objects or scheduled workers
+  // For now, just log the intent
   console.log(`🗑️ File ${fileName} scheduled for deletion in ${delayMs}ms`)
 }
 
