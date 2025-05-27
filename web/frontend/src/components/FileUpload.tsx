@@ -115,9 +115,9 @@ export default function FileUpload({
                 {description || 'Drag and drop a file here, or click to select'}
               </p>
               {maxSize && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Max file size: {formatFileSize(maxSize)}
-                </p>
+              <p className="text-xs text-gray-500 mt-2">
+                Max file size: {formatFileSize(maxSize)}
+              </p>
               )}
             </div>
           </div>

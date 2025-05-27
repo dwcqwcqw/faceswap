@@ -130,16 +130,16 @@ export const apiService = {
 
       console.log(`📤 开始上传文件: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)}MB)`)
 
-      const formData = new FormData()
-      formData.append('file', file)
+    const formData = new FormData()
+    formData.append('file', file)
       
       // 添加超时和重试机制 - 根据文件大小动态调整超时时间
       const timeoutDuration = Math.max(120000, Math.min(file.size / 1024 / 1024 * 10000, 600000)) // 最少2分钟，最多10分钟
-      
-      const response = await api.post('/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+    
+    const response = await api.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
         timeout: timeoutDuration,
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
@@ -320,7 +320,7 @@ export const apiService = {
         throw new Error('人脸检测响应格式无效')
       }
       
-      return response.data
+    return response.data
     }, 'detectFaces', 2)  // 减少重试次数到2次
   },
 
@@ -335,13 +335,13 @@ export const apiService = {
     }
     
     return this.withRetry(async () => {
-      const response = await api.post('/process/single-image', { ...request, options: defaultOptions })
+    const response = await api.post('/process/single-image', { ...request, options: defaultOptions })
       
       if (!response.data?.success || !response.data?.data?.jobId) {
         throw new Error('处理任务创建失败，未获得有效任务ID')
       }
       
-      return response.data
+    return response.data
     }, 'processSingleImage')
   },
 
@@ -365,7 +365,7 @@ export const apiService = {
         throw new Error('多人处理任务创建失败，未获得有效任务ID')
       }
       
-      return response.data
+    return response.data
     }, 'processMultiImage', 2)  // 减少重试次数到2次
   },
 
@@ -383,13 +383,13 @@ export const apiService = {
     }
     
     return this.withRetry(async () => {
-      const response = await api.post('/process/single-video', { ...request, options: defaultOptions })
+    const response = await api.post('/process/single-video', { ...request, options: defaultOptions })
       
       if (!response.data?.success || !response.data?.data?.jobId) {
         throw new Error('视频处理任务创建失败，未获得有效任务ID')
       }
       
-      return response.data
+    return response.data
     }, 'processSingleVideo')
   },
 
@@ -408,28 +408,53 @@ export const apiService = {
     }
     
     return this.withRetry(async () => {
-      const response = await api.post('/process/multi-video', { ...request, options: defaultOptions })
+    const response = await api.post('/process/multi-video', { ...request, options: defaultOptions })
       
       if (!response.data?.success || !response.data?.data?.jobId) {
         throw new Error('多人视频处理任务创建失败，未获得有效任务ID')
       }
       
-      return response.data
+    return response.data
     }, 'processMultiVideo')
   },
 
   // Check job status
   async getJobStatus(jobId: string): Promise<ApiResponse<ProcessingJob>> {
     return this.withRetry(async () => {
-      const response = await api.get(`/status/${jobId}`)
+    const response = await api.get(`/status/${jobId}`)
       
       // 验证响应有效性
       if (!response.data || typeof response.data !== 'object') {
         throw new Error('服务器返回无效状态响应')
       }
       
-      return response.data
+    return response.data
     }, 'getJobStatus')
+  },
+
+  // Cancel/Stop job
+  async cancelJob(jobId: string): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      console.log(`🛑 正在停止任务: ${jobId}`)
+      const response = await api.post(`/cancel/${jobId}`)
+      
+      if (response.data?.success) {
+        console.log(`✅ 任务已成功停止: ${jobId}`)
+      } else {
+        console.warn(`⚠️ 任务停止响应异常: ${jobId}`)
+      }
+      
+      return response.data
+    } catch (error: any) {
+      console.error('❌ 停止任务失败:', error)
+      
+      // 如果是404错误，说明任务可能已经完成或不存在
+      if (error.response?.status === 404) {
+        throw new Error('任务不存在或已完成')
+      }
+      
+      throw new Error(error.response?.data?.error || '停止任务失败')
+    }
   },
 
   // 通用重试机制

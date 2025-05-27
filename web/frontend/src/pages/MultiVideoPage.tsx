@@ -377,7 +377,7 @@ export default function MultiVideoPage() {
                       <li>尝试压缩视频文件大小</li>
                       <li>稍后重试</li>
                     </ul>
-                  </div>
+            </div>
                 ) : error.includes('format') || error.includes('格式') ? (
                   <div className="bg-blue-100 p-3 rounded border-l-4 border-blue-500">
                     <p className="font-medium">📁 格式问题的解决方案：</p>
@@ -386,7 +386,7 @@ export default function MultiVideoPage() {
                       <li>避免使用损坏或特殊格式的文件</li>
                       <li>尝试重新编码视频</li>
                     </ul>
-                  </div>
+          </div>
                 ) : (
                   <div className="bg-gray-100 p-3 rounded border-l-4 border-gray-500">
                     <p className="font-medium">💡 通用解决方案：</p>
@@ -396,8 +396,8 @@ export default function MultiVideoPage() {
                       <li>更换不同的视频文件</li>
                       <li>稍后再试</li>
                     </ul>
-                  </div>
-                )}
+        </div>
+      )}
               </div>
               
               {/* 重试按钮 */}
@@ -651,7 +651,7 @@ export default function MultiVideoPage() {
               请为所有检测到的人脸上传替换图片
             </p>
           )}
-
+          
         </div>
       )}
 
@@ -729,8 +729,8 @@ export default function MultiVideoPage() {
         <TaskDetail 
           task={selectedHistoryTask} 
           onClose={handleCloseTaskDetail}
-        />
-      )}
+                />
+              )}
 
       {/* Task History - 只显示多人视频换脸的任务历史 */}
       <TaskHistory 

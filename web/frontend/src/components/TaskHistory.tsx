@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ClockIcon, CheckCircleIcon, XCircleIcon, TrashIcon, ArrowPathIcon, DocumentArrowDownIcon, EyeIcon } from '@heroicons/react/24/outline'
+import { ClockIcon, CheckCircleIcon, XCircleIcon, TrashIcon, ArrowPathIcon, DocumentArrowDownIcon, EyeIcon, StopIcon } from '@heroicons/react/24/outline'
 import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
 import apiService from '../services/api'
 
@@ -125,6 +125,30 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
       const extension = task.type === 'video' ? 'mp4' : 'jpg'
       link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`
       link.click()
+    }
+  }
+
+  const handleCancelTask = async (task: TaskHistoryItem) => {
+    if (!confirm('确定要停止此任务吗？')) {
+      return
+    }
+
+    try {
+      console.log(`🛑 正在停止任务: ${task.id}`)
+      await apiService.cancelJob(task.id)
+      
+      // 更新任务状态为已取消
+      taskHistory.updateTask(task.id, {
+        status: 'failed',
+        error_message: '用户手动停止',
+        updated_at: new Date().toISOString()
+      })
+      
+      loadTasks()
+      console.log(`✅ 任务已停止: ${task.id}`)
+    } catch (error: any) {
+      console.error('❌ 停止任务失败:', error)
+      alert(`停止任务失败: ${error.message}`)
     }
   }
 
@@ -259,12 +283,25 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
                             <span className="mx-1">•</span>
                             <span>{formatDate(task.created_at)}</span>
                           </div>
-                          {task.progress > 0 && task.status === 'processing' && (
-                            <div className="mt-2 bg-gray-200 rounded-full h-1">
-                              <div 
-                                className="bg-blue-600 h-1 rounded-full transition-all duration-500"
-                                style={{ width: `${task.progress}%` }}
-                              ></div>
+                          {(task.progress > 0 || task.status === 'processing') && (
+                            <div className="mt-2">
+                              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>进度</span>
+                                <span>{task.progress || 0}%</span>
+                              </div>
+                              <div className="bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all duration-500 ${
+                                    task.status === 'processing' ? 'bg-blue-600' : 'bg-gray-400'
+                                  }`}
+                                  style={{ width: `${task.progress || (task.status === 'processing' ? 10 : 0)}%` }}
+                                ></div>
+                              </div>
+                              {task.status === 'processing' && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {task.progress > 0 ? `处理中... ${task.progress}%` : '正在初始化...'}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -273,6 +310,15 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
 
                     {/* Actions */}
                     <div className="flex items-center space-x-2 ml-4">
+                      {(task.status === 'pending' || task.status === 'processing') && (
+                        <button
+                          onClick={() => handleCancelTask(task)}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                          title="停止任务"
+                        >
+                          <StopIcon className="h-4 w-4" />
+                        </button>
+                      )}
                       {task.status === 'completed' && task.result_url && (
                         <>
                           <button

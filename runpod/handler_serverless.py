@@ -491,9 +491,9 @@ def verify_models():
                 logger.error(f"❌ Missing critical model: {model_name}")
                 return False
         
-        return True
+            return True
         
-    except Exception as e:
+        except Exception as e:
         logger.error(f"❌ Model verification failed: {e}")
         return False
 
@@ -1929,7 +1929,7 @@ def process_multi_video_swap_from_urls(target_url, face_mappings):
         return {"error": f"Multi-person video processing failed: {str(e)}"}
 
 
-def process_video_with_multi_faces(video_data, source_faces):
+def process_video_with_multi_faces(video_path, source_faces):
     """
     Process video with multiple face mappings
     """
@@ -1937,10 +1937,8 @@ def process_video_with_multi_faces(video_data, source_faces):
         import tempfile
         import subprocess
         
-        # Create temporary files
-        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_input:
-            temp_input.write(video_data)
-            temp_input_path = temp_input.name
+        # video_path is already a file path, not bytes data
+        temp_input_path = video_path
         
         with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_output:
             temp_output_path = temp_output.name
@@ -1998,7 +1996,7 @@ def process_video_with_multi_faces(video_data, source_faces):
             else:
                 # No faces detected, write original frame
                 out.write(frame)
-            
+                
             # Progress logging
             if frame_count % 30 == 0:
                 progress = (frame_count / total_frames) * 100
@@ -2014,7 +2012,8 @@ def process_video_with_multi_faces(video_data, source_faces):
             result_video_data = f.read()
         
         # Cleanup
-        os.unlink(temp_input_path)
+        if temp_input_path != video_path:  # Only delete if it's a temp file
+            os.unlink(temp_input_path)
         os.unlink(temp_output_path)
         
         # Encode to base64
@@ -2167,4 +2166,4 @@ if __name__ == "__main__":
     logger.info(f"🎯 Models ready: {models_ready}")
     
     # Start RunPod serverless
-    runpod.serverless.start({"handler": handler})
+    runpod.serverless.start({"handler": handler}) 

@@ -277,7 +277,7 @@ export default function MultiImagePage() {
 
   const handleCloseTaskDetail = () => {
     setSelectedHistoryTask(null)
-  }
+    }
 
 
 
