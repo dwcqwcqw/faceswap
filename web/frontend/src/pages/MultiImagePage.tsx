@@ -22,6 +22,11 @@ export default function MultiImagePage() {
   const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
+  
+  // 添加延迟控制状态
+  const [lastRequestTime, setLastRequestTime] = useState<number>(0)
+  const [requestInProgress, setRequestInProgress] = useState(false)
+  const MIN_REQUEST_INTERVAL = 10000 // 10秒最小间隔
 
   // 在组件加载时检查是否有活跃任务需要恢复
   useEffect(() => {
@@ -69,8 +74,29 @@ export default function MultiImagePage() {
   const handleDetectFaces = async () => {
     if (!targetImage) return
     
+    // 检查是否有请求正在进行
+    if (requestInProgress || isDetecting) {
+      setError('请等待当前操作完成')
+      return
+    }
+
+    // 检查请求间隔
+    const now = Date.now()
+    const timeSinceLastRequest = now - lastRequestTime
+    
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      const remainingTime = Math.ceil((MIN_REQUEST_INTERVAL - timeSinceLastRequest) / 1000)
+      setError(`请等待 ${remainingTime} 秒后再试，给后端模型足够的启动时间`)
+      return
+    }
+    
+    setRequestInProgress(true)
+    setLastRequestTime(now)
     setIsDetecting(true)
     setError(null)
+    
+    // 显示启动提示
+    console.log('正在启动人脸检测模型，首次启动可能需要10-15秒...')
     
     try {
       // Upload source image first
@@ -140,6 +166,7 @@ export default function MultiImagePage() {
       setError(errorMessage)
     } finally {
       setIsDetecting(false)
+      setRequestInProgress(false)
     }
   }
 

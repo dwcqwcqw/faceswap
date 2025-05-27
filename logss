@@ -1,273 +1,984 @@
-2025-05-27T03:15:35.554015077Z ==========
-2025-05-27T03:15:35.554040666Z == CUDA ==
-2025-05-27T03:15:35.554050137Z ==========
-2025-05-27T03:15:35.558873789Z CUDA Version 11.8.0
-2025-05-27T03:15:35.560918676Z Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-2025-05-27T03:15:35.563285983Z This container image and its contents are governed by the NVIDIA Deep Learning Container License.
-2025-05-27T03:15:35.563292412Z By pulling and using the container, you accept the terms and conditions of this license:
-2025-05-27T03:15:35.563297703Z https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
-2025-05-27T03:15:35.563307383Z A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
-2025-05-27T03:15:37.351862104Z handler.py          :33   2025-05-27 03:15:37,351 🔧 Setting up RunPod Serverless path compatibility...
-2025-05-27T03:15:37.352192364Z handler.py          :52   2025-05-27 03:15:37,352 🔍 Detected traditional RunPod Pod environment
-2025-05-27T03:15:37.352213694Z handler.py          :138  2025-05-27 03:15:37,352 🚀 Setting up Volume models (no download)...
-2025-05-27T03:15:37.352218004Z handler.py          :143  2025-05-27 03:15:37,352 📁 Using models directory: /runpod-volume/faceswap
-2025-05-27T03:15:37.353221812Z handler.py          :159  2025-05-27 03:15:37,353 📋 Files in models directory: ['modnet_photographic_portrait_matting.ckpt', 'recognition_arcface_ir_se50.pth', 'matting_modnet_portrait.pth', 'headpose_hopenet.pth', 'alignment_WFLW_4HG.pth', 'assessment_hyperIQA.pth', 'detection_mobilenet0.25_Final.pth', 'GFPGANv1.3.pth', 'gfpgan', 'parsing_parsenet.pth', 'detection_Resnet50_Final.pth', 'buffalo_l', '=1.28.0', '=0.2.0', '=0.3.0', '=1.4.2', '=1.3.8', '=1.5.0', '=4.8.0', '=1.23.5,<2', 'w600k_r50.onnx', '1k3d68.onnx', 'det_10g.onnx', '2d106det.onnx', 'genderage.onnx', 'buffalo_l.zip', '79999_iter.pth', 'RealESRGAN_x2plus.pth', 'RealESRGAN_x4plus.pth', 'GFPGANv1.4.pth', 'inswapper_128_fp16.onnx']
-2025-05-27T03:15:37.353915771Z handler.py          :219  2025-05-27 03:15:37,353 ✅ Found Face swapper model: inswapper_128_fp16.onnx (264.4MB)
-2025-05-27T03:15:37.354367480Z handler.py          :219  2025-05-27 03:15:37,354 ✅ Found Face enhancer model (GFPGAN v1.4): GFPGANv1.4.pth (332.5MB)
-2025-05-27T03:15:37.354838460Z handler.py          :219  2025-05-27 03:15:37,354 ✅ Found Face enhancer model (GFPGAN v1.3 - alternative): GFPGANv1.3.pth (332.5MB)
-2025-05-27T03:15:37.355306789Z handler.py          :219  2025-05-27 03:15:37,355 ✅ Found Super resolution model (4x): RealESRGAN_x4plus.pth (63.9MB)
-2025-05-27T03:15:37.356056618Z handler.py          :219  2025-05-27 03:15:37,356 ✅ Found Super resolution model (2x): RealESRGAN_x2plus.pth (64.0MB)
-2025-05-27T03:15:37.356484237Z handler.py          :219  2025-05-27 03:15:37,356 ✅ Found Face parsing model (BiSeNet): 79999_iter.pth (50.8MB)
-2025-05-27T03:15:37.357220456Z handler.py          :200  2025-05-27 03:15:37,357 ✅ Found Face analysis model (directory): buffalo_l directory (5 files)
-2025-05-27T03:15:37.357748445Z handler.py          :219  2025-05-27 03:15:37,357 ✅ Found Face detection model (RetinaFace - for video processing): detection_Resnet50_Final.pth (104.4MB)
-2025-05-27T03:15:37.358287335Z handler.py          :219  2025-05-27 03:15:37,358 ✅ Found Face parsing model (ParseNet - for video processing): parsing_parsenet.pth (81.4MB)
-2025-05-27T03:15:37.358814924Z handler.py          :219  2025-05-27 03:15:37,358 ✅ Found Mobile face detection model (lightweight): detection_mobilenet0.25_Final.pth (1.7MB)
-2025-05-27T03:15:37.359324813Z handler.py          :219  2025-05-27 03:15:37,359 ✅ Found Face alignment model (WFLW): alignment_WFLW_4HG.pth (184.7MB)
-2025-05-27T03:15:37.359869282Z handler.py          :219  2025-05-27 03:15:37,359 ✅ Found Head pose estimation model: headpose_hopenet.pth (91.5MB)
-2025-05-27T03:15:37.360383051Z handler.py          :219  2025-05-27 03:15:37,360 ✅ Found Portrait matting model: modnet_photographic_portrait_matting.ckpt (25.0MB)
-2025-05-27T03:15:37.361183980Z handler.py          :219  2025-05-27 03:15:37,361 ✅ Found Face recognition model (ArcFace): recognition_arcface_ir_se50.pth (167.2MB)
-2025-05-27T03:15:37.361709879Z handler.py          :219  2025-05-27 03:15:37,361 ✅ Found Image quality assessment model: assessment_hyperIQA.pth (104.7MB)
-2025-05-27T03:15:37.362602028Z handler.py          :265  2025-05-27 03:15:37,362 ⚠️ Failed to create symlink for detection_Resnet50_Final.pth: [Errno 17] File exists: '/runpod-volume/faceswap/detection_Resnet50_Final.pth' -> '/runpod-volume/faceswap/gfpgan/weights/detection_Resnet50_Final.pth'
-2025-05-27T03:15:37.363195317Z handler.py          :265  2025-05-27 03:15:37,363 ⚠️ Failed to create symlink for parsing_parsenet.pth: [Errno 17] File exists: '/runpod-volume/faceswap/parsing_parsenet.pth' -> '/runpod-volume/faceswap/gfpgan/weights/parsing_parsenet.pth'
-2025-05-27T03:15:37.363752856Z handler.py          :265  2025-05-27 03:15:37,363 ⚠️ Failed to create symlink for detection_mobilenet0.25_Final.pth: [Errno 17] File exists: '/runpod-volume/faceswap/detection_mobilenet0.25_Final.pth' -> '/runpod-volume/faceswap/gfpgan/weights/detection_mobilenet0.25_Final.pth'
-2025-05-27T03:15:37.364380145Z handler.py          :265  2025-05-27 03:15:37,364 ⚠️ Failed to create symlink for alignment_WFLW_4HG.pth: [Errno 17] File exists: '/runpod-volume/faceswap/alignment_WFLW_4HG.pth' -> '/runpod-volume/faceswap/gfpgan/weights/alignment_WFLW_4HG.pth'
-2025-05-27T03:15:37.365047954Z handler.py          :265  2025-05-27 03:15:37,365 ⚠️ Failed to create symlink for headpose_hopenet.pth: [Errno 17] File exists: '/runpod-volume/faceswap/headpose_hopenet.pth' -> '/runpod-volume/faceswap/gfpgan/weights/headpose_hopenet.pth'
-2025-05-27T03:15:37.366404992Z handler.py          :265  2025-05-27 03:15:37,366 ⚠️ Failed to create symlink for modnet_photographic_portrait_matting.ckpt: [Errno 17] File exists: '/runpod-volume/faceswap/modnet_photographic_portrait_matting.ckpt' -> '/runpod-volume/faceswap/gfpgan/weights/modnet_photographic_portrait_matting.ckpt'
-2025-05-27T03:15:37.367017171Z handler.py          :265  2025-05-27 03:15:37,366 ⚠️ Failed to create symlink for recognition_arcface_ir_se50.pth: [Errno 17] File exists: '/runpod-volume/faceswap/recognition_arcface_ir_se50.pth' -> '/runpod-volume/faceswap/gfpgan/weights/recognition_arcface_ir_se50.pth'
-2025-05-27T03:15:37.367621501Z handler.py          :265  2025-05-27 03:15:37,367 ⚠️ Failed to create symlink for assessment_hyperIQA.pth: [Errno 17] File exists: '/runpod-volume/faceswap/assessment_hyperIQA.pth' -> '/runpod-volume/faceswap/gfpgan/weights/assessment_hyperIQA.pth'
-2025-05-27T03:15:37.367684670Z handler.py          :273  2025-05-27 03:15:37,367 🎉 Ready! Found 15/15 models (excluding buffalo_l.zip)
-2025-05-27T03:15:37.367740470Z handler.py          :274  2025-05-27 03:15:37,367 ✅ Found models: ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth', 'GFPGANv1.3.pth', 'RealESRGAN_x4plus.pth', 'RealESRGAN_x2plus.pth', '79999_iter.pth', 'buffalo_l', 'detection_Resnet50_Final.pth', 'parsing_parsenet.pth', 'detection_mobilenet0.25_Final.pth', 'alignment_WFLW_4HG.pth', 'headpose_hopenet.pth', 'modnet_photographic_portrait_matting.ckpt', 'recognition_arcface_ir_se50.pth', 'assessment_hyperIQA.pth']
-2025-05-27T03:15:37.367798320Z handler.py          :295  2025-05-27 03:15:37,367 🔄 Importing face swap modules...
-2025-05-27T03:15:37.367852820Z handler.py          :299  2025-05-27 03:15:37,367 📁 Setting models directory to: /runpod-volume/faceswap
-2025-05-27T03:15:39.167352755Z font_manager.py     :1639 2025-05-27 03:15:39,166 generated new fontManager
-2025-05-27T03:15:40.119103159Z 2025-05-27 03:15:40.118865: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
-2025-05-27T03:15:40.131258961Z WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-2025-05-27T03:15:40.131308961Z E0000 00:00:1748315740.131057      31 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
-2025-05-27T03:15:40.136237493Z E0000 00:00:1748315740.136076      31 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
-2025-05-27T03:15:40.147711226Z W0000 00:00:1748315740.147501      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
-2025-05-27T03:15:40.147743746Z W0000 00:00:1748315740.147517      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
-2025-05-27T03:15:40.147749196Z W0000 00:00:1748315740.147519      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
-2025-05-27T03:15:40.147753876Z W0000 00:00:1748315740.147521      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
-2025-05-27T03:15:41.364807000Z handler.py          :307  2025-05-27 03:15:41,364 ✅ Updated modules.globals.models_dir to: /runpod-volume/faceswap
-2025-05-27T03:15:41.366977297Z handler.py          :312  2025-05-27 03:15:41,366 ✅ Super resolution module imported successfully
-2025-05-27T03:15:41.367028427Z handler.py          :320  2025-05-27 03:15:41,366 ✅ Core modules imported successfully
-2025-05-27T03:15:41.367034367Z handler.py          :1851 2025-05-27 03:15:41,366 🚀 Starting RunPod Serverless with Volume-optimized handler...
-2025-05-27T03:15:41.367039337Z handler.py          :1852 2025-05-27 03:15:41,366 📁 Models directory: /runpod-volume/faceswap
-2025-05-27T03:15:41.367044507Z handler.py          :1853 2025-05-27 03:15:41,366 🎯 Models ready: True
-2025-05-27T03:15:41.367047127Z --- Starting Serverless Worker |  Version 1.7.9 ---
-2025-05-27T03:15:42.222978476Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
-2025-05-27T03:15:42.223025655Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
-2025-05-27T03:15:42.223031105Z {"requestId": "651d7d71-c9c1-4625-8a15-0895876426e3-u1", "message": "Started.", "level": "INFO"}
-2025-05-27T03:15:42.223112225Z handler.py          :1746 2025-05-27 03:15:42,222 🚀 RunPod Serverless Handler started
-2025-05-27T03:15:42.223118465Z handler.py          :1747 2025-05-27 03:15:42,223 📋 Job input: {
-2025-05-27T03:15:42.223123445Z   "job_id": "job_1748315728907_c8zi3gfmm",
-2025-05-27T03:15:42.223128705Z   "options": {
-2025-05-27T03:15:42.223133555Z     "execution_provider": "CPUExecutionProvider",
-2025-05-27T03:15:42.223138085Z     "mouth_mask": true,
-2025-05-27T03:15:42.223143405Z     "use_face_enhancer": true
-2025-05-27T03:15:42.223148335Z   },
-2025-05-27T03:15:42.223153135Z   "source_file": "https://faceswap-api.faceswap.workers.dev/api/download/c01976a4-e103-4c4a-a78a-7a15559571f2",
-2025-05-27T03:15:42.223158465Z   "target_file": "https://faceswap-api.faceswap.workers.dev/api/download/a2ba261d-fe7e-410a-99a6-cd45b8966d13",
-2025-05-27T03:15:42.223162685Z   "type": "single_image"
-2025-05-27T03:15:42.223166855Z }
-2025-05-27T03:15:42.223174755Z handler.py          :348  2025-05-27 03:15:42,223 🔍 Verifying models in: /runpod-volume/faceswap
-2025-05-27T03:15:42.224234114Z handler.py          :356  2025-05-27 03:15:42,224 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
-2025-05-27T03:15:42.224776543Z handler.py          :356  2025-05-27 03:15:42,224 ✅ Verified GFPGANv1.4.pth (332.5MB)
-2025-05-27T03:15:42.224788023Z handler.py          :1768 2025-05-27 03:15:42,224 🎯 Processing job type: single_image
-2025-05-27T03:15:42.224792503Z handler.py          :1779 2025-05-27 03:15:42,224 📸 Processing single image face swap
-2025-05-27T03:15:42.224796753Z handler.py          :1780 2025-05-27 03:15:42,224    Source: https://faceswap-api.faceswap.workers.dev/api/download/c01976a4-e103-4c4a-a78a-7a15559571f2
-2025-05-27T03:15:42.224803643Z handler.py          :1781 2025-05-27 03:15:42,224    Target: https://faceswap-api.faceswap.workers.dev/api/download/a2ba261d-fe7e-410a-99a6-cd45b8966d13
-2025-05-27T03:15:42.224900102Z handler.py          :507  2025-05-27 03:15:42,224 🔄 Starting image downloads...
-2025-05-27T03:15:42.224930193Z handler.py          :376  2025-05-27 03:15:42,224 📥 Downloading image from: https://faceswap-api.faceswap.workers.dev/api/download/c01976a4-e103-4c4a-a78a-7a15559571f2 (attempt 1)
-2025-05-27T03:15:43.538489051Z handler.py          :383  2025-05-27 03:15:43,537 📋 Response content-type: image/jpeg
-2025-05-27T03:15:43.538543811Z handler.py          :384  2025-05-27 03:15:43,538 📋 Response size: 72543 bytes
-2025-05-27T03:15:43.542011946Z handler.py          :405  2025-05-27 03:15:43,541 📐 PIL Image format: JPEG, mode: RGB, size: (720, 720)
-2025-05-27T03:15:43.566772468Z handler.py          :426  2025-05-27 03:15:43,566 ✅ Image downloaded successfully, shape: (720, 720, 3)
-2025-05-27T03:15:43.566836498Z handler.py          :376  2025-05-27 03:15:43,566 📥 Downloading image from: https://faceswap-api.faceswap.workers.dev/api/download/a2ba261d-fe7e-410a-99a6-cd45b8966d13 (attempt 1)
-2025-05-27T03:15:44.290042047Z handler.py          :383  2025-05-27 03:15:44,289 📋 Response content-type: image/jpeg
-2025-05-27T03:15:44.290096757Z handler.py          :384  2025-05-27 03:15:44,289 📋 Response size: 5458 bytes
-2025-05-27T03:15:44.290106977Z handler.py          :405  2025-05-27 03:15:44,289 📐 PIL Image format: JPEG, mode: RGB, size: (202, 249)
-2025-05-27T03:15:44.290596476Z handler.py          :426  2025-05-27 03:15:44,290 ✅ Image downloaded successfully, shape: (249, 202, 3)
-2025-05-27T03:15:44.290611246Z handler.py          :517  2025-05-27 03:15:44,290 ✅ Both images downloaded successfully
-2025-05-27T03:15:44.290618026Z handler.py          :518  2025-05-27 03:15:44,290 📐 Source image shape: (720, 720, 3)
-2025-05-27T03:15:44.290664376Z handler.py          :519  2025-05-27 03:15:44,290 📐 Target image shape: (249, 202, 3)
-2025-05-27T03:15:44.290680566Z handler.py          :522  2025-05-27 03:15:44,290 🔍 Detecting face in source image...
-2025-05-27T03:15:44.290872256Z download_path: /root/.insightface/models/buffalo_l
-2025-05-27T03:15:44.291066416Z Downloading /root/.insightface/models/buffalo_l.zip from https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip...
-2025-05-27T03:15:48.439377297Z 
+2025-05-27T03:39:29.244202014Z ==========
+2025-05-27T03:39:29.244207734Z == CUDA ==
+2025-05-27T03:39:29.244227994Z ==========
+2025-05-27T03:39:29.247462672Z CUDA Version 11.8.0
+2025-05-27T03:39:29.248366458Z Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+2025-05-27T03:39:29.249215555Z This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+2025-05-27T03:39:29.249221315Z By pulling and using the container, you accept the terms and conditions of this license:
+2025-05-27T03:39:29.249225855Z https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+2025-05-27T03:39:29.249235875Z A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+2025-05-27T03:39:31.057963440Z handler.py          :33   2025-05-27 03:39:31,054 🔧 Setting up RunPod Serverless path compatibility...
+2025-05-27T03:39:31.057979970Z handler.py          :52   2025-05-27 03:39:31,055 🔍 Detected traditional RunPod Pod environment
+2025-05-27T03:39:31.057981940Z handler.py          :138  2025-05-27 03:39:31,055 🚀 Setting up Volume models (no download)...
+2025-05-27T03:39:31.057984080Z handler.py          :143  2025-05-27 03:39:31,055 📁 Using models directory: /runpod-volume/faceswap
+2025-05-27T03:39:31.057986310Z handler.py          :159  2025-05-27 03:39:31,056 📋 Files in models directory: ['modnet_photographic_portrait_matting.ckpt', 'recognition_arcface_ir_se50.pth', 'matting_modnet_portrait.pth', 'headpose_hopenet.pth', 'alignment_WFLW_4HG.pth', 'assessment_hyperIQA.pth', 'detection_mobilenet0.25_Final.pth', 'GFPGANv1.3.pth', 'gfpgan', 'parsing_parsenet.pth', 'detection_Resnet50_Final.pth', 'buffalo_l', '=1.28.0', '=0.2.0', '=0.3.0', '=1.4.2', '=1.3.8', '=1.5.0', '=4.8.0', '=1.23.5,<2', 'w600k_r50.onnx', '1k3d68.onnx', 'det_10g.onnx', '2d106det.onnx', 'genderage.onnx', 'buffalo_l.zip', '79999_iter.pth', 'RealESRGAN_x2plus.pth', 'RealESRGAN_x4plus.pth', 'GFPGANv1.4.pth', 'inswapper_128_fp16.onnx']
+2025-05-27T03:39:31.057988630Z handler.py          :219  2025-05-27 03:39:31,057 ✅ Found Face swapper model: inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:39:31.057990740Z handler.py          :219  2025-05-27 03:39:31,057 ✅ Found Face enhancer model (GFPGAN v1.4): GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:39:31.058326329Z handler.py          :219  2025-05-27 03:39:31,058 ✅ Found Face enhancer model (GFPGAN v1.3 - alternative): GFPGANv1.3.pth (332.5MB)
+2025-05-27T03:39:31.058962266Z handler.py          :219  2025-05-27 03:39:31,058 ✅ Found Super resolution model (4x): RealESRGAN_x4plus.pth (63.9MB)
+2025-05-27T03:39:31.059312645Z handler.py          :219  2025-05-27 03:39:31,059 ✅ Found Super resolution model (2x): RealESRGAN_x2plus.pth (64.0MB)
+2025-05-27T03:39:31.059695383Z handler.py          :219  2025-05-27 03:39:31,059 ✅ Found Face parsing model (BiSeNet): 79999_iter.pth (50.8MB)
+2025-05-27T03:39:31.060339461Z handler.py          :200  2025-05-27 03:39:31,060 ✅ Found Face analysis model (directory): buffalo_l directory (5 files)
+2025-05-27T03:39:31.061063518Z handler.py          :219  2025-05-27 03:39:31,061 ✅ Found Face detection model (RetinaFace - for video processing): detection_Resnet50_Final.pth (104.4MB)
+2025-05-27T03:39:31.061514166Z handler.py          :219  2025-05-27 03:39:31,061 ✅ Found Face parsing model (ParseNet - for video processing): parsing_parsenet.pth (81.4MB)
+2025-05-27T03:39:31.061880385Z handler.py          :219  2025-05-27 03:39:31,061 ✅ Found Mobile face detection model (lightweight): detection_mobilenet0.25_Final.pth (1.7MB)
+2025-05-27T03:39:31.062259164Z handler.py          :219  2025-05-27 03:39:31,062 ✅ Found Face alignment model (WFLW): alignment_WFLW_4HG.pth (184.7MB)
+2025-05-27T03:39:31.062646722Z handler.py          :219  2025-05-27 03:39:31,062 ✅ Found Head pose estimation model: headpose_hopenet.pth (91.5MB)
+2025-05-27T03:39:31.063012471Z handler.py          :219  2025-05-27 03:39:31,062 ✅ Found Portrait matting model: modnet_photographic_portrait_matting.ckpt (25.0MB)
+2025-05-27T03:39:31.063409469Z handler.py          :219  2025-05-27 03:39:31,063 ✅ Found Face recognition model (ArcFace): recognition_arcface_ir_se50.pth (167.2MB)
+2025-05-27T03:39:31.063789747Z handler.py          :219  2025-05-27 03:39:31,063 ✅ Found Image quality assessment model: assessment_hyperIQA.pth (104.7MB)
+2025-05-27T03:39:31.064428655Z handler.py          :265  2025-05-27 03:39:31,064 ⚠️ Failed to create symlink for detection_Resnet50_Final.pth: [Errno 17] File exists: '/runpod-volume/faceswap/detection_Resnet50_Final.pth' -> '/runpod-volume/faceswap/gfpgan/weights/detection_Resnet50_Final.pth'
+2025-05-27T03:39:31.064956643Z handler.py          :265  2025-05-27 03:39:31,064 ⚠️ Failed to create symlink for parsing_parsenet.pth: [Errno 17] File exists: '/runpod-volume/faceswap/parsing_parsenet.pth' -> '/runpod-volume/faceswap/gfpgan/weights/parsing_parsenet.pth'
+2025-05-27T03:39:31.066024999Z handler.py          :265  2025-05-27 03:39:31,065 ⚠️ Failed to create symlink for detection_mobilenet0.25_Final.pth: [Errno 17] File exists: '/runpod-volume/faceswap/detection_mobilenet0.25_Final.pth' -> '/runpod-volume/faceswap/gfpgan/weights/detection_mobilenet0.25_Final.pth'
+2025-05-27T03:39:31.066512327Z handler.py          :265  2025-05-27 03:39:31,066 ⚠️ Failed to create symlink for alignment_WFLW_4HG.pth: [Errno 17] File exists: '/runpod-volume/faceswap/alignment_WFLW_4HG.pth' -> '/runpod-volume/faceswap/gfpgan/weights/alignment_WFLW_4HG.pth'
+2025-05-27T03:39:31.067062915Z handler.py          :265  2025-05-27 03:39:31,067 ⚠️ Failed to create symlink for headpose_hopenet.pth: [Errno 17] File exists: '/runpod-volume/faceswap/headpose_hopenet.pth' -> '/runpod-volume/faceswap/gfpgan/weights/headpose_hopenet.pth'
+2025-05-27T03:39:31.067563433Z handler.py          :265  2025-05-27 03:39:31,067 ⚠️ Failed to create symlink for modnet_photographic_portrait_matting.ckpt: [Errno 17] File exists: '/runpod-volume/faceswap/modnet_photographic_portrait_matting.ckpt' -> '/runpod-volume/faceswap/gfpgan/weights/modnet_photographic_portrait_matting.ckpt'
+2025-05-27T03:39:31.068073521Z handler.py          :265  2025-05-27 03:39:31,068 ⚠️ Failed to create symlink for recognition_arcface_ir_se50.pth: [Errno 17] File exists: '/runpod-volume/faceswap/recognition_arcface_ir_se50.pth' -> '/runpod-volume/faceswap/gfpgan/weights/recognition_arcface_ir_se50.pth'
+2025-05-27T03:39:31.068503479Z handler.py          :265  2025-05-27 03:39:31,068 ⚠️ Failed to create symlink for assessment_hyperIQA.pth: [Errno 17] File exists: '/runpod-volume/faceswap/assessment_hyperIQA.pth' -> '/runpod-volume/faceswap/gfpgan/weights/assessment_hyperIQA.pth'
+2025-05-27T03:39:31.068556069Z handler.py          :273  2025-05-27 03:39:31,068 🎉 Ready! Found 15/15 models (excluding buffalo_l.zip)
+2025-05-27T03:39:31.068622829Z handler.py          :274  2025-05-27 03:39:31,068 ✅ Found models: ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth', 'GFPGANv1.3.pth', 'RealESRGAN_x4plus.pth', 'RealESRGAN_x2plus.pth', '79999_iter.pth', 'buffalo_l', 'detection_Resnet50_Final.pth', 'parsing_parsenet.pth', 'detection_mobilenet0.25_Final.pth', 'alignment_WFLW_4HG.pth', 'headpose_hopenet.pth', 'modnet_photographic_portrait_matting.ckpt', 'recognition_arcface_ir_se50.pth', 'assessment_hyperIQA.pth']
+2025-05-27T03:39:31.068682919Z handler.py          :304  2025-05-27 03:39:31,068 🔧 Pre-configured model cache directories:
+2025-05-27T03:39:31.068751228Z handler.py          :305  2025-05-27 03:39:31,068    GFPGAN_WEIGHTS_DIR: /runpod-volume/faceswap/gfpgan/weights
+2025-05-27T03:39:31.068801918Z handler.py          :306  2025-05-27 03:39:31,068    FACEXLIB_CACHE_DIR: /runpod-volume/faceswap
+2025-05-27T03:39:31.068835108Z handler.py          :307  2025-05-27 03:39:31,068    TORCH_HOME: /runpod-volume/faceswap
+2025-05-27T03:39:31.068871918Z handler.py          :311  2025-05-27 03:39:31,068 🔄 Importing face swap modules...
+2025-05-27T03:39:31.068953507Z handler.py          :315  2025-05-27 03:39:31,068 📁 Setting models directory to: /runpod-volume/faceswap
+2025-05-27T03:39:32.836691413Z font_manager.py     :1639 2025-05-27 03:39:32,836 generated new fontManager
+2025-05-27T03:39:33.754495298Z 2025-05-27 03:39:33.754326: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2025-05-27T03:39:33.766473121Z WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+2025-05-27T03:39:33.766500011Z E0000 00:00:1748317173.766290      31 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2025-05-27T03:39:33.769982697Z E0000 00:00:1748317173.769829      31 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2025-05-27T03:39:33.780502806Z W0000 00:00:1748317173.780319      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-05-27T03:39:33.780531156Z W0000 00:00:1748317173.780339      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-05-27T03:39:33.780536856Z W0000 00:00:1748317173.780341      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-05-27T03:39:33.780541276Z W0000 00:00:1748317173.780342      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-05-27T03:39:34.983523681Z handler.py          :323  2025-05-27 03:39:34,983 ✅ Updated modules.globals.models_dir to: /runpod-volume/faceswap
+2025-05-27T03:39:34.983556181Z handler.py          :328  2025-05-27 03:39:34,983 ✅ Set GFPGAN_WEIGHTS_DIR to: /runpod-volume/faceswap/gfpgan/weights
+2025-05-27T03:39:34.983561721Z handler.py          :333  2025-05-27 03:39:34,983 ✅ Set model cache directories to prevent downloads
+2025-05-27T03:39:34.985610233Z handler.py          :338  2025-05-27 03:39:34,985 ✅ Super resolution module imported successfully
+2025-05-27T03:39:34.985631603Z handler.py          :346  2025-05-27 03:39:34,985 ✅ Core modules imported successfully
+2025-05-27T03:39:34.985638083Z handler.py          :351  2025-05-27 03:39:34,985 🔧 Applying model path patches...
+2025-05-27T03:39:34.986298520Z patch_gfpgan_paths.py:21   2025-05-27 03:39:34,986 🔧 Patching GFPGAN model paths...
+2025-05-27T03:39:34.986321320Z patch_gfpgan_paths.py:22   2025-05-27 03:39:34,986 📁 Models directory: /runpod-volume/faceswap
+2025-05-27T03:39:34.986327590Z patch_gfpgan_paths.py:23   2025-05-27 03:39:34,986 📁 GFPGAN weights directory: /runpod-volume/faceswap/gfpgan/weights
+2025-05-27T03:39:35.531441917Z patch_gfpgan_paths.py:50   2025-05-27 03:39:35,531 ✅ Found local model: detection_Resnet50_Final at /runpod-volume/faceswap/detection_Resnet50_Final.pth
+2025-05-27T03:39:35.531704306Z patch_gfpgan_paths.py:50   2025-05-27 03:39:35,531 ✅ Found local model: parsing_parsenet at /runpod-volume/faceswap/parsing_parsenet.pth
+2025-05-27T03:39:35.532073755Z patch_gfpgan_paths.py:50   2025-05-27 03:39:35,531 ✅ Found local model: detection_mobilenet0.25_Final at /runpod-volume/faceswap/detection_mobilenet0.25_Final.pth
+2025-05-27T03:39:35.532407743Z patch_gfpgan_paths.py:50   2025-05-27 03:39:35,532 ✅ Found local model: alignment_WFLW_4HG at /runpod-volume/faceswap/alignment_WFLW_4HG.pth
+2025-05-27T03:39:35.532631332Z patch_gfpgan_paths.py:50   2025-05-27 03:39:35,532 ✅ Found local model: headpose_hopenet at /runpod-volume/faceswap/headpose_hopenet.pth
+2025-05-27T03:39:35.532916061Z patch_gfpgan_paths.py:50   2025-05-27 03:39:35,532 ✅ Found local model: modnet_photographic_portrait_matting at /runpod-volume/faceswap/modnet_photographic_portrait_matting.ckpt
+2025-05-27T03:39:35.533168100Z patch_gfpgan_paths.py:50   2025-05-27 03:39:35,533 ✅ Found local model: recognition_arcface_ir_se50 at /runpod-volume/faceswap/recognition_arcface_ir_se50.pth
+2025-05-27T03:39:35.533436559Z patch_gfpgan_paths.py:50   2025-05-27 03:39:35,533 ✅ Found local model: assessment_hyperIQA at /runpod-volume/faceswap/assessment_hyperIQA.pth
+2025-05-27T03:39:35.533442169Z patch_gfpgan_paths.py:54   2025-05-27 03:39:35,533 ✅ GFPGAN model paths patched successfully
+2025-05-27T03:39:35.533469349Z patch_gfpgan_paths.py:98   2025-05-27 03:39:35,533 ✅ FaceXLib model loading patched successfully
+2025-05-27T03:39:35.533475149Z patch_gfpgan_paths.py:138  2025-05-27 03:39:35,533 ✅ BasicSR model loading patched successfully
+2025-05-27T03:39:35.533501449Z handler.py          :359  2025-05-27 03:39:35,533 ✅ Model path patches applied successfully
+2025-05-27T03:39:35.533524249Z handler.py          :1891 2025-05-27 03:39:35,533 🚀 Starting RunPod Serverless with Volume-optimized handler...
+2025-05-27T03:39:35.533529679Z handler.py          :1892 2025-05-27 03:39:35,533 📁 Models directory: /runpod-volume/faceswap
+2025-05-27T03:39:35.533596038Z --- Starting Serverless Worker |  Version 1.7.9 ---
+2025-05-27T03:39:35.533619178Z handler.py          :1893 2025-05-27 03:39:35,533 🎯 Models ready: True
+2025-05-27T03:39:35.993792816Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
+2025-05-27T03:39:35.993814946Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
+2025-05-27T03:39:35.993819946Z {"requestId": "5b1b57d8-e2a0-4ae1-9e2f-5b41d5089618-u1", "message": "Started.", "level": "INFO"}
+2025-05-27T03:39:35.993948296Z handler.py          :1786 2025-05-27 03:39:35,993 🚀 RunPod Serverless Handler started
+2025-05-27T03:39:35.993995045Z handler.py          :1787 2025-05-27 03:39:35,993 📋 Job input: {
+2025-05-27T03:39:35.994000625Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/cb4f705f-848c-4ac3-9f5a-c59e9de8dc48",
+2025-05-27T03:39:35.994005965Z   "process_type": "detect-faces"
+2025-05-27T03:39:35.994016165Z }
+2025-05-27T03:39:35.994021385Z handler.py          :388  2025-05-27 03:39:35,993 🔍 Verifying models in: /runpod-volume/faceswap
+2025-05-27T03:39:35.994893442Z handler.py          :396  2025-05-27 03:39:35,994 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:39:35.995999858Z handler.py          :396  2025-05-27 03:39:35,995 ✅ Verified GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:39:35.996011637Z handler.py          :1808 2025-05-27 03:39:35,995 🎯 Processing job type: detect-faces
+2025-05-27T03:39:35.996016237Z handler.py          :1857 2025-05-27 03:39:35,995 🔍 Processing face detection
+2025-05-27T03:39:35.996030148Z handler.py          :1858 2025-05-27 03:39:35,995    Image: https://faceswap-api.faceswap.workers.dev/api/download/cb4f705f-848c-4ac3-9f5a-c59e9de8dc48
+2025-05-27T03:39:35.996035428Z handler.py          :1305 2025-05-27 03:39:35,995 🔍 Starting face detection from URL: https://faceswap-api.faceswap.workers.dev/api/download/cb4f705f-848c-4ac3-9f5a-c59e9de8dc48
+2025-05-27T03:39:35.996057007Z handler.py          :416  2025-05-27 03:39:35,996 📥 Downloading image from: https://faceswap-api.faceswap.workers.dev/api/download/cb4f705f-848c-4ac3-9f5a-c59e9de8dc48 (attempt 1)
+2025-05-27T03:39:37.106279883Z handler.py          :423  2025-05-27 03:39:37,105 📋 Response content-type: image/webp
+2025-05-27T03:39:37.106335413Z handler.py          :424  2025-05-27 03:39:37,106 📋 Response size: 161136 bytes
+2025-05-27T03:39:37.140747689Z handler.py          :445  2025-05-27 03:39:37,140 📐 PIL Image format: WEBP, mode: RGB, size: (639, 1136)
+2025-05-27T03:39:37.172891864Z handler.py          :466  2025-05-27 03:39:37,172 ✅ Image downloaded successfully, shape: (1136, 639, 3)
+2025-05-27T03:39:37.172937844Z handler.py          :1312 2025-05-27 03:39:37,172 📐 Image downloaded successfully, shape: (1136, 639, 3)
+2025-05-27T03:39:37.172947334Z handler.py          :1315 2025-05-27 03:39:37,172 🔍 Detecting faces using get_many_faces...
+2025-05-27T03:39:37.173839160Z download_path: /root/.insightface/models/buffalo_l
+2025-05-27T03:39:37.173851910Z Downloading /root/.insightface/models/buffalo_l.zip from https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip...
+2025-05-27T03:40:10.296030776Z 
   0%|          | 0/281857 [00:00<?, ?KB/s]
-  0%|          | 244/281857 [00:00<01:57, 2406.76KB/s]
-  1%|          | 2228/281857 [00:00<00:22, 12268.41KB/s]
-  4%|▎         | 10561/281857 [00:00<00:06, 43156.30KB/s]
-  6%|▌         | 16393/281857 [00:00<00:05, 48994.71KB/s]
-  9%|▊         | 24630/281857 [00:00<00:04, 60839.00KB/s]
- 12%|█▏        | 34437/281857 [00:00<00:03, 73362.32KB/s]
- 16%|█▌        | 44555/281857 [00:00<00:02, 82331.10KB/s]
- 19%|█▊        | 52809/281857 [00:00<00:02, 76383.65KB/s]
- 22%|██▏       | 62954/281857 [00:00<00:02, 83787.76KB/s]
- 26%|██▌       | 73601/281857 [00:01<00:02, 89849.51KB/s]
- 30%|██▉       | 84288/281857 [00:01<00:02, 94889.76KB/s]
- 34%|███▎      | 94577/281857 [00:01<00:01, 97261.15KB/s]
- 37%|███▋      | 104945/281857 [00:01<00:01, 99143.61KB/s]
- 41%|████      | 115177/281857 [00:01<00:01, 100089.71KB/s]
- 45%|████▍     | 125534/281857 [00:01<00:01, 101128.75KB/s]
- 48%|████▊     | 135937/281857 [00:01<00:01, 101958.66KB/s]
- 52%|█████▏    | 146465/281857 [00:01<00:01, 102812.22KB/s]
- 56%|█████▌    | 157009/281857 [00:01<00:01, 103591.92KB/s]
- 59%|█████▉    | 167377/281857 [00:01<00:01, 103453.44KB/s]
- 63%|██████▎   | 177729/281857 [00:02<00:01, 103166.90KB/s]
- 67%|██████▋   | 188050/281857 [00:02<00:00, 103111.47KB/s]
- 70%|███████   | 198529/281857 [00:02<00:00, 103610.66KB/s]
- 74%|███████▍  | 208904/281857 [00:02<00:00, 103554.17KB/s]
- 78%|███████▊  | 219406/281857 [00:02<00:00, 103990.92KB/s]
- 82%|████████▏ | 229807/281857 [00:02<00:00, 103594.27KB/s]
- 85%|████████▌ | 240168/281857 [00:02<00:00, 80959.18KB/s] 
- 88%|████████▊ | 249027/281857 [00:02<00:00, 73859.47KB/s]
- 91%|█████████ | 257015/281857 [00:03<00:00, 66659.93KB/s]
- 94%|█████████▎| 264165/281857 [00:03<00:00, 63406.89KB/s]
- 96%|█████████▌| 270826/281857 [00:03<00:00, 60450.50KB/s]
- 98%|█████████▊| 277077/281857 [00:03<00:00, 59218.41KB/s]
-100%|██████████| 281857/281857 [00:03<00:00, 80676.56KB/s]
-2025-05-27T03:15:50.423187814Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
-2025-05-27T03:15:50.599267949Z find model: /root/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68 ['None', 3, 192, 192] 0.0 1.0
-2025-05-27T03:15:50.645924408Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
-2025-05-27T03:15:50.646467948Z find model: /root/.insightface/models/buffalo_l/2d106det.onnx landmark_2d_106 ['None', 3, 192, 192] 0.0 1.0
-2025-05-27T03:15:50.683210602Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
-2025-05-27T03:15:50.683358812Z find model: /root/.insightface/models/buffalo_l/det_10g.onnx detection [1, 3, '?', '?'] 127.5 128.0
-2025-05-27T03:15:50.697712490Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
-2025-05-27T03:15:50.697755940Z find model: /root/.insightface/models/buffalo_l/genderage.onnx genderage ['None', 3, 96, 96] 0.0 1.0
-2025-05-27T03:15:51.060019913Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
-2025-05-27T03:15:51.241576930Z find model: /root/.insightface/models/buffalo_l/w600k_r50.onnx recognition ['None', 3, 112, 112] 127.5 127.5
-2025-05-27T03:15:51.241615660Z set det-size: (640, 640)
-2025-05-27T03:15:51.445287122Z handler.py          :527  2025-05-27 03:15:51,444 ✅ Source face detected successfully
-2025-05-27T03:15:51.445354552Z handler.py          :530  2025-05-27 03:15:51,445 🔍 Detecting face in target image...
-2025-05-27T03:15:51.664917661Z handler.py          :535  2025-05-27 03:15:51,664 ✅ Target face detected successfully
-2025-05-27T03:15:51.665053521Z handler.py          :538  2025-05-27 03:15:51,664 ⚙️ Configuring face enhancement settings...
-2025-05-27T03:15:51.665056431Z handler.py          :544  2025-05-27 03:15:51,664 🚀 Starting multi-round iterative face swap...
-2025-05-27T03:15:51.665078521Z handler.py          :548  2025-05-27 03:15:51,665 🔄 Round 1: Initial face swap...
-2025-05-27T03:15:51.666875288Z 🔍 Searching for face swapper model...
-2025-05-27T03:15:51.666918848Z    Primary models_dir: /runpod-volume/faceswap
-2025-05-27T03:15:51.666921288Z    Primary model_path: /runpod-volume/faceswap/inswapper_128_fp16.onnx
-2025-05-27T03:15:51.667130768Z    Primary exists: True
-2025-05-27T03:15:51.667380017Z 🔄 Loading face swapper model from: /runpod-volume/faceswap/inswapper_128_fp16.onnx
-2025-05-27T03:15:56.014334179Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
-2025-05-27T03:15:56.311377091Z inswapper-shape: [1, 3, 128, 128]
-2025-05-27T03:15:56.324681091Z ✅ Face swapper model loaded successfully from: /runpod-volume/faceswap/inswapper_128_fp16.onnx
-2025-05-27T03:15:57.355523056Z handler.py          :550  2025-05-27 03:15:57,355 ✅ Round 1 completed
-2025-05-27T03:15:57.355575226Z handler.py          :553  2025-05-27 03:15:57,355 🔄 Round 2: Refinement pass...
-2025-05-27T03:15:58.457290304Z handler.py          :561  2025-05-27 03:15:58,457 ✅ Round 2 refinement applied
-2025-05-27T03:15:58.457327184Z handler.py          :568  2025-05-27 03:15:58,457 🔄 Round 3: Final precision pass...
-2025-05-27T03:15:59.662692875Z handler.py          :577  2025-05-27 03:15:59,662 ✅ Round 3 precision pass applied
-2025-05-27T03:15:59.662724665Z handler.py          :585  2025-05-27 03:15:59,662 🎨 Applying advanced face enhancement...
-2025-05-27T03:15:59.968747054Z TensorRT is not available: No module named 'torch_tensorrt'
-2025-05-27T03:15:59.968794984Z handler.py          :592  2025-05-27 03:15:59,968 ✨ Enhancement round 1/2...
-2025-05-27T03:16:01.200862515Z Downloading: "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth" to /app/gfpgan/weights/detection_Resnet50_Final.pth
-2025-05-27T03:16:03.806842943Z 
+  0%|          | 162/281857 [00:00<02:56, 1598.33KB/s]
+  1%|          | 1618/281857 [00:00<00:31, 8941.53KB/s]
+  2%|▏         | 6210/281857 [00:00<00:11, 24977.10KB/s]
+  4%|▍         | 10722/281857 [00:00<00:08, 32128.76KB/s]
+  5%|▌         | 15234/281857 [00:00<00:07, 36040.45KB/s]
+  7%|▋         | 19810/281857 [00:00<00:06, 38616.74KB/s]
+  8%|▊         | 23664/281857 [00:00<00:07, 35241.48KB/s]
+ 10%|▉         | 27570/281857 [00:00<00:07, 36111.63KB/s]
+ 11%|█▏        | 32113/281857 [00:00<00:06, 38274.12KB/s]
+ 13%|█▎        | 36616/281857 [00:01<00:06, 39610.89KB/s]
+ 15%|█▍        | 41208/281857 [00:01<00:05, 40842.71KB/s]
+ 16%|█▌        | 45310/281857 [00:01<00:07, 31442.47KB/s]
+ 17%|█▋        | 48778/281857 [00:01<00:08, 28821.85KB/s]
+ 18%|█▊        | 51985/281857 [00:01<00:07, 29447.07KB/s]
+ 20%|█▉        | 55114/281857 [00:01<00:08, 26905.75KB/s]
+ 21%|██        | 57953/281857 [00:01<00:09, 22824.78KB/s]
+ 21%|██▏       | 60413/281857 [00:02<00:17, 12553.28KB/s]
+ 22%|██▏       | 62289/281857 [00:03<00:30, 7279.68KB/s] 
+ 23%|██▎       | 63685/281857 [00:03<00:45, 4826.58KB/s]
+ 23%|██▎       | 64719/281857 [00:04<00:56, 3846.53KB/s]
+ 23%|██▎       | 65499/281857 [00:04<01:03, 3419.92KB/s]
+ 23%|██▎       | 66107/281857 [00:05<01:07, 3193.14KB/s]
+ 24%|██▎       | 66601/281857 [00:05<01:10, 3067.48KB/s]
+ 24%|██▍       | 67021/281857 [00:05<01:12, 2978.63KB/s]
+ 24%|██▍       | 67392/281857 [00:05<01:13, 2925.32KB/s]
+ 24%|██▍       | 67732/281857 [00:05<01:14, 2863.01KB/s]
+ 24%|██▍       | 68048/281857 [00:05<01:14, 2870.40KB/s]
+ 24%|██▍       | 68356/281857 [00:05<01:15, 2844.26KB/s]
+ 24%|██▍       | 68658/281857 [00:05<01:14, 2854.13KB/s]
+ 24%|██▍       | 68962/281857 [00:06<01:14, 2870.92KB/s]
+ 25%|██▍       | 69266/281857 [00:06<01:13, 2898.57KB/s]
+ 25%|██▍       | 69586/281857 [00:06<01:11, 2950.71KB/s]
+ 25%|██▍       | 69906/281857 [00:06<01:10, 3002.95KB/s]
+ 25%|██▍       | 70242/281857 [00:06<01:09, 3051.18KB/s]
+ 25%|██▌       | 70578/281857 [00:06<01:08, 3104.55KB/s]
+ 25%|██▌       | 70930/281857 [00:06<01:06, 3175.69KB/s]
+ 25%|██▌       | 71282/281857 [00:06<01:04, 3261.36KB/s]
+ 25%|██▌       | 71634/281857 [00:06<01:03, 3311.60KB/s]
+ 26%|██▌       | 71986/281857 [00:07<01:02, 3346.35KB/s]
+ 26%|██▌       | 72354/281857 [00:07<01:00, 3440.16KB/s]
+ 26%|██▌       | 72722/281857 [00:07<00:59, 3489.64KB/s]
+ 26%|██▌       | 73090/281857 [00:07<00:58, 3542.19KB/s]
+ 26%|██▌       | 73474/281857 [00:07<00:57, 3593.38KB/s]
+ 26%|██▌       | 73858/281857 [00:07<00:57, 3644.47KB/s]
+ 26%|██▋       | 74242/281857 [00:07<00:56, 3687.55KB/s]
+ 26%|██▋       | 74626/281857 [00:07<00:55, 3732.46KB/s]
+ 27%|██▋       | 75026/281857 [00:07<00:54, 3802.38KB/s]
+ 27%|██▋       | 75442/281857 [00:07<00:53, 3856.74KB/s]
+ 27%|██▋       | 75858/281857 [00:08<00:52, 3928.41KB/s]
+ 27%|██▋       | 76290/281857 [00:08<00:51, 3987.64KB/s]
+ 27%|██▋       | 76738/281857 [00:08<00:50, 4069.76KB/s]
+ 27%|██▋       | 77186/281857 [00:08<00:49, 4132.13KB/s]
+ 28%|██▊       | 77634/281857 [00:08<00:48, 4215.67KB/s]
+ 28%|██▊       | 78082/281857 [00:08<00:47, 4262.99KB/s]
+ 28%|██▊       | 78530/281857 [00:08<00:47, 4317.68KB/s]
+ 28%|██▊       | 78978/281857 [00:08<00:46, 4352.13KB/s]
+ 28%|██▊       | 79442/281857 [00:08<00:45, 4419.52KB/s]
+ 28%|██▊       | 79906/281857 [00:08<00:45, 4459.37KB/s]
+ 29%|██▊       | 80386/281857 [00:09<00:44, 4542.28KB/s]
+ 29%|██▊       | 80866/281857 [00:09<00:43, 4594.03KB/s]
+ 29%|██▉       | 81326/281857 [00:09<00:45, 4428.96KB/s]
+ 29%|██▉       | 81771/281857 [00:09<00:47, 4178.93KB/s]
+ 29%|██▉       | 82193/281857 [00:09<00:50, 3981.65KB/s]
+ 29%|██▉       | 82595/281857 [00:09<00:54, 3684.47KB/s]
+ 29%|██▉       | 82969/281857 [00:09<01:00, 3312.43KB/s]
+ 30%|██▉       | 83309/281857 [00:09<01:14, 2654.90KB/s]
+ 30%|██▉       | 83598/281857 [00:10<01:41, 1961.66KB/s]
+ 30%|██▉       | 83833/281857 [00:10<02:10, 1520.45KB/s]
+ 30%|██▉       | 84023/281857 [00:10<02:35, 1272.53KB/s]
+ 30%|██▉       | 84179/281857 [00:10<02:48, 1172.50KB/s]
+ 30%|██▉       | 84315/281857 [00:11<02:50, 1156.39KB/s]
+ 30%|██▉       | 84443/281857 [00:11<02:54, 1130.91KB/s]
+ 30%|███       | 84564/281857 [00:11<02:57, 1114.06KB/s]
+ 30%|███       | 84690/281857 [00:11<02:55, 1126.10KB/s]
+ 30%|███       | 84818/281857 [00:11<02:50, 1155.80KB/s]
+ 30%|███       | 84962/281857 [00:11<02:44, 1200.30KB/s]
+ 30%|███       | 85106/281857 [00:11<02:37, 1248.56KB/s]
+ 30%|███       | 85250/281857 [00:11<02:31, 1296.59KB/s]
+ 30%|███       | 85410/281857 [00:11<02:25, 1352.53KB/s]
+ 30%|███       | 85570/281857 [00:12<02:20, 1396.90KB/s]
+ 30%|███       | 85740/281857 [00:12<02:12, 1482.25KB/s]
+ 30%|███       | 85906/281857 [00:12<02:09, 1509.03KB/s]
+ 31%|███       | 86082/281857 [00:12<02:05, 1560.82KB/s]
+ 31%|███       | 86274/281857 [00:12<01:59, 1635.55KB/s]
+ 31%|███       | 86466/281857 [00:12<01:54, 1699.07KB/s]
+ 31%|███       | 86658/281857 [00:12<01:51, 1754.22KB/s]
+ 31%|███       | 86866/281857 [00:12<01:47, 1818.33KB/s]
+ 31%|███       | 87090/281857 [00:12<01:42, 1893.37KB/s]
+ 31%|███       | 87298/281857 [00:13<01:40, 1945.36KB/s]
+ 31%|███       | 87522/281857 [00:13<01:37, 1998.12KB/s]
+ 31%|███       | 87762/281857 [00:13<01:33, 2067.55KB/s]
+ 31%|███       | 88002/281857 [00:13<01:30, 2135.34KB/s]
+ 31%|███▏      | 88242/281857 [00:13<01:28, 2195.76KB/s]
+ 31%|███▏      | 88498/281857 [00:13<01:25, 2261.98KB/s]
+ 31%|███▏      | 88754/281857 [00:13<01:23, 2323.79KB/s]
+ 32%|███▏      | 89026/281857 [00:13<01:20, 2389.06KB/s]
+ 32%|███▏      | 89298/281857 [00:13<01:18, 2443.60KB/s]
+ 32%|███▏      | 89570/281857 [00:13<01:16, 2500.69KB/s]
+ 32%|███▏      | 89858/281857 [00:14<01:14, 2567.83KB/s]
+ 32%|███▏      | 90146/281857 [00:14<01:12, 2632.18KB/s]
+ 32%|███▏      | 90434/281857 [00:14<01:10, 2697.36KB/s]
+ 32%|███▏      | 90738/281857 [00:14<01:09, 2765.84KB/s]
+ 32%|███▏      | 91042/281857 [00:14<01:07, 2825.66KB/s]
+ 32%|███▏      | 91362/281857 [00:14<01:06, 2882.43KB/s]
+ 33%|███▎      | 91682/281857 [00:14<01:04, 2942.51KB/s]
+ 33%|███▎      | 92002/281857 [00:14<01:03, 3007.07KB/s]
+ 33%|███▎      | 92324/281857 [00:14<01:01, 3069.45KB/s]
+ 33%|███▎      | 92658/281857 [00:15<01:04, 2954.28KB/s]
+ 33%|███▎      | 93010/281857 [00:15<01:01, 3060.57KB/s]
+ 33%|███▎      | 93362/281857 [00:15<00:59, 3152.51KB/s]
+ 33%|███▎      | 93714/281857 [00:15<00:57, 3254.10KB/s]
+ 33%|███▎      | 94066/281857 [00:15<00:56, 3311.22KB/s]
+ 33%|███▎      | 94418/281857 [00:15<00:55, 3358.85KB/s]
+ 34%|███▎      | 94755/281857 [00:15<01:09, 2693.15KB/s]
+ 34%|███▎      | 95046/281857 [00:15<01:32, 2018.57KB/s]
+ 34%|███▍      | 95286/281857 [00:16<02:26, 1276.54KB/s]
+ 34%|███▍      | 95471/281857 [00:16<02:43, 1138.87KB/s]
+ 34%|███▍      | 95625/281857 [00:16<02:55, 1063.88KB/s]
+ 34%|███▍      | 95758/281857 [00:16<02:56, 1051.72KB/s]
+ 34%|███▍      | 95882/281857 [00:17<02:59, 1035.76KB/s]
+ 34%|███▍      | 95998/281857 [00:17<02:56, 1053.42KB/s]
+ 34%|███▍      | 96113/281857 [00:17<03:02, 1020.40KB/s]
+ 34%|███▍      | 96221/281857 [00:17<03:00, 1030.03KB/s]
+ 34%|███▍      | 96329/281857 [00:17<03:28, 888.34KB/s] 
+ 34%|███▍      | 96424/281857 [00:17<03:48, 811.65KB/s]
+ 34%|███▍      | 96510/281857 [00:17<03:51, 799.62KB/s]
+ 34%|███▍      | 96593/281857 [00:17<03:52, 797.49KB/s]
+ 34%|███▍      | 96675/281857 [00:18<03:58, 777.67KB/s]
+ 34%|███▍      | 96770/281857 [00:18<03:49, 805.15KB/s]
+ 34%|███▍      | 96866/281857 [00:18<03:39, 842.80KB/s]
+ 34%|███▍      | 96978/281857 [00:18<03:26, 895.21KB/s]
+ 34%|███▍      | 97090/281857 [00:18<03:15, 945.04KB/s]
+ 34%|███▍      | 97202/281857 [00:18<03:07, 986.51KB/s]
+ 35%|███▍      | 97330/281857 [00:18<02:54, 1054.46KB/s]
+ 35%|███▍      | 97458/281857 [00:18<02:46, 1105.53KB/s]
+ 35%|███▍      | 97586/281857 [00:18<02:40, 1146.87KB/s]
+ 35%|███▍      | 97702/281857 [00:18<03:02, 1008.63KB/s]
+ 35%|███▍      | 97807/281857 [00:19<04:14, 723.93KB/s] 
+ 35%|███▍      | 97893/281857 [00:19<05:44, 534.10KB/s]
+ 35%|███▍      | 97962/281857 [00:19<05:53, 520.82KB/s]
+ 35%|███▍      | 98025/281857 [00:19<05:55, 516.51KB/s]
+ 35%|███▍      | 98084/281857 [00:19<05:51, 523.07KB/s]
+ 35%|███▍      | 98146/281857 [00:20<05:38, 542.64KB/s]
+ 35%|███▍      | 98226/281857 [00:20<05:19, 574.77KB/s]
+ 35%|███▍      | 98322/281857 [00:20<04:48, 635.22KB/s]
+ 35%|███▍      | 98389/281857 [00:20<04:51, 629.83KB/s]
+ 35%|███▍      | 98454/281857 [00:20<04:57, 616.05KB/s]
+ 35%|███▍      | 98517/281857 [00:20<04:57, 617.26KB/s]
+ 35%|███▍      | 98594/281857 [00:20<04:50, 631.25KB/s]
+ 35%|███▌      | 98674/281857 [00:20<04:40, 651.97KB/s]
+ 35%|███▌      | 98754/281857 [00:20<04:29, 678.93KB/s]
+ 35%|███▌      | 98850/281857 [00:21<04:09, 733.36KB/s]
+ 35%|███▌      | 98946/281857 [00:21<03:51, 789.57KB/s]
+ 35%|███▌      | 99042/281857 [00:21<03:38, 835.25KB/s]
+ 35%|███▌      | 99154/281857 [00:21<03:23, 896.75KB/s]
+ 35%|███▌      | 99266/281857 [00:21<03:10, 956.15KB/s]
+ 35%|███▌      | 99394/281857 [00:21<02:59, 1018.18KB/s]
+ 35%|███▌      | 99522/281857 [00:21<02:48, 1081.31KB/s]
+ 35%|███▌      | 99650/281857 [00:21<02:40, 1134.04KB/s]
+ 35%|███▌      | 99794/281857 [00:21<02:32, 1196.55KB/s]
+ 35%|███▌      | 99938/281857 [00:21<02:25, 1250.68KB/s]
+ 36%|███▌      | 100098/281857 [00:22<02:17, 1318.80KB/s]
+ 36%|███▌      | 100258/281857 [00:22<02:11, 1376.23KB/s]
+ 36%|███▌      | 100418/281857 [00:22<02:07, 1427.15KB/s]
+ 36%|███▌      | 100594/281857 [00:22<02:00, 1500.61KB/s]
+ 36%|███▌      | 100770/281857 [00:22<01:56, 1558.40KB/s]
+ 36%|███▌      | 100946/281857 [00:22<01:52, 1612.77KB/s]
+ 36%|███▌      | 101138/281857 [00:22<01:47, 1681.61KB/s]
+ 36%|███▌      | 101330/281857 [00:22<01:43, 1736.52KB/s]
+ 36%|███▌      | 101522/281857 [00:22<01:41, 1784.17KB/s]
+ 36%|███▌      | 101730/281857 [00:23<01:37, 1848.25KB/s]
+ 36%|███▌      | 101954/281857 [00:23<01:33, 1916.42KB/s]
+ 36%|███▋      | 102178/281857 [00:23<01:30, 1978.98KB/s]
+ 36%|███▋      | 102402/281857 [00:23<01:28, 2037.49KB/s]
+ 36%|███▋      | 102642/281857 [00:23<01:25, 2103.28KB/s]
+ 37%|███▋      | 102882/281857 [00:23<01:23, 2147.08KB/s]
+ 37%|███▋      | 103122/281857 [00:23<01:21, 2188.07KB/s]
+ 37%|███▋      | 103378/281857 [00:23<01:19, 2249.91KB/s]
+ 37%|███▋      | 103634/281857 [00:23<01:16, 2321.60KB/s]
+ 37%|███▋      | 103890/281857 [00:23<01:14, 2386.30KB/s]
+ 37%|███▋      | 104146/281857 [00:24<01:13, 2424.25KB/s]
+ 37%|███▋      | 104418/281857 [00:24<01:10, 2509.82KB/s]
+ 37%|███▋      | 104690/281857 [00:24<01:09, 2557.11KB/s]
+ 37%|███▋      | 104978/281857 [00:24<01:07, 2626.55KB/s]
+ 37%|███▋      | 105266/281857 [00:24<01:06, 2667.49KB/s]
+ 37%|███▋      | 105554/281857 [00:24<01:04, 2719.79KB/s]
+ 38%|███▊      | 105842/281857 [00:24<01:03, 2758.90KB/s]
+ 38%|███▊      | 106146/281857 [00:24<01:02, 2823.11KB/s]
+ 38%|███▊      | 106450/281857 [00:24<01:00, 2886.30KB/s]
+ 38%|███▊      | 106770/281857 [00:24<00:59, 2957.75KB/s]
+ 38%|███▊      | 107090/281857 [00:25<00:58, 3000.32KB/s]
+ 38%|███▊      | 107426/281857 [00:25<00:56, 3105.49KB/s]
+ 38%|███▊      | 107762/281857 [00:25<00:55, 3145.93KB/s]
+ 38%|███▊      | 108098/281857 [00:25<00:54, 3200.67KB/s]
+ 38%|███▊      | 108450/281857 [00:25<00:53, 3248.93KB/s]
+ 39%|███▊      | 108802/281857 [00:25<00:52, 3317.58KB/s]
+ 39%|███▊      | 109170/281857 [00:25<00:50, 3394.67KB/s]
+ 39%|███▉      | 109538/281857 [00:25<00:49, 3449.33KB/s]
+ 39%|███▉      | 109913/281857 [00:25<00:48, 3537.61KB/s]
+ 39%|███▉      | 110274/281857 [00:25<00:48, 3554.59KB/s]
+ 39%|███▉      | 110674/281857 [00:26<00:47, 3621.11KB/s]
+ 39%|███▉      | 111074/281857 [00:26<00:46, 3694.53KB/s]
+ 40%|███▉      | 111474/281857 [00:26<00:45, 3777.12KB/s]
+ 40%|███▉      | 111874/281857 [00:26<00:44, 3818.07KB/s]
+ 40%|███▉      | 112290/281857 [00:26<00:43, 3880.98KB/s]
+ 40%|███▉      | 112706/281857 [00:26<00:43, 3931.45KB/s]
+ 40%|████      | 113122/281857 [00:26<00:42, 3997.70KB/s]
+ 40%|████      | 113554/281857 [00:26<00:41, 4043.08KB/s]
+ 40%|████      | 113986/281857 [00:26<00:40, 4104.16KB/s]
+ 41%|████      | 114418/281857 [00:27<00:40, 4154.23KB/s]
+ 41%|████      | 114853/281857 [00:27<00:39, 4211.99KB/s]
+ 41%|████      | 115298/281857 [00:27<00:39, 4268.05KB/s]
+ 41%|████      | 115762/281857 [00:27<00:38, 4339.75KB/s]
+ 41%|████      | 116226/281857 [00:27<00:37, 4388.45KB/s]
+ 41%|████▏     | 116665/281857 [00:27<00:39, 4194.70KB/s]
+ 42%|████▏     | 117087/281857 [00:27<00:42, 3832.59KB/s]
+ 42%|████▏     | 117477/281857 [00:27<00:51, 3198.82KB/s]
+ 42%|████▏     | 117817/281857 [00:27<00:55, 2941.42KB/s]
+ 42%|████▏     | 118127/281857 [00:28<00:58, 2818.52KB/s]
+ 42%|████▏     | 118419/281857 [00:28<01:00, 2723.25KB/s]
+ 42%|████▏     | 118698/281857 [00:28<01:00, 2715.07KB/s]
+ 42%|████▏     | 118974/281857 [00:28<01:00, 2705.25KB/s]
+ 42%|████▏     | 119248/281857 [00:28<01:02, 2594.97KB/s]
+ 42%|████▏     | 119510/281857 [00:28<01:06, 2454.38KB/s]
+ 42%|████▏     | 119758/281857 [00:28<01:10, 2305.81KB/s]
+ 43%|████▎     | 119991/281857 [00:28<01:13, 2214.97KB/s]
+ 43%|████▎     | 120214/281857 [00:29<01:17, 2083.75KB/s]
+ 43%|████▎     | 120424/281857 [00:29<01:35, 1698.73KB/s]
+ 43%|████▎     | 120605/281857 [00:29<02:10, 1234.98KB/s]
+ 43%|████▎     | 120752/281857 [00:29<02:51, 937.16KB/s] 
+ 43%|████▎     | 120870/281857 [00:29<03:10, 846.38KB/s]
+ 43%|████▎     | 120971/281857 [00:30<03:14, 825.28KB/s]
+ 43%|████▎     | 121065/281857 [00:30<03:15, 822.63KB/s]
+ 43%|████▎     | 121155/281857 [00:30<03:19, 804.17KB/s]
+ 43%|████▎     | 121250/281857 [00:30<03:13, 827.92KB/s]
+ 43%|████▎     | 121362/281857 [00:30<03:03, 876.16KB/s]
+ 43%|████▎     | 121474/281857 [00:30<02:54, 917.70KB/s]
+ 43%|████▎     | 121570/281857 [00:30<02:58, 897.69KB/s]
+ 43%|████▎     | 121666/281857 [00:30<03:03, 874.49KB/s]
+ 43%|████▎     | 121762/281857 [00:31<03:04, 866.67KB/s]
+ 43%|████▎     | 121858/281857 [00:31<03:03, 869.84KB/s]
+ 43%|████▎     | 121954/281857 [00:31<03:00, 885.17KB/s]
+ 43%|████▎     | 122044/281857 [00:31<03:01, 881.69KB/s]
+ 43%|████▎     | 122133/281857 [00:31<03:20, 797.17KB/s]
+ 43%|████▎     | 122215/281857 [00:31<03:22, 789.23KB/s]
+ 43%|████▎     | 122306/281857 [00:31<03:21, 791.65KB/s]
+ 43%|████▎     | 122402/281857 [00:31<03:14, 818.24KB/s]
+ 43%|████▎     | 122498/281857 [00:31<03:07, 850.06KB/s]
+ 44%|████▎     | 122610/281857 [00:32<03:00, 879.93KB/s]
+ 44%|████▎     | 122722/281857 [00:32<02:50, 934.61KB/s]
+ 44%|████▎     | 122850/281857 [00:32<02:39, 994.64KB/s]
+ 44%|████▎     | 122978/281857 [00:32<02:31, 1051.42KB/s]
+ 44%|████▎     | 123106/281857 [00:32<02:24, 1099.13KB/2025-05-27T03:40:10.296030776Z s]
+ 44%|████▎     | 123217/281857 [00:32<02:32, 1039.06KB/s]
+ 44%|████▍     | 123330/281857 [00:32<02:29, 1057.80KB/s]
+ 44%|████▍     | 123437/281857 [00:32<03:11, 826.35KB/s] 
+ 44%|████▍     | 123528/281857 [00:33<03:45, 700.72KB/s]
+ 44%|████▍     | 123606/281857 [00:33<04:07, 639.23KB/s]
+ 44%|████▍     | 123676/281857 [00:33<04:30, 584.70KB/s]
+ 44%|████▍     | 123739/281857 [00:33<04:43, 558.13KB/s]
+ 44%|████▍     | 123798/281857 [00:33<04:49, 545.24KB/s]
+ 44%|████▍     | 123858/281857 [00:33<04:45, 553.52KB/s]
+ 44%|████▍     | 123938/281857 [00:33<04:25, 594.41KB/s]
+ 44%|████▍     | 124018/281857 [00:33<04:15, 618.91KB/s]
+ 44%|████▍     | 124114/281857 [00:34<03:51, 680.87KB/s]
+ 44%|████▍     | 124210/281857 [00:34<03:33, 737.55KB/s]
+ 44%|████▍     | 124306/281857 [00:34<03:19, 791.16KB/s]
+ 44%|████▍     | 124402/281857 [00:34<03:08, 836.48KB/s]
+ 44%|████▍     | 124514/281857 [00:34<02:55, 896.72KB/s]
+ 44%|████▍     | 124626/281857 [00:34<02:44, 954.01KB/s]
+ 44%|████▍     | 124754/281857 [00:34<02:33, 1020.57KB/s]
+ 44%|████▍     | 124882/281857 [00:34<02:25, 1079.05KB/s]
+ 44%|████▍     | 125010/281857 [00:34<02:18, 1134.03KB/s]
+ 44%|████▍     | 125154/281857 [00:35<02:10, 1203.01KB/s]
+ 44%|████▍     | 125298/281857 [00:35<02:04, 1262.19KB/s]
+ 45%|████▍     | 125458/281857 [00:35<01:57, 1326.66KB/s]
+ 45%|████▍     | 125618/281857 [00:35<01:53, 1381.89KB/s]
+ 45%|████▍     | 125778/281857 [00:35<01:48, 1433.03KB/s]
+ 45%|████▍     | 125954/281857 [00:35<01:43, 1499.23KB/s]
+ 45%|████▍     | 126130/281857 [00:35<01:39, 1561.89KB/s]
+ 45%|████▍     | 126322/281857 [00:35<01:35, 1625.49KB/s]
+ 45%|████▍     | 126514/281857 [00:35<01:32, 1687.69KB/s]
+ 45%|████▍     | 126706/281857 [00:35<01:28, 1743.71KB/s]
+ 45%|████▌     | 126914/281857 [00:36<01:25, 1806.82KB/s]
+ 45%|████▌     | 127122/281857 [00:36<01:22, 1870.32KB/s]
+ 45%|████▌     | 127346/281857 [00:36<01:19, 1938.72KB/s]
+ 45%|████▌     | 127570/281857 [00:36<01:17, 1984.55KB/s]
+ 45%|████▌     | 127794/281857 [00:36<01:15, 2037.18KB/s]
+ 45%|████▌     | 128034/281857 [00:36<01:13, 2106.17KB/s]
+ 46%|████▌     | 128274/281857 [00:36<01:10, 2174.76KB/s]
+ 46%|████▌     | 128530/281857 [00:36<01:08, 2247.52KB/s]
+ 46%|████▌     | 128786/281857 [00:36<01:06, 2302.90KB/s]
+ 46%|████▌     | 129042/281857 [00:37<01:04, 2371.93KB/s]
+ 46%|████▌     | 129298/281857 [00:37<01:02, 2423.47KB/s]
+ 46%|████▌     | 129570/281857 [00:37<01:01, 2482.77KB/s]
+ 46%|████▌     | 129842/281857 [00:37<00:59, 2534.75KB/s]
+ 46%|████▌     | 130120/281857 [00:37<00:58, 2606.82KB/s]
+ 46%|████▋     | 130402/281857 [00:37<00:57, 2639.33KB/s]
+ 46%|████▋     | 130674/281857 [00:37<00:56, 2653.90KB/s]
+ 46%|████▋     | 130940/281857 [00:37<00:56, 2651.70KB/s]
+ 47%|████▋     | 131206/281857 [00:37<01:13, 2061.68KB/s]
+ 47%|████▋     | 131433/281857 [00:38<01:11, 2100.94KB/s]
+ 47%|████▋     | 131658/281857 [00:38<01:10, 2134.48KB/s]
+ 47%|████▋     | 131890/281857 [00:38<01:09, 2159.96KB/s]
+ 47%|████▋     | 132130/281857 [00:38<01:07, 2217.33KB/s]
+ 47%|████▋     | 132370/281857 [00:38<01:05, 2268.17KB/s]
+ 47%|████▋     | 132626/281857 [00:38<01:04, 2324.38KB/s]
+ 47%|████▋     | 132882/281857 [00:38<01:02, 2376.67KB/s]
+ 47%|████▋     | 133138/281857 [00:38<01:01, 2417.57KB/s]
+ 47%|████▋     | 133394/281857 [00:38<01:00, 2457.00KB/s]
+ 47%|████▋     | 133666/281857 [00:38<00:59, 2503.41KB/s]
+ 48%|████▊     | 133938/281857 [00:39<00:58, 2548.96KB/s]
+ 48%|████▊     | 134226/281857 [00:39<00:56, 2605.34KB/s]
+ 48%|████▊     | 134514/281857 [00:39<00:55, 2650.89KB/s]
+ 48%|████▊     | 134818/281857 [00:39<00:54, 2702.26KB/s]
+ 48%|████▊     | 135122/281857 [00:39<00:53, 2756.06KB/s]
+ 48%|████▊     | 135426/281857 [00:39<00:52, 2811.09KB/s]
+ 48%|████▊     | 135746/281857 [00:39<00:50, 2877.71KB/s]
+ 48%|████▊     | 136082/281857 [00:39<00:49, 2949.95KB/s]
+ 48%|████▊     | 136402/281857 [00:39<00:48, 3003.23KB/s]
+ 49%|████▊     | 136738/281857 [00:40<00:47, 3058.28KB/s]
+ 49%|████▊     | 137090/281857 [00:40<00:46, 3127.65KB/s]
+ 49%|████▉     | 137426/281857 [00:40<00:45, 3179.61KB/s]
+ 49%|████▉     | 137778/281857 [00:40<00:44, 3267.79KB/s]
+ 49%|████▉     | 138141/281857 [00:40<00:42, 3373.73KB/s]
+ 49%|████▉     | 138482/281857 [00:40<00:42, 3367.21KB/s]
+ 49%|████▉     | 138849/281857 [00:40<00:41, 3456.36KB/s]
+ 49%|████▉     | 139202/281857 [00:40<00:41, 3452.19KB/s]
+ 50%|████▉     | 139570/281857 [00:40<00:40, 3518.28KB/s]
+ 50%|████▉     | 139938/281857 [00:40<00:39, 3564.15KB/s]
+ 50%|████▉     | 140338/281857 [00:41<00:38, 3641.31KB/s]
+ 50%|████▉     | 140738/281857 [00:41<00:38, 3699.64KB/s]
+ 50%|█████     | 141138/281857 [00:41<00:37, 3786.95KB/s]
+ 50%|█████     | 141538/281857 [00:41<00:36, 3821.50KB/s]
+ 50%|█████     | 141938/281857 [00:41<00:36, 3850.10KB/s]
+ 51%|█████     | 142338/281857 [00:41<00:35, 3880.61KB/s]
+ 51%|█████     | 142754/281857 [00:41<00:35, 3939.78KB/s]
+ 51%|█████     | 143186/281857 [00:41<00:34, 4009.24KB/s]
+ 51%|█████     | 143618/281857 [00:41<00:33, 4080.31KB/s]
+ 51%|█████     | 144066/281857 [00:41<00:33, 4166.71KB/s]
+ 51%|█████▏    | 144514/281857 [00:42<00:32, 4233.43KB/s]
+ 51%|█████▏    | 144978/281857 [00:42<00:31, 4298.65KB/s]
+ 52%|█████▏    | 145442/281857 [00:42<00:31, 4380.55KB/s]
+ 52%|█████▏    | 145906/281857 [00:42<00:30, 4428.03KB/s]
+ 52%|█████▏    | 146370/281857 [00:42<00:30, 4460.74KB/s]
+ 52%|█████▏    | 146850/281857 [00:42<00:29, 4517.47KB/s]
+ 52%|█████▏    | 147330/281857 [00:42<00:29, 4586.65KB/s]
+ 52%|█████▏    | 147810/281857 [00:42<00:29, 4621.75KB/s]
+ 53%|█████▎    | 148306/281857 [00:42<00:28, 4667.84KB/s]
+ 53%|█████▎    | 148818/281857 [00:42<00:28, 4744.32KB/s]
+ 53%|█████▎    | 149330/281857 [00:43<00:27, 4840.84KB/s]
+ 53%|█████▎    | 149842/281857 [00:43<00:26, 4906.66KB/s]
+ 53%|█████▎    | 150333/281857 [00:43<00:28, 4573.24KB/s]
+ 54%|█████▎    | 150795/281857 [00:43<00:30, 4259.72KB/s]
+ 54%|█████▎    | 151228/281857 [00:43<00:31, 4109.84KB/s]
+ 54%|█████▍    | 151644/281857 [00:43<00:32, 4053.64KB/s]
+ 54%|█████▍    | 152053/281857 [00:43<00:32, 4012.04KB/s]
+ 54%|█████▍    | 152466/281857 [00:43<00:32, 4007.12KB/s]
+ 54%|█████▍    | 152882/281857 [00:43<00:31, 4042.48KB/s]
+ 54%|█████▍    | 153314/281857 [00:44<00:31, 4107.09KB/s]
+ 55%|█████▍    | 153762/281857 [00:44<00:30, 4149.00KB/s]
+ 55%|█████▍    | 154210/281857 [00:44<00:30, 4211.24KB/s]
+ 55%|█████▍    | 154674/281857 [00:44<00:29, 4266.50KB/s]
+ 55%|█████▌    | 155138/281857 [00:44<00:29, 4369.47KB/s]
+ 55%|█████▌    | 155586/281857 [00:44<00:28, 4397.76KB/s]
+ 55%|█████▌    | 156050/281857 [00:44<00:28, 4447.92KB/s]
+ 56%|█████▌    | 156514/281857 [00:44<00:27, 4503.77KB/s]
+ 56%|█████▌    | 156978/281857 [00:44<00:27, 4529.59KB/s]
+ 56%|█████▌    | 157458/281857 [00:44<00:27, 4606.36KB/s]
+ 56%|█████▌    | 157938/281857 [00:45<00:26, 4635.41KB/s]
+ 56%|█████▌    | 158418/281857 [00:45<00:26, 4654.73KB/s]
+ 56%|█████▋    | 158914/281857 [00:45<00:26, 4726.89KB/s]
+ 57%|█████▋    | 159394/281857 [00:45<00:25, 4745.16KB/s]
+ 57%|█████▋    | 159869/281857 [00:45<00:26, 4685.55KB/s]
+ 57%|█████▋    | 160338/281857 [00:45<00:39, 3091.62KB/s]
+ 57%|█████▋    | 160718/281857 [00:46<00:54, 2242.40KB/s]
+ 57%|█████▋    | 161021/281857 [00:46<01:02, 1929.32KB/s]
+ 57%|█████▋    | 161273/281857 [00:46<01:07, 1798.32KB/s]
+ 57%|█████▋    | 161492/281857 [00:46<01:09, 1732.28KB/s]
+ 57%|█████▋    | 161691/281857 [00:46<01:09, 1731.19KB/s]
+ 57%|█████▋    | 161882/281857 [00:46<01:10, 1702.32KB/s]
+ 57%|█████▋    | 162066/281857 [00:46<01:10, 1707.23KB/s]
+ 58%|█████▊    | 162246/281857 [00:47<01:11, 1661.40KB/s]
+ 58%|█████▊    | 162418/281857 [00:47<01:14, 1599.04KB/s]
+ 58%|█████▊    | 162582/281857 [00:47<01:18, 1516.55KB/s]
+ 58%|█████▊    | 162736/281857 [00:47<01:19, 1507.61KB/s]
+ 58%|█████▊    | 162889/281857 [00:47<01:20, 1486.83KB/s]
+ 58%|█████▊    | 163042/281857 [00:47<01:20, 1471.93KB/s]
+ 58%|█████▊    | 163202/281857 [00:47<01:19, 1494.54KB/s]
+ 58%|█████▊    | 163378/281857 [00:47<01:17, 1536.81KB/s]
+ 58%|█████▊    | 163554/281857 [00:47<01:14, 1577.80KB/s]
+ 58%|█████▊    | 163730/281857 [00:48<01:12, 1621.52KB/s]
+ 58%|█████▊    | 163922/281857 [00:48<01:10, 1678.10KB/s]
+ 58%|█████▊    | 164114/281857 [00:48<01:07, 1734.34KB/s]
+ 58%|█████▊    | 164322/281857 [00:48<01:05, 1795.25KB/s]
+ 58%|█████▊    | 164530/281857 [00:48<01:03, 1845.41KB/s]
+ 58%|█████▊    | 164738/281857 [00:48<01:01, 1902.24KB/s]
+ 59%|█████▊    | 164962/281857 [00:48<00:59, 1966.05KB/s]
+ 59%|█████▊    | 165186/281857 [00:48<00:57, 2024.17KB/s]
+ 59%|█████▊    | 165426/281857 [00:48<00:55, 2092.89KB/s]
+ 59%|█████▉    | 165666/281857 [00:48<00:54, 2148.26KB/s]
+ 59%|█████▉    | 165906/281857 [00:49<00:52, 2202.65KB/s]
+ 59%|█████▉    | 166162/281857 [00:49<00:51, 2262.62KB/s]
+ 59%|█████▉    | 166418/281857 [00:49<00:49, 2322.04KB/s]
+ 59%|█████▉    | 166690/281857 [00:49<00:48, 2390.43KB/s]
+ 59%|█████▉    | 166962/281857 [00:49<00:46, 2451.56KB/s]
+ 59%|█████▉    | 167250/281857 [00:49<00:45, 2521.32KB/s]
+ 59%|█████▉    | 167522/281857 [00:49<00:44, 2570.27KB/s]
+ 60%|█████▉    | 167810/281857 [00:49<00:43, 2624.96KB/s]
+ 60%|█████▉    | 168114/281857 [00:49<00:42, 2699.22KB/s]
+ 60%|█████▉    | 168418/281857 [00:50<00:41, 2758.24KB/s]
+ 60%|█████▉    | 168738/281857 [00:50<00:39, 2833.89KB/s]
+ 60%|█████▉    | 169058/281857 [00:50<00:38, 2897.65KB/s]
+ 60%|██████    | 169378/281857 [00:50<00:38, 2945.98KB/s]
+ 60%|██████    | 169698/281857 [00:50<00:37, 3004.29KB/s]
+ 60%|██████    | 170034/281857 [00:50<00:36, 3063.63KB/s]
+ 60%|██████    | 170370/281857 [00:50<00:35, 3139.23KB/s]
+ 61%|██████    | 170706/281857 [00:50<00:34, 3185.09KB/s]
+ 61%|██████    | 171058/281857 [00:50<00:34, 3248.61KB/s]
+ 61%|██████    | 171410/281857 [00:50<00:33, 3298.23KB/s]
+ 61%|██████    | 171762/281857 [00:51<00:32, 3346.36KB/s]
+ 61%|██████    | 172130/281857 [00:51<00:31, 3430.68KB/s]
+ 61%|██████    | 172498/281857 [00:51<00:31, 3481.18KB/s]
+ 61%|██████▏   | 172866/281857 [00:51<00:30, 3516.07KB/s]
+ 61%|██████▏   | 173250/281857 [00:51<00:30, 3559.88KB/s]
+ 62%|██████▏   | 173634/281857 [00:51<00:29, 3619.52KB/s]
+ 62%|██████▏   | 173996/281857 [00:51<00:31, 3425.27KB/s]
+ 62%|██████▏   | 174347/281857 [00:51<00:31, 3449.33KB/s]
+ 62%|██████▏   | 174694/281857 [00:52<00:39, 2738.84KB/s]
+ 62%|██████▏   | 174992/281857 [00:52<00:41, 2589.43KB/s]
+ 62%|██████▏   | 175268/281857 [00:52<00:50, 2121.47KB/s]
+ 62%|██████▏   | 175503/281857 [00:52<00:54, 1956.54KB/s]
+ 62%|██████▏   | 175715/281857 [00:52<01:00, 1741.98KB/s]
+ 62%|██████▏   | 175902/281857 [00:52<01:07, 1578.01KB/s]
+ 62%|██████▏   | 176069/281857 [00:52<01:12, 1457.49KB/s]
+ 63%|██████▎   | 176221/281857 [00:53<01:14, 1426.81KB/s]
+ 63%|██████▎   | 176367/281857 [00:53<01:14, 1417.63KB/s]
+ 63%|██████▎   | 176511/281857 [00:53<01:14, 1409.28KB/s]
+ 63%|██████▎   | 176658/281857 [00:53<01:15, 1400.25KB/s]
+ 63%|██████▎   | 176818/281857 [00:53<01:13, 1438.12KB/s]
+ 63%|██████▎   | 176994/281857 [00:53<01:10, 1485.39KB/s]
+ 63%|██████▎   | 177170/281857 [00:53<01:07, 1539.88KB/s]
+ 63%|██████▎   | 177346/281857 [00:53<01:05, 1594.75KB/s]
+ 63%|██████▎   | 177538/281857 [00:53<01:02, 1657.20KB/s]
+ 63%|██████▎   | 177730/281857 [00:54<01:00, 1707.14KB/s]
+ 63%|██████▎   | 177938/281857 [00:54<00:59, 1750.63KB/s]
+ 63%|██████▎   | 178146/281857 [00:54<00:57, 1810.21KB/s]
+ 63%|██████▎   | 178354/281857 [00:54<00:55, 1868.44KB/s]
+ 63%|██████▎   | 178578/281857 [00:54<00:53, 1928.77KB/s]
+ 63%|██████▎   | 178802/281857 [00:54<00:51, 1992.78KB/s]
+ 64%|██████▎   | 179026/281857 [00:54<00:50, 2049.12KB/s]
+ 64%|██████▎   | 179266/281857 [00:54<00:48, 2110.56KB/s]
+ 64%|██████▎   | 179506/281857 [00:54<00:47, 2175.62KB/s]
+ 64%|██████▍   | 179762/281857 [00:54<00:45, 2251.49KB/s]
+ 64%|██████▍   | 180018/281857 [00:55<00:44, 2306.18KB/s]
+ 64%|██████▍   | 180290/281857 [00:55<00:42, 2380.53KB/s]
+ 64%|██████▍   | 180562/281857 [00:55<00:41, 2442.07KB/s]
+ 64%|██████▍   | 180834/281857 [00:55<00:40, 2495.00KB/s]
+ 64%|██████▍   | 181106/281857 [00:55<00:39, 2538.52KB/s]
+ 64%|██████▍   | 181394/281857 [00:55<00:38, 2604.29KB/s]
+ 64%|██████▍   | 181698/281857 [00:55<00:37, 2679.89KB/s]
+ 65%|██████▍   | 182002/281857 [00:55<00:36, 2746.27KB/s]
+ 65%|██████▍   | 182306/281857 [00:55<00:35, 2798.69KB/s]
+ 65%|██████▍   | 182626/281857 [00:56<00:34, 2864.09KB/s]
+ 65%|██████▍   | 182946/281857 [00:56<00:33, 2921.91KB/s]
+ 65%|██████▌   | 183266/281857 [00:56<00:33, 2972.30KB/s]
+ 65%|██████▌   | 183602/281857 [00:56<00:32, 3035.68KB/s]
+ 65%|██████▌   | 183954/281857 [00:56<00:31, 3109.80KB/s]
+ 65%|██████▌   | 184290/281857 [00:56<00:30, 3164.64KB/s]
+ 66%|██████▌   | 184642/281857 [00:56<00:30, 3224.50KB/s]
+ 66%|██████▌   | 185010/281857 [00:56<00:29, 3291.09KB/s]
+ 66%|██████▌   | 185378/281857 [00:56<00:28, 3343.34KB/s]
+ 66%|██████▌   | 185746/281857 [00:56<00:28, 3383.68KB/s]
+ 66%|██████▌   | 186130/281857 [00:57<00:27, 3433.69KB/s]
+ 66%|██████▌   | 186514/281857 [00:57<00:27, 3512.41KB/s]
+ 66%|██████▋   | 186898/281857 [00:57<00:26, 3600.92KB/s]
+ 66%|██████▋   | 187282/281857 [00:57<00:25, 3643.46KB/s]
+ 67%|██████▋   | 187672/281857 [00:57<00:25, 3718.45KB/s]
+ 67%|██████▋   | 188066/281857 [00:57<00:25, 3745.52KB/s]
+ 67%|██████▋   | 188466/281857 [00:57<00:24, 3800.45KB/s]
+ 67%|██████▋   | 188882/281857 [00:57<00:24, 3873.57KB/s]
+ 67%|██████▋   | 189298/281857 [00:57<00:23, 3938.52KB/s]
+ 67%|██████▋   | 189730/281857 [00:57<00:23, 3999.86KB/s]
+ 67%|██████▋   | 190162/281857 [00:58<00:22, 4062.68KB/s]
+ 68%|██████▊   | 190594/281857 [00:58<00:22, 4119.18KB/s]
+ 68%|██████▊   | 191026/281857 [00:58<00:21, 4175.49KB/s]
+ 68%|██████▊   | 191474/281857 [00:58<00:21, 4235.45KB/s]
+ 68%|██████▊   | 191922/281857 [00:58<00:21, 422025-05-27T03:40:10.296030776Z 70.99KB/s]
+ 68%|██████▊   | 192370/281857 [00:58<00:20, 4296.78KB/s]
+ 68%|██████▊   | 192834/281857 [00:58<00:20, 4364.11KB/s]
+ 69%|██████▊   | 193314/281857 [00:58<00:19, 4440.08KB/s]
+ 69%|██████▉   | 193794/281857 [00:58<00:19, 4516.60KB/s]
+ 69%|██████▉   | 194274/281857 [00:59<00:19, 4599.27KB/s]
+ 69%|██████▉   | 194754/281857 [00:59<00:18, 4637.30KB/s]
+ 69%|██████▉   | 195234/281857 [00:59<00:18, 4663.02KB/s]
+ 69%|██████▉   | 195730/281857 [00:59<00:18, 4725.37KB/s]
+ 70%|██████▉   | 196226/281857 [00:59<00:17, 4792.32KB/s]
+ 70%|██████▉   | 196738/281857 [00:59<00:17, 4855.62KB/s]
+ 70%|██████▉   | 197250/281857 [00:59<00:17, 4911.45KB/s]
+ 70%|███████   | 197778/281857 [00:59<00:16, 4991.45KB/s]
+ 70%|███████   | 198306/281857 [00:59<00:16, 5039.99KB/s]
+ 71%|███████   | 198834/281857 [00:59<00:16, 5090.45KB/s]
+ 71%|███████   | 199378/281857 [01:00<00:15, 5169.05KB/s]
+ 71%|███████   | 199922/281857 [01:00<00:15, 5221.54KB/s]
+ 71%|███████   | 200466/281857 [01:00<00:15, 5280.55KB/s]
+ 71%|███████▏  | 201026/281857 [01:00<00:15, 5336.01KB/s]
+ 72%|███████▏  | 201586/281857 [01:00<00:14, 5390.47KB/s]
+ 72%|███████▏  | 202146/281857 [01:00<00:14, 5449.44KB/s]
+ 72%|███████▏  | 202706/281857 [01:00<00:14, 5492.67KB/s]
+ 72%|███████▏  | 203298/281857 [01:00<00:14, 5565.74KB/s]
+ 72%|███████▏  | 203890/281857 [01:00<00:13, 5666.90KB/s]
+ 73%|███████▎  | 204466/281857 [01:00<00:13, 5688.55KB/s]
+ 73%|███████▎  | 205058/281857 [01:01<00:13, 5722.27KB/s]
+ 73%|███████▎  | 205650/281857 [01:01<00:13, 5771.86KB/s]
+ 73%|███████▎  | 206228/281857 [01:01<00:15, 4877.89KB/s]
+ 73%|███████▎  | 206850/281857 [01:01<00:14, 5178.12KB/s]
+ 74%|███████▎  | 207474/281857 [01:01<00:13, 5450.11KB/s]
+ 74%|███████▍  | 208098/281857 [01:01<00:13, 5626.01KB/s]
+ 74%|███████▍  | 208725/281857 [01:01<00:12, 5808.18KB/s]
+ 74%|███████▍  | 209362/281857 [01:01<00:12, 5945.24KB/s]
+ 75%|███████▍  | 209986/281857 [01:01<00:11, 6020.35KB/s]
+ 75%|███████▍  | 210642/281857 [01:02<00:11, 6166.86KB/s]
+ 75%|███████▍  | 211314/281857 [01:02<00:11, 6296.13KB/s]
+ 75%|███████▌  | 212002/281857 [01:02<00:10, 6458.93KB/s]
+ 75%|███████▌  | 212690/281857 [01:02<00:10, 6578.41KB/s]
+ 76%|███████▌  | 213426/281857 [01:02<00:10, 6790.43KB/s]
+ 76%|███████▌  | 214194/281857 [01:02<00:09, 7017.50KB/s]
+ 76%|███████▋  | 214978/281857 [01:02<00:09, 7244.45KB/s]
+ 77%|███████▋  | 215794/281857 [01:02<00:08, 7481.49KB/s]
+ 77%|███████▋  | 216642/281857 [01:02<00:08, 7733.35KB/s]
+ 77%|███████▋  | 217522/281857 [01:02<00:07, 8044.13KB/s]
+ 77%|███████▋  | 218370/281857 [01:03<00:07, 8151.40KB/s]
+ 78%|███████▊  | 219285/281857 [01:03<00:07, 8448.15KB/s]
+ 78%|███████▊  | 220242/281857 [01:03<00:07, 8721.30KB/s]
+ 79%|███████▊  | 221282/281857 [01:03<00:06, 9084.11KB/s]
+ 79%|███████▉  | 222338/281857 [01:03<00:06, 9517.08KB/s]
+ 79%|███████▉  | 223394/281857 [01:03<00:05, 9813.41KB/s]
+ 80%|███████▉  | 224450/281857 [01:03<00:05, 10030.27KB/s]
+ 80%|████████  | 225570/281857 [01:03<00:05, 10336.02KB/s]
+ 80%|████████  | 226706/281857 [01:03<00:05, 10615.51KB/s]
+ 81%|████████  | 227858/281857 [01:03<00:04, 10872.13KB/s]
+ 81%|████████▏ | 229106/281857 [01:04<00:04, 11260.52KB/s]
+ 82%|████████▏ | 230232/281857 [01:04<00:04, 10865.07KB/s]
+ 82%|████████▏ | 231321/281857 [01:04<00:05, 10105.23KB/s]
+ 82%|████████▏ | 232343/281857 [01:04<00:05, 8955.46KB/s] 
+ 83%|████████▎ | 233266/281857 [01:04<00:05, 8150.95KB/s]
+ 83%|████████▎ | 234108/281857 [01:04<00:06, 6840.76KB/s]
+ 83%|████████▎ | 234838/281857 [01:04<00:07, 6186.93KB/s]
+ 84%|████████▎ | 235492/281857 [01:05<00:08, 5777.39KB/s]
+ 84%|████████▍ | 236093/281857 [01:05<00:08, 5535.85KB/s]
+ 84%|████████▍ | 236660/281857 [01:05<00:08, 5385.17KB/s]
+ 84%|████████▍ | 237206/281857 [01:05<00:08, 5288.92KB/s]
+ 84%|████████▍ | 237739/281857 [01:05<00:08, 5221.85KB/s]
+ 85%|████████▍ | 238263/281857 [01:05<00:08, 5170.45KB/s]
+ 85%|████████▍ | 238781/281857 [01:05<00:08, 5169.56KB/s]
+ 85%|████████▍ | 239299/281857 [01:05<00:08, 5117.32KB/s]
+ 85%|████████▌ | 239825/281857 [01:05<00:08, 5138.02KB/s]
+ 85%|████████▌ | 240353/281857 [01:05<00:08, 5163.60KB/s]
+ 85%|████████▌ | 240929/281857 [01:06<00:07, 5221.90KB/s]
+ 86%|████████▌ | 241489/281857 [01:06<00:07, 5267.57KB/s]
+ 86%|████████▌ | 242065/281857 [01:06<00:07, 5328.47KB/s]
+ 86%|████████▌ | 242641/281857 [01:06<00:07, 5405.93KB/s]
+ 86%|████████▋ | 243205/281857 [01:06<00:07, 5473.92KB/s]
+ 86%|████████▋ | 243777/281857 [01:06<00:06, 5510.40KB/s]
+ 87%|████████▋ | 244353/281857 [01:06<00:06, 5562.09KB/s]
+ 87%|████████▋ | 244945/281857 [01:06<00:06, 5615.42KB/s]
+ 87%|████████▋ | 245537/281857 [01:06<00:06, 5672.99KB/s]
+ 87%|████████▋ | 246129/281857 [01:07<00:06, 5723.25KB/s]
+ 88%|████████▊ | 246702/281857 [01:07<00:06, 5271.43KB/s]
+ 88%|████████▊ | 247281/281857 [01:07<00:06, 5410.97KB/s]
+ 88%|████████▊ | 247828/281857 [01:07<00:06, 5091.57KB/s]
+ 88%|████████▊ | 248344/281857 [01:07<00:06, 4862.53KB/s]
+ 88%|████████▊ | 248836/281857 [01:07<00:06, 4784.27KB/s]
+ 88%|████████▊ | 249319/281857 [01:07<00:06, 4751.72KB/s]
+ 89%|████████▊ | 249825/281857 [01:07<00:06, 4739.84KB/s]
+ 89%|████████▉ | 250321/281857 [01:07<00:06, 4760.04KB/s]
+ 89%|████████▉ | 250849/281857 [01:08<00:06, 4813.85KB/s]
+ 89%|████████▉ | 251377/281857 [01:08<00:06, 4879.47KB/s]
+ 89%|████████▉ | 251905/281857 [01:08<00:06, 4927.24KB/s]
+ 90%|████████▉ | 252449/281857 [01:08<00:05, 4992.86KB/s]
+ 90%|████████▉ | 252993/281857 [01:08<00:05, 5055.58KB/s]
+ 90%|████████▉ | 253553/281857 [01:08<00:05, 5136.85KB/s]
+ 90%|█████████ | 254113/281857 [01:08<00:05, 5209.52KB/s]
+ 90%|█████████ | 254673/281857 [01:08<00:05, 5278.55KB/s]
+ 91%|█████████ | 255249/281857 [01:08<00:04, 5329.05KB/s]
+ 91%|█████████ | 255825/281857 [01:08<00:04, 5433.08KB/s]
+ 91%|█████████ | 256385/281857 [01:09<00:04, 5462.37KB/s]
+ 91%|█████████ | 256945/281857 [01:09<00:04, 5474.42KB/s]
+ 91%|█████████▏| 257521/281857 [01:09<00:04, 5527.74KB/s]
+ 92%|█████████▏| 258097/281857 [01:09<00:04, 5564.84KB/s]
+ 92%|█████████▏| 258673/281857 [01:09<00:04, 5603.93KB/s]
+ 92%|█████████▏| 259249/281857 [01:09<00:04, 5628.20KB/s]
+ 92%|█████████▏| 259825/281857 [01:09<00:03, 5639.09KB/s]
+ 92%|█████████▏| 260417/281857 [01:09<00:03, 5673.71KB/s]
+ 93%|█████████▎| 260993/281857 [01:09<00:03, 5697.52KB/s]
+ 93%|█████████▎| 261569/281857 [01:09<00:03, 5694.46KB/s]
+ 93%|█████████▎| 262161/281857 [01:10<00:03, 5738.45KB/s]
+ 93%|█████████▎| 262753/281857 [01:10<00:03, 5765.11KB/s]
+ 93%|█████████▎| 263330/281857 [01:10<00:03, 5733.45KB/s]
+ 94%|█████████▎| 263905/281857 [01:10<00:03, 5734.70KB/s]
+ 94%|█████████▍| 264497/281857 [01:10<00:03, 5777.91KB/s]
+ 94%|█████████▍| 265105/281857 [01:10<00:02, 5829.44KB/s]
+ 94%|█████████▍| 265729/281857 [01:10<00:02, 5930.57KB/s]
+ 95%|█████████▍| 266369/281857 [01:10<00:02, 6007.52KB/s]
+ 95%|█████████▍| 267009/281857 [01:10<00:02, 6096.71KB/s]
+ 95%|█████████▍| 267633/281857 [01:10<00:02, 6125.42KB/s]
+ 95%|█████████▌| 268273/281857 [01:11<00:02, 6187.90KB/s]
+ 95%|█████████▌| 268892/281857 [01:11<00:02, 6126.11KB/s]
+ 96%|█████████▌| 269505/281857 [01:11<00:02, 4891.24KB/s]
+ 96%|█████████▌| 270034/281857 [01:11<00:02, 4317.39KB/s]
+ 96%|█████████▌| 270502/281857 [01:11<00:02, 4020.56KB/s]
+ 96%|█████████▌| 270930/281857 [01:11<00:02, 3847.92KB/s]
+ 96%|█████████▋| 271332/281857 [01:11<00:02, 3729.12KB/s]
+ 96%|█████████▋| 271716/281857 [01:12<00:02, 3674.29KB/s]
+ 97%|█████████▋| 272091/281857 [01:12<00:02, 3651.51KB/s]
+ 97%|█████████▋| 272461/281857 [01:12<00:02, 3651.89KB/s]
+ 97%|█████████▋| 272833/281857 [01:12<00:02, 3626.73KB/s]
+ 97%|█████████▋| 273217/281857 [01:12<00:02, 3675.74KB/s]
+ 97%|█████████▋| 273601/281857 [01:12<00:02, 3692.28KB/s]
+ 97%|█████████▋| 273985/281857 [01:12<00:02, 3720.74KB/s]
+ 97%|█████████▋| 274385/281857 [01:12<00:01, 3793.86KB/s]
+ 97%|█████████▋| 274785/281857 [01:12<00:01, 3835.15KB/s]
+ 98%|█████████▊| 275195/281857 [01:12<00:01, 3912.95KB/s]
+ 98%|█████████▊| 275601/281857 [01:13<00:01, 3933.93KB/s]
+ 98%|█████████▊| 276017/281857 [01:13<00:01, 3984.03KB/s]
+ 98%|█████████▊| 276449/281857 [01:13<00:01, 4079.45KB/s]
+ 98%|█████████▊| 276881/281857 [01:13<00:01, 4125.11KB/s]
+ 98%|█████████▊| 277329/281857 [01:13<00:01, 4188.89KB/s]
+ 99%|█████████▊| 277777/281857 [01:13<00:00, 4268.64KB/s]
+ 99%|█████████▊| 278205/281857 [01:13<00:00, 3886.95KB/s]
+ 99%|█████████▉| 278657/281857 [01:13<00:00, 4030.28KB/s]
+ 99%|█████████▉| 279066/281857 [01:13<00:00, 3834.09KB/s]
+ 99%|█████████▉| 279455/281857 [01:14<00:00, 3688.95KB/s]
+ 99%|█████████▉| 279828/281857 [01:14<00:00, 3581.08KB/s]
+ 99%|█████████▉| 280193/281857 [01:14<00:00, 3571.25KB/s]
+100%|█████████▉| 280561/281857 [01:14<00:00, 3578.11KB/s]
+100%|█████████▉| 280945/281857 [01:14<00:00, 3603.95KB/s]
+100%|█████████▉| 281329/281857 [01:14<00:00, 3660.81KB/s]
+100%|█████████▉| 281713/281857 [01:14<00:00, 3710.51KB/s]
+100%|██████████| 281857/281857 [01:14<00:00, 3773.18KB/s]
+2025-05-27T03:40:54.495473624Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:40:54.634368271Z find model: /root/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68 ['None', 3, 192, 192] 0.0 1.0
+2025-05-27T03:40:54.683770741Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:40:54.685662974Z find model: /root/.insightface/models/buffalo_l/2d106det.onnx landmark_2d_106 ['None', 3, 192, 192] 0.0 1.0
+2025-05-27T03:40:54.737762424Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:40:54.737891074Z find model: /root/.insightface/models/buffalo_l/det_10g.onnx detection [1, 3, '?', '?'] 127.5 128.0
+2025-05-27T03:40:54.755826275Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:40:54.755838865Z find model: /root/.insightface/models/buffalo_l/genderage.onnx genderage ['None', 3, 96, 96] 0.0 1.0
+2025-05-27T03:40:55.105506192Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:40:55.282384693Z find model: /root/.insightface/models/buffalo_l/w600k_r50.onnx recognition ['None', 3, 112, 112] 127.5 127.5
+2025-05-27T03:40:55.282432003Z set det-size: (640, 640)
+2025-05-27T03:40:55.760653007Z handler.py          :1327 2025-05-27 03:40:55,760 ✅ Detected 2 face(s)
+2025-05-27T03:40:55.760679337Z handler.py          :1341 2025-05-27 03:40:55,760 ✅ Faces sorted by position (top-to-bottom, left-to-right)
+2025-05-27T03:40:55.762269870Z handler.py          :1370 2025-05-27 03:40:55,762 ✅ Face 1 preview extracted successfully
+2025-05-27T03:40:55.762321870Z handler.py          :1381 2025-05-27 03:40:55,762 👤 Face 1: bbox=(349, 127, 157, 206), center=(428, 230), confidence=0.858
+2025-05-27T03:40:55.766377445Z handler.py          :1370 2025-05-27 03:40:55,766 ✅ Face 2 preview extracted successfully
+2025-05-27T03:40:55.766397565Z handler.py          :1381 2025-05-27 03:40:55,766 👤 Face 2: bbox=(115, 176, 137, 187), center=(183, 270), confidence=0.744
+2025-05-27T03:40:55.766413635Z handler.py          :1394 2025-05-27 03:40:55,766 ✅ Face detection completed: 2 faces detected and sorted by position
+2025-05-27T03:40:56.156813776Z {"requestId": "5b1b57d8-e2a0-4ae1-9e2f-5b41d5089618-u1", "message": "Finished.", "level": "INFO"}
+2025-05-27T03:40:57.105547283Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
+2025-05-27T03:40:57.105599193Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
+2025-05-27T03:40:57.105604943Z {"requestId": "64655dba-ffbe-4e56-96da-d93de286d494-u1", "message": "Started.", "level": "INFO"}
+2025-05-27T03:40:57.105726642Z handler.py          :1786 2025-05-27 03:40:57,105 🚀 RunPod Serverless Handler started
+2025-05-27T03:40:57.105912791Z handler.py          :1787 2025-05-27 03:40:57,105 📋 Job input: {
+2025-05-27T03:40:57.105960711Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/cb4f705f-848c-4ac3-9f5a-c59e9de8dc48",
+2025-05-27T03:40:57.105972721Z   "process_type": "detect-faces"
+2025-05-27T03:40:57.105977781Z }
+2025-05-27T03:40:57.105982911Z handler.py          :388  2025-05-27 03:40:57,105 🔍 Verifying models in: /runpod-volume/faceswap
+2025-05-27T03:40:57.107286136Z handler.py          :396  2025-05-27 03:40:57,107 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:40:57.107891714Z handler.py          :396  2025-05-27 03:40:57,107 ✅ Verified GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:40:57.107906544Z handler.py          :1808 2025-05-27 03:40:57,107 🎯 Processing job type: detect-faces
+2025-05-27T03:40:57.107912014Z handler.py          :1857 2025-05-27 03:40:57,107 🔍 Processing face detection
+2025-05-27T03:40:57.107934574Z handler.py          :1858 2025-05-27 03:40:57,107    Image: https://faceswap-api.faceswap.workers.dev/api/download/cb4f705f-848c-4ac3-9f5a-c59e9de8dc48
+2025-05-27T03:40:57.107981134Z handler.py          :1305 2025-05-27 03:40:57,107 🔍 Starting face detection from URL: https://faceswap-api.faceswap.workers.dev/api/download/cb4f705f-848c-4ac3-9f5a-c59e9de8dc48
+2025-05-27T03:40:57.108011263Z handler.py          :416  2025-05-27 03:40:57,107 📥 Downloading image from: https://faceswap-api.faceswap.workers.dev/api/download/cb4f705f-848c-4ac3-9f5a-c59e9de8dc48 (attempt 1)
+2025-05-27T03:40:57.967188435Z handler.py          :423  2025-05-27 03:40:57,966 📋 Response content-type: image/webp
+2025-05-27T03:40:57.967240664Z handler.py          :424  2025-05-27 03:40:57,966 📋 Response size: 161136 bytes
+2025-05-27T03:40:57.968132111Z handler.py          :445  2025-05-27 03:40:57,968 📐 PIL Image format: WEBP, mode: RGB, size: (639, 1136)
+2025-05-27T03:40:57.996753561Z handler.py          :466  2025-05-27 03:40:57,996 ✅ Image downloaded successfully, shape: (1136, 639, 3)
+2025-05-27T03:40:57.996841711Z handler.py          :1312 2025-05-27 03:40:57,996 📐 Image downloaded successfully, shape: (1136, 639, 3)
+2025-05-27T03:40:57.996872901Z handler.py          :1315 2025-05-27 03:40:57,996 🔍 Detecting faces using get_many_faces...
+2025-05-27T03:40:58.694994390Z handler.py          :1327 2025-05-27 03:40:58,689 ✅ Detected 2 face(s)
+2025-05-27T03:40:58.695023440Z handler.py          :1341 2025-05-27 03:40:58,689 ✅ Faces sorted by position (top-to-bottom, left-to-right)
+2025-05-27T03:40:58.695025920Z handler.py          :1370 2025-05-27 03:40:58,690 ✅ Face 1 preview extracted successfully
+2025-05-27T03:40:58.695028130Z handler.py          :1381 2025-05-27 03:40:58,690 👤 Face 1: bbox=(349, 127, 157, 206), center=(428, 230), confidence=0.858
+2025-05-27T03:40:58.695030150Z handler.py          :1370 2025-05-27 03:40:58,692 ✅ Face 2 preview extracted successfully
+2025-05-27T03:40:58.695032000Z handler.py          :1381 2025-05-27 03:40:58,693 👤 Face 2: bbox=(115, 176, 137, 187), center=(183, 270), confidence=0.744
+2025-05-27T03:40:58.695033820Z handler.py          :1394 2025-05-27 03:40:58,693 ✅ Face detection completed: 2 faces detected and sorted by position
+2025-05-27T03:40:59.060097908Z {"requestId": "64655dba-ffbe-4e56-96da-d93de286d494-u1", "message": "Finished.", "level": "INFO"}
+2025-05-27T03:47:09.732130798Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
+2025-05-27T03:47:09.732168078Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
+2025-05-27T03:47:09.732234948Z {"requestId": "338a33e2-45e1-4d84-ade9-b0912164b000-u1", "message": "Started.", "level": "INFO"}
+2025-05-27T03:47:09.732483297Z handler.py          :1786 2025-05-27 03:47:09,732 🚀 RunPod Serverless Handler started
+2025-05-27T03:47:09.732551187Z handler.py          :1787 2025-05-27 03:47:09,732 📋 Job input: {
+2025-05-27T03:47:09.732577676Z   "job_id": "job_1748317628704_j548rryhw",
+2025-05-27T03:47:09.732583696Z   "options": {
+2025-05-27T03:47:09.732588747Z     "execution_provider": "CPUExecutionProvider",
+2025-05-27T03:47:09.732593896Z     "mouth_mask": true,
+2025-05-27T03:47:09.732601276Z     "use_face_enhancer": true
+2025-05-27T03:47:09.732609707Z   },
+2025-05-27T03:47:09.732617816Z   "source_file": "https://faceswap-api.faceswap.workers.dev/api/download/902f99fc-9e39-41ff-b38a-2a080471f84c",
+2025-05-27T03:47:09.732626166Z   "target_file": "https://faceswap-api.faceswap.workers.dev/api/download/838ef2d4-7eca-4718-8812-50fa1467aa63",
+2025-05-27T03:47:09.732633616Z   "type": "single_image"
+2025-05-27T03:47:09.732640936Z }
+2025-05-27T03:47:09.732649976Z handler.py          :388  2025-05-27 03:47:09,732 🔍 Verifying models in: /runpod-volume/faceswap
+2025-05-27T03:47:09.733726472Z handler.py          :396  2025-05-27 03:47:09,733 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:47:09.734143501Z handler.py          :396  2025-05-27 03:47:09,734 ✅ Verified GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:47:09.734151081Z handler.py          :1808 2025-05-27 03:47:09,734 🎯 Processing job type: single_image
+2025-05-27T03:47:09.734153430Z handler.py          :1819 2025-05-27 03:47:09,734 📸 Processing single image face swap
+2025-05-27T03:47:09.734182850Z handler.py          :1820 2025-05-27 03:47:09,734    Source: https://faceswap-api.faceswap.workers.dev/api/download/902f99fc-9e39-41ff-b38a-2a080471f84c
+2025-05-27T03:47:09.734192200Z handler.py          :1821 2025-05-27 03:47:09,734    Target: https://faceswap-api.faceswap.workers.dev/api/download/838ef2d4-7eca-4718-8812-50fa1467aa63
+2025-05-27T03:47:09.734207130Z handler.py          :547  2025-05-27 03:47:09,734 🔄 Starting image downloads...
+2025-05-27T03:47:09.734278750Z handler.py          :416  2025-05-27 03:47:09,734 📥 Downloading image from: https://faceswap-api.faceswap.workers.dev/api/download/902f99fc-9e39-41ff-b38a-2a080471f84c (attempt 1)
+2025-05-27T03:47:10.984020382Z handler.py          :423  2025-05-27 03:47:10,983 📋 Response content-type: image/jpeg
+2025-05-27T03:47:10.984101881Z handler.py          :424  2025-05-27 03:47:10,983 📋 Response size: 72543 bytes
+2025-05-27T03:47:10.984728979Z handler.py          :445  2025-05-27 03:47:10,984 📐 PIL Image format: JPEG, mode: RGB, size: (720, 720)
+2025-05-27T03:47:10.999854831Z handler.py          :466  2025-05-27 03:47:10,999 ✅ Image downloaded successfully, shape: (720, 720, 3)
+2025-05-27T03:47:10.999914451Z handler.py          :416  2025-05-27 03:47:10,999 📥 Downloading image from: https://faceswap-api.faceswap.workers.dev/api/download/838ef2d4-7eca-4718-8812-50fa1467aa63 (attempt 1)
+2025-05-27T03:47:12.684418893Z handler.py          :423  2025-05-27 03:47:12,683 📋 Response content-type: image/webp
+2025-05-27T03:47:12.684463963Z handler.py          :424  2025-05-27 03:47:12,684 📋 Response size: 161136 bytes
+2025-05-27T03:47:12.689466394Z handler.py          :445  2025-05-27 03:47:12,689 📐 PIL Image format: WEBP, mode: RGB, size: (639, 1136)
+2025-05-27T03:47:12.718085004Z handler.py          :466  2025-05-27 03:47:12,717 ✅ Image downloaded successfully, shape: (1136, 639, 3)
+2025-05-27T03:47:12.718110604Z handler.py          :557  2025-05-27 03:47:12,717 ✅ Both images downloaded successfully
+2025-05-27T03:47:12.718116374Z handler.py          :558  2025-05-27 03:47:12,718 📐 Source image shape: (720, 720, 3)
+2025-05-27T03:47:12.718120854Z handler.py          :559  2025-05-27 03:47:12,718 📐 Target image shape: (1136, 639, 3)
+2025-05-27T03:47:12.718126104Z handler.py          :562  2025-05-27 03:47:12,718 🔍 Detecting face in source image...
+2025-05-27T03:47:13.609136493Z handler.py          :567  2025-05-27 03:47:13,604 ✅ Source face detected successfully
+2025-05-27T03:47:13.609201382Z handler.py          :570  2025-05-27 03:47:13,608 🔍 Detecting face in target image...
+2025-05-27T03:47:13.946219688Z handler.py          :575  2025-05-27 03:47:13,946 ✅ Target face detected successfully
+2025-05-27T03:47:13.965988582Z handler.py          :578  2025-05-27 03:47:13,965 ⚙️ Configuring face enhancement settings...
+2025-05-27T03:47:13.966039592Z handler.py          :584  2025-05-27 03:47:13,965 🚀 Starting multi-round iterative face swap...
+2025-05-27T03:47:13.966221522Z handler.py          :588  2025-05-27 03:47:13,966 🔄 Round 1: Initial face swap...
+2025-05-27T03:47:13.966724030Z 🔍 Searching for face swapper model...
+2025-05-27T03:47:13.966733840Z    Primary models_dir: /runpod-volume/faceswap
+2025-05-27T03:47:13.966736370Z    Primary model_path: /runpod-volume/faceswap/inswapper_128_fp16.onnx
+2025-05-27T03:47:13.966902189Z    Primary exists: True
+2025-05-27T03:47:13.967101428Z 🔄 Loading face swapper model from: /runpod-volume/faceswap/inswapper_128_fp16.onnx
+2025-05-27T03:47:14.756436187Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:47:15.035762375Z inswapper-shape: [1, 3, 128, 128]
+2025-05-27T03:47:15.049092964Z ✅ Face swapper model loaded successfully from: /runpod-volume/faceswap/inswapper_128_fp16.onnx
+2025-05-27T03:47:16.081071562Z handler.py          :590  2025-05-27 03:47:16,080 ✅ Round 1 completed
+2025-05-27T03:47:16.081156301Z handler.py          :593  2025-05-27 03:47:16,080 🔄 Round 2: Refinement pass...
+2025-05-27T03:47:17.334660048Z handler.py          :601  2025-05-27 03:47:17,334 ✅ Round 2 refinement applied
+2025-05-27T03:47:17.334729788Z handler.py          :608  2025-05-27 03:47:17,334 🔄 Round 3: Final precision pass...
+2025-05-27T03:47:20.276131745Z handler.py          :617  2025-05-27 03:47:20,275 ✅ Round 3 precision pass applied
+2025-05-27T03:47:20.280053550Z handler.py          :625  2025-05-27 03:47:20,279 🎨 Applying advanced face enhancement...
+2025-05-27T03:47:20.282172612Z TensorRT is not available: No module named 'torch_tensorrt'
+2025-05-27T03:47:20.282290671Z handler.py          :632  2025-05-27 03:47:20,282 ✨ Enhancement round 1/2...
+2025-05-27T03:47:21.579916229Z Downloading: "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth" to /app/gfpgan/weights/detection_Resnet50_Final.pth
+2025-05-27T03:47:31.170766995Z 
   0%|          | 0.00/104M [00:00<?, ?B/s]
-  0%|          | 256k/104M [00:00<00:43, 2.53MB/s]
-  2%|▏         | 2.29M/104M [00:00<00:08, 13.1MB/s]
-  9%|▉         | 9.19M/104M [00:00<00:02, 35.8MB/s]
- 18%|█▊        | 18.9M/104M [00:00<00:01, 58.5MB/s]
- 23%|██▎       | 24.4M/104M [00:00<00:01, 51.2MB/s]
- 31%|███       | 32.5M/104M [00:00<00:01, 61.0MB/s]
- 41%|████      | 42.5M/104M [00:00<00:00, 74.1MB/s]
- 48%|████▊     | 49.8M/104M [00:00<00:00, 68.1MB/s]
- 55%|█████▍    | 57.0M/104M [00:01<00:00, 70.0MB/s]
- 62%|██████▏   | 64.3M/104M [00:01<00:00, 72.0MB/s]
- 69%|██████▊   | 71.6M/104M [00:01<00:00, 73.1MB/s]
- 75%|███████▌  | 78.8M/104M [00:01<00:00, 73.9MB/s]
- 82%|████████▏ | 86.0M/104M [00:01<00:00, 74.5MB/s]
- 89%|████████▉ | 93.4M/104M [00:01<00:00, 75.1MB/s]
- 96%|█████████▋| 101M/104M [00:01<00:00, 75.6MB/s] 
-100%|██████████| 104M/104M [00:01<00:00, 65.8MB/s]
-2025-05-27T03:16:04.530245072Z Downloading: "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth" to /app/gfpgan/weights/parsing_parsenet.pth
-2025-05-27T03:16:06.362076518Z 
+  0%|          | 200k/104M [00:00<00:55, 1.95MB/s]
+  1%|          | 1.16M/104M [00:00<00:16, 6.42MB/s]
+  2%|▏         | 2.34M/104M [00:00<00:11, 9.09MB/s]
+  3%|▎         | 3.46M/104M [00:00<00:10, 10.1MB/s]
+  4%|▍         | 4.61M/104M [00:00<00:09, 10.7MB/s]
+  6%|▌         | 5.80M/104M [00:00<00:09, 11.3MB/s]
+  7%|▋         | 7.01M/104M [00:00<00:08, 11.7MB/s]
+  8%|▊         | 8.23M/104M [00:00<00:08, 12.0MB/s]
+  9%|▉         | 9.48M/104M [00:00<00:08, 12.3MB/s]
+ 10%|█         | 10.7M/104M [00:01<00:07, 12.6MB/s]
+ 11%|█▏        | 12.0M/104M [00:01<00:07, 12.7MB/s]
+ 13%|█▎        | 13.3M/104M [00:01<00:07, 13.0MB/s]
+ 14%|█▍        | 14.7M/104M [00:01<00:07, 13.3MB/s]
+ 15%|█▌        | 16.0M/104M [00:01<00:06, 13.4MB/s]
+ 17%|█▋        | 17.3M/104M [00:01<00:06, 13.5MB/s]
+ 18%|█▊        | 18.6M/104M [00:01<00:06, 13.7MB/s]
+ 19%|█▉        | 20.0M/104M [00:01<00:06, 13.8MB/s]
+ 20%|██        | 21.4M/104M [00:01<00:06, 14.0MB/s]
+ 22%|██▏       | 22.8M/104M [00:01<00:06, 14.2MB/s]
+ 23%|██▎       | 24.1M/104M [00:02<00:06, 13.5MB/s]
+ 24%|██▍       | 25.4M/104M [00:02<00:06, 13.2MB/s]
+ 26%|██▌       | 26.7M/104M [00:02<00:06, 12.2MB/s]
+ 27%|██▋       | 27.9M/104M [00:02<00:06, 11.8MB/s]
+ 28%|██▊       | 29.0M/104M [00:02<00:06, 11.4MB/s]
+ 29%|██▉       | 30.1M/104M [00:02<00:06, 11.3MB/s]
+ 30%|██▉       | 31.2M/104M [00:02<00:06, 11.1MB/s]
+ 31%|███       | 32.3M/104M [00:02<00:06, 11.1MB/s]
+ 32%|███▏      | 33.3M/104M [00:02<00:06, 11.1MB/s]
+ 33%|███▎      | 34.4M/104M [00:03<00:06, 11.2MB/s]
+ 34%|███▍      | 35.5M/104M [00:03<00:06, 11.2MB/s]
+ 35%|███▌      | 36.6M/104M [00:03<00:06, 11.3MB/s]
+ 36%|███▌      | 37.7M/104M [00:03<00:06, 11.3MB/s]
+ 37%|███▋      | 38.9M/104M [00:03<00:06, 11.4MB/s]
+ 38%|███▊      | 40.0M/104M [00:03<00:05, 11.5MB/s]
+ 39%|███▉      | 41.1M/104M [00:03<00:05, 11.6MB/s]
+ 40%|████      | 42.2M/104M [00:03<00:05, 11.6MB/s]
+ 42%|████▏     | 43.4M/104M [00:03<00:05, 11.6MB/s]
+ 43%|████▎     | 44.5M/104M [00:03<00:05, 11.7MB/s]
+ 44%|████▎     | 45.6M/104M [00:04<00:05, 11.8MB/s]
+ 45%|████▍     | 46.8M/104M [00:04<00:05, 11.9MB/s]
+ 46%|████▌     | 48.0M/104M [00:04<00:04, 11.9MB/s]
+ 47%|████▋     | 49.1M/104M [00:04<00:04, 11.9MB/s]
+ 48%|████▊     | 50.3M/104M [00:04<00:04, 12.0MB/s]
+ 49%|████▉     | 51.5M/104M [00:04<00:04, 12.0MB/s]
+ 50%|█████     | 52.6M/104M [00:04<00:04, 12.0MB/s]
+ 52%|█████▏    | 53.8M/104M [00:04<00:04, 12.1MB/s]
+ 53%|█████▎    | 55.0M/104M [00:04<00:04, 12.2MB/s]
+ 54%|█████▍    | 56.2M/104M [00:04<00:04, 12.2MB/s]
+ 55%|█████▍    | 57.4M/104M [00:05<00:04, 12.2MB/s]
+ 56%|█████▌    | 58.6M/104M [00:05<00:03, 12.3MB/s]
+ 57%|█████▋    | 59.7M/104M [00:05<00:03, 12.3MB/s]
+ 58%|█████▊    | 60.9M/104M [00:05<00:03, 12.3MB/s]
+ 60%|█████▉    | 62.1M/104M [00:05<00:03, 12.4MB/s]
+ 61%|██████    | 63.3M/104M [00:05<00:03, 12.4MB/s]
+ 62%|██████▏   | 64.5M/104M [00:05<00:03, 12.4MB/s]
+ 63%|██████▎   | 65.7M/104M [00:05<00:03, 12.4MB/s]
+ 64%|██████▍   | 66.9M/104M [00:05<00:03, 12.4MB/s]
+ 65%|██████▌   | 68.1M/104M [00:05<00:03, 12.4MB/s]
+ 66%|██████▋   | 69.3M/104M [00:06<00:02, 12.4MB/s]
+ 68%|██████▊   | 70.5M/104M [00:06<00:02, 12.4MB/s]
+ 69%|██████▊   | 71.8M/104M [00:06<00:02, 12.7MB/s]
+ 70%|██████▉   | 73.0M/104M [00:06<00:02, 12.7MB/s]
+ 71%|███████   | 74.2M/104M [00:06<00:02, 12.7MB/s]
+ 72%|███████▏  | 75.4M/104M [00:06<00:02, 12.7MB/s]
+ 73%|███████▎  | 76.6M/104M [00:06<00:02, 12.7MB/s]
+ 75%|███████▍  | 77.9M/104M [00:06<00:02, 12.8MB/s]
+ 76%|███████▌  | 79.1M/104M [00:06<00:02, 12.8MB/s]
+ 77%|███████▋  | 80.4M/104M [00:06<00:01, 13.0MB/s]
+ 78%|███████▊  | 81.6M/104M [00:07<00:01, 13.0MB/s]
+ 79%|███████▉  | 82.9M/104M [00:07<00:01, 13.0MB/s]
+ 81%|████████  | 84.2M/104M [00:07<00:01, 13.1MB/s]
+ 82%|████████▏ | 85.5M/104M [00:07<00:01, 13.1MB/s]
+ 83%|████████▎ | 86.7M/104M [00:07<00:01, 13.1MB/s]
+ 84%|████████▍ | 88.0M/104M [00:07<00:01, 13.2MB/s]
+ 86%|████████▌ | 89.3M/104M [00:07<00:01, 13.4MB/s]
+ 87%|████████▋ | 90.6M/104M [00:07<00:01, 13.5MB/s]
+ 88%|████████▊ | 91.9M/104M [00:07<00:00, 13.5MB/s]
+ 89%|████████▉ | 93.2M/104M [00:07<00:00, 13.5MB/s]
+ 91%|█████████ | 94.5M/104M [00:08<00:00, 13.5MB/s]
+ 92%|█████████▏| 95.9M/104M [00:08<00:00, 13.6MB/s]
+ 93%|█████████▎| 97.2M/104M [00:08<00:00, 13.7MB/s]
+ 94%|█████████▍| 98.5M/104M [00:08<00:00, 13.8MB/s]
+ 96%|█████████▌| 99.9M/104M [00:08<00:00, 13.8MB/s]
+ 97%|█████████▋| 101M/104M [00:08<00:00, 13.9MB/s] 
+ 98%|█████████▊| 103M/104M [00:08<00:00, 13.9MB/s]
+ 99%|█████████▉| 104M/104M [00:08<00:00, 13.9MB/s]
+100%|██████████| 104M/104M [00:08<00:00, 12.4MB/s]
+2025-05-27T03:47:32.029022410Z Downloading: "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth" to /app/gfpgan/weights/parsing_parsenet.pth
+2025-05-27T03:47:33.981292294Z 
   0%|          | 0.00/81.4M [00:00<?, ?B/s]
-  0%|          | 256k/81.4M [00:00<00:33, 2.53MB/s]
-  3%|▎         | 2.28M/81.4M [00:00<00:06, 13.1MB/s]
- 14%|█▍        | 11.7M/81.4M [00:00<00:01, 50.2MB/s]
- 27%|██▋       | 22.4M/81.4M [00:00<00:00, 72.5MB/s]
- 41%|████      | 33.0M/81.4M [00:00<00:00, 84.8MB/s]
- 54%|█████▎    | 43.7M/81.4M [00:00<00:00, 92.3MB/s]
- 67%|██████▋   | 54.3M/81.4M [00:00<00:00, 97.0MB/s]
- 80%|███████▉  | 65.0M/81.4M [00:00<00:00, 100MB/s] 
- 93%|█████████▎| 75.6M/81.4M [00:00<00:00, 102MB/s]
-100%|██████████| 81.4M/81.4M [00:00<00:00, 85.7MB/s]
-2025-05-27T03:16:10.344773740Z Selected device: cuda and device priority: ['CUDA']
-2025-05-27T03:16:10.823352288Z handler.py          :599  2025-05-27 03:16:10,822 ✅ First enhancement pass blended
-2025-05-27T03:16:10.823404198Z handler.py          :592  2025-05-27 03:16:10,823 ✨ Enhancement round 2/2...
-2025-05-27T03:16:10.970692886Z handler.py          :603  2025-05-27 03:16:10,970 ✅ Final enhancement applied
-2025-05-27T03:16:10.970742556Z handler.py          :614  2025-05-27 03:16:10,970 🎭 Applying advanced post-processing...
-2025-05-27T03:16:11.549749592Z handler.py          :621  2025-05-27 03:16:11,548 ✅ Edge smoothing applied
-2025-05-27T03:16:11.549785572Z handler.py          :626  2025-05-27 03:16:11,548 🔍 Applying AI Super Resolution for ultra-high quality...
-2025-05-27T03:16:11.549788552Z handler.py          :636  2025-05-27 03:16:11,548 📐 Using 4x super resolution for maximum quality (input: 202x249)
-2025-05-27T03:16:11.552416058Z super_resolution.py :185  2025-05-27 03:16:11,552 ✅ Real-ESRGAN modules imported successfully
-2025-05-27T03:16:11.552925607Z super_resolution.py :85   2025-05-27 03:16:11,552 🔍 Searching for RealESRGAN_x4plus.pth in multiple locations...
-2025-05-27T03:16:11.559838777Z super_resolution.py :96   2025-05-27 03:16:11,559 ✅ Found RealESRGAN_x4plus.pth at: /runpod-volume/faceswap/RealESRGAN_x4plus.pth (67040989 bytes)
-2025-05-27T03:16:11.560010447Z super_resolution.py :235  2025-05-27 03:16:11,559 🔍 Loading super resolution model: RealESRGAN_x4plus.pth
-2025-05-27T03:16:16.234897914Z super_resolution.py :262  2025-05-27 03:16:16,234 ✅ Super resolution model loaded successfully (scale: 4x)
-2025-05-27T03:16:16.234938634Z super_resolution.py :312  2025-05-27 03:16:16,234 📐 Input frame size: 202x249
-2025-05-27T03:16:16.234941644Z super_resolution.py :336  2025-05-27 03:16:16,234 🚀 Starting super resolution enhancement (4x)...
-2025-05-27T03:16:16.234943544Z super_resolution.py :337  2025-05-27 03:16:16,234 📏 Output size will be: 808x996
-2025-05-27T03:16:16.298375188Z 	Tile 1/1
-2025-05-27T03:16:16.316174771Z super_resolution.py :350  2025-05-27 03:16:16,315 ✅ Super resolution completed: 808x996
-2025-05-27T03:16:16.316196721Z handler.py          :651  2025-05-27 03:16:16,316 ✅ AI Super Resolution completed: 808x996
-2025-05-27T03:16:16.316199031Z handler.py          :669  2025-05-27 03:16:16,316 📸 Converting result to ultra-high quality image...
-2025-05-27T03:16:16.322859961Z handler.py          :688  2025-05-27 03:16:16,322 ✅ Ultra-high quality multi-round result image encoded successfully
-2025-05-27T03:16:17.080806858Z {"requestId": "651d7d71-c9c1-4625-8a15-0895876426e3-u1", "message": "Finished.", "level": "INFO"}
-2025-05-27T03:18:40.025577217Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
-2025-05-27T03:18:40.025671337Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
-2025-05-27T03:18:40.025687907Z {"requestId": "e337d767-24cb-4244-97f9-77b42a94601f-u2", "message": "Started.", "level": "INFO"}
-2025-05-27T03:18:40.025866227Z handler.py          :1746 2025-05-27 03:18:40,025 🚀 RunPod Serverless Handler started
-2025-05-27T03:18:40.025896017Z handler.py          :1747 2025-05-27 03:18:40,025 📋 Job input: {
-2025-05-27T03:18:40.025901637Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/22a0c925-f2d7-485e-8141-99bf49abe5c8",
-2025-05-27T03:18:40.025906607Z   "process_type": "detect-faces"
-2025-05-27T03:18:40.025911667Z }
-2025-05-27T03:18:40.025948467Z handler.py          :348  2025-05-27 03:18:40,025 🔍 Verifying models in: /runpod-volume/faceswap
-2025-05-27T03:18:40.027098975Z handler.py          :356  2025-05-27 03:18:40,026 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
-2025-05-27T03:18:40.027494774Z handler.py          :356  2025-05-27 03:18:40,027 ✅ Verified GFPGANv1.4.pth (332.5MB)
-2025-05-27T03:18:40.027512534Z handler.py          :1768 2025-05-27 03:18:40,027 🎯 Processing job type: detect-faces
-2025-05-27T03:18:40.027521374Z handler.py          :1840 2025-05-27 03:18:40,027 ❌ Unknown or unsupported process_type: detect-faces
-2025-05-27T03:18:40.382373529Z {"requestId": "e337d767-24cb-4244-97f9-77b42a94601f-u2", "message": "Finished.", "level": "INFO"}
-2025-05-27T03:18:44.905066896Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
-2025-05-27T03:18:44.905126486Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
-2025-05-27T03:18:44.905263986Z {"requestId": "de6724c0-c4e5-47cd-8ad9-52d61f4497c8-u2", "message": "Started.", "level": "INFO"}
-2025-05-27T03:18:44.905507325Z handler.py          :1746 2025-05-27 03:18:44,905 🚀 RunPod Serverless Handler started
-2025-05-27T03:18:44.905559335Z handler.py          :1747 2025-05-27 03:18:44,905 📋 Job input: {
-2025-05-27T03:18:44.905569775Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/22a0c925-f2d7-485e-8141-99bf49abe5c8",
-2025-05-27T03:18:44.905575335Z   "process_type": "detect-faces"
-2025-05-27T03:18:44.905580405Z }
-2025-05-27T03:18:44.905654645Z handler.py          :348  2025-05-27 03:18:44,905 🔍 Verifying models in: /runpod-volume/faceswap
-2025-05-27T03:18:44.906655223Z handler.py          :356  2025-05-27 03:18:44,906 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
-2025-05-27T03:18:44.907226093Z handler.py          :356  2025-05-27 03:18:44,907 ✅ Verified GFPGANv1.4.pth (332.5MB)
-2025-05-27T03:18:44.907261523Z handler.py          :1768 2025-05-27 03:18:44,907 🎯 Processing job type: detect-faces
-2025-05-27T03:18:44.907267243Z handler.py          :1840 2025-05-27 03:18:44,907 ❌ Unknown or unsupported process_type: detect-faces
-2025-05-27T03:18:45.200679540Z {"requestId": "de6724c0-c4e5-47cd-8ad9-52d61f4497c8-u2", "message": "Finished.", "level": "INFO"}
-2025-05-27T03:19:31.642820406Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
-2025-05-27T03:19:31.642898246Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
-2025-05-27T03:19:31.642997576Z {"requestId": "cb7b2c91-1bf2-453a-96ce-00d2b918b6ce-u1", "message": "Started.", "level": "INFO"}
-2025-05-27T03:19:31.643288406Z handler.py          :1746 2025-05-27 03:19:31,642 🚀 RunPod Serverless Handler started
-2025-05-27T03:19:31.643363355Z handler.py          :1747 2025-05-27 03:19:31,643 📋 Job input: {
-2025-05-27T03:19:31.643371615Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/f6480ba1-b045-43f3-9824-9f75f92d2b0e",
-2025-05-27T03:19:31.643377786Z   "process_type": "detect-faces"
-2025-05-27T03:19:31.643384186Z }
-2025-05-27T03:19:31.643388995Z handler.py          :348  2025-05-27 03:19:31,643 🔍 Verifying models in: /runpod-volume/faceswap
-2025-05-27T03:19:31.644609594Z handler.py          :356  2025-05-27 03:19:31,644 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
-2025-05-27T03:19:31.645394822Z handler.py          :356  2025-05-27 03:19:31,645 ✅ Verified GFPGANv1.4.pth (332.5MB)
-2025-05-27T03:19:31.645415772Z handler.py          :1768 2025-05-27 03:19:31,645 🎯 Processing job type: detect-faces
-2025-05-27T03:19:31.645420882Z handler.py          :1840 2025-05-27 03:19:31,645 ❌ Unknown or unsupported process_type: detect-faces
-2025-05-27T03:19:31.999256278Z {"requestId": "cb7b2c91-1bf2-453a-96ce-00d2b918b6ce-u1", "message": "Finished.", "level": "INFO"}
-2025-05-27T03:19:35.712553267Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
-2025-05-27T03:19:35.712807696Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
-2025-05-27T03:19:35.712813266Z {"requestId": "ecf3fd8c-a388-44ad-bc59-f7c2ca1dffda-u2", "message": "Started.", "level": "INFO"}
-2025-05-27T03:19:35.713114596Z handler.py          :1746 2025-05-27 03:19:35,712 🚀 RunPod Serverless Handler started
-2025-05-27T03:19:35.713142096Z handler.py          :1747 2025-05-27 03:19:35,713 📋 Job input: {
-2025-05-27T03:19:35.713148656Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/f6480ba1-b045-43f3-9824-9f75f92d2b0e",
-2025-05-27T03:19:35.713151406Z   "process_type": "detect-faces"
-2025-05-27T03:19:35.713153676Z }
-2025-05-27T03:19:35.713191726Z handler.py          :348  2025-05-27 03:19:35,713 🔍 Verifying models in: /runpod-volume/faceswap
-2025-05-27T03:19:35.713845605Z handler.py          :356  2025-05-27 03:19:35,713 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
-2025-05-27T03:19:35.714308764Z handler.py          :356  2025-05-27 03:19:35,714 ✅ Verified GFPGANv1.4.pth (332.5MB)
-2025-05-27T03:19:35.714326264Z handler.py          :1768 2025-05-27 03:19:35,714 🎯 Processing job type: detect-faces
-2025-05-27T03:19:35.714330354Z handler.py          :1840 2025-05-27 03:19:35,714 ❌ Unknown or unsupported process_type: detect-faces
-2025-05-27T03:19:36.066911312Z {"requestId": "ecf3fd8c-a388-44ad-bc59-f7c2ca1dffda-u2", "message": "Finished.", "level": "INFO"}
+  0%|          | 232k/81.4M [00:00<00:37, 2.26MB/s]
+  3%|▎         | 2.05M/81.4M [00:00<00:07, 11.7MB/s]
+ 13%|█▎        | 10.2M/81.4M [00:00<00:01, 43.9MB/s]
+ 24%|██▍       | 19.4M/81.4M [00:00<00:01, 62.7MB/s]
+ 35%|███▌      | 28.6M/81.4M [00:00<00:00, 73.2MB/s]
+ 46%|████▋     | 37.8M/81.4M [00:00<00:00, 79.5MB/s]
+ 58%|█████▊    | 47.0M/81.4M [00:00<00:00, 83.5MB/s]
+ 69%|██████▉   | 56.2M/81.4M [00:00<00:00, 86.0MB/s]
+ 80%|████████  | 65.3M/81.4M [00:00<00:00, 88.9MB/s]
+ 91%|█████████ | 73.8M/81.4M [00:01<00:00, 89.0MB/s]
+100%|██████████| 81.4M/81.4M [00:01<00:00, 75.2MB/s]
+2025-05-27T03:47:36.158809833Z Selected device: cuda and device priority: ['CUDA']
+2025-05-27T03:47:36.876988316Z handler.py          :639  2025-05-27 03:47:36,876 ✅ First enhancement pass blended
+2025-05-27T03:47:36.877032506Z handler.py          :632  2025-05-27 03:47:36,876 ✨ Enhancement round 2/2...
+2025-05-27T03:47:37.261805098Z handler.py          :643  2025-05-27 03:47:37,261 ✅ Final enhancement applied
+2025-05-27T03:47:37.262094137Z handler.py          :654  2025-05-27 03:47:37,261 🎭 Applying advanced post-processing...
+2025-05-27T03:47:37.772848707Z handler.py          :661  2025-05-27 03:47:37,772 ✅ Edge smoothing applied
+2025-05-27T03:47:37.772877096Z handler.py          :666  2025-05-27 03:47:37,772 🔍 Applying AI Super Resolution for ultra-high quality...
+2025-05-27T03:47:37.775951615Z handler.py          :680  2025-05-27 03:47:37,772 📐 Using 2x super resolution (input: 639x1136)
+2025-05-27T03:47:37.776396233Z super_resolution.py :185  2025-05-27 03:47:37,776 ✅ Real-ESRGAN modules imported successfully
+2025-05-27T03:47:37.776800631Z super_resolution.py :85   2025-05-27 03:47:37,776 🔍 Searching for RealESRGAN_x2plus.pth in multiple locations...
+2025-05-27T03:47:37.777471869Z super_resolution.py :96   2025-05-27 03:47:37,777 ✅ Found RealESRGAN_x2plus.pth at: /runpod-volume/faceswap/RealESRGAN_x2plus.pth (67061725 bytes)
+2025-05-27T03:47:37.777702518Z super_resolution.py :235  2025-05-27 03:47:37,777 🔍 Loading super resolution model: RealESRGAN_x2plus.pth
+2025-05-27T03:47:42.130830455Z super_resolution.py :262  2025-05-27 03:47:42,130 ✅ Super resolution model loaded successfully (scale: 2x)
+2025-05-27T03:47:42.130871725Z super_resolution.py :312  2025-05-27 03:47:42,130 📐 Input frame size: 639x1136
+2025-05-27T03:47:42.130887225Z super_resolution.py :336  2025-05-27 03:47:42,130 🚀 Starting super resolution enhancement (2x)...
+2025-05-27T03:47:42.130889525Z super_resolution.py :337  2025-05-27 03:47:42,130 📏 Output size will be: 1278x2272
+2025-05-27T03:47:42.216330117Z 	Tile 1/6
+2025-05-27T03:47:42.260886296Z 	Tile 2/6
+2025-05-27T03:47:42.314235601Z 	Tile 3/6
+2025-05-27T03:47:42.357688884Z 	Tile 4/6
+2025-05-27T03:47:42.401698815Z 	Tile 5/6
+2025-05-27T03:47:42.447744048Z 	Tile 6/6
+2025-05-27T03:47:42.512088921Z super_resolution.py :350  2025-05-27 03:47:42,511 ✅ Super resolution completed: 1278x2272
+2025-05-27T03:47:42.512125281Z handler.py          :691  2025-05-27 03:47:42,511 ✅ AI Super Resolution completed: 1278x2272
+2025-05-27T03:47:42.512130661Z handler.py          :709  2025-05-27 03:47:42,511 📸 Converting result to ultra-high quality image...
+2025-05-27T03:47:42.542713104Z handler.py          :728  2025-05-27 03:47:42,542 ✅ Ultra-high quality multi-round result image encoded successfully
+2025-05-27T03:47:43.926215022Z {"requestId": "338a33e2-45e1-4d84-ade9-b0912164b000-u1", "message": "Finished.", "level": "INFO"}

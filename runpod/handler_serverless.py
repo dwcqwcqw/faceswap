@@ -4,9 +4,50 @@ RunPod Serverless Handler - Optimized for Volume Models
 Uses pre-downloaded models from Volume, no download logic
 """
 
-import runpod
 import os
 import sys
+
+# 🔧 强制设置模型路径，防止任何下载 - 必须在导入AI库之前
+def setup_model_paths_strict():
+    """严格设置模型路径，完全阻止下载"""
+    volume_models_dir = "/runpod-volume/faceswap"
+    
+    # InsightFace模型路径
+    os.environ['INSIGHTFACE_HOME'] = volume_models_dir
+    os.environ['INSIGHTFACE_ROOT'] = volume_models_dir
+    
+    # GFPGAN和FaceXLib模型路径
+    os.environ['GFPGAN_WEIGHTS_DIR'] = volume_models_dir
+    os.environ['FACEXLIB_CACHE_DIR'] = volume_models_dir
+    
+    # Torch和HuggingFace缓存
+    os.environ['TORCH_HOME'] = volume_models_dir
+    os.environ['HUB_CACHE_DIR'] = volume_models_dir
+    os.environ['BASICSR_CACHE_DIR'] = volume_models_dir
+    
+    # 创建InsightFace目录结构
+    insightface_dir = os.path.join(volume_models_dir, '.insightface', 'models')
+    os.makedirs(insightface_dir, exist_ok=True)
+    
+    # 如果buffalo_l目录存在，创建符号链接
+    buffalo_source = os.path.join(volume_models_dir, 'buffalo_l')
+    buffalo_target = os.path.join(insightface_dir, 'buffalo_l')
+    
+    if os.path.exists(buffalo_source) and not os.path.exists(buffalo_target):
+        try:
+            os.symlink(buffalo_source, buffalo_target)
+            print(f"✅ Created buffalo_l symlink: {buffalo_target} -> {buffalo_source}")
+        except Exception as e:
+            print(f"⚠️ Failed to create buffalo_l symlink: {e}")
+    
+    print(f"🔧 Strict model paths configured:")
+    print(f"   INSIGHTFACE_HOME: {os.environ.get('INSIGHTFACE_HOME')}")
+    print(f"   GFPGAN_WEIGHTS_DIR: {os.environ.get('GFPGAN_WEIGHTS_DIR')}")
+
+# 在导入任何AI库之前设置路径
+setup_model_paths_strict()
+
+import runpod
 import json
 import base64
 import tempfile
@@ -1775,6 +1816,8 @@ def process_multi_image_swap_from_urls(target_url, face_mappings):
     except Exception as e:
         logger.error(f"❌ Multi-person face swap failed: {e}")
         return {"error": f"Multi-person processing failed: {str(e)}"}
+
+
 
 # ====== Main RunPod Handler Function ======
 def handler(job):
