@@ -232,7 +232,7 @@ async function handleProcess(request, env, path) {
       runpodPayload = {
         input: {
           job_id: jobId,
-          type: 'multi_image',  // Normalize process type
+          process_type: 'multi_image',  // Normalize process type
           target_file: await getR2FileUrl(env, requestBody.target_file),  // Multi-person image
           face_mappings: faceMappingUrls,  // Individual face replacement images
           options: requestBody.options || {}
@@ -255,7 +255,7 @@ async function handleProcess(request, env, path) {
         runpodPayload = {
           input: {
             job_id: jobId,
-            type: 'multi_video',  // Use multi_video processing
+            process_type: 'multi_video',  // Use multi_video processing
             target_file: await getR2FileUrl(env, requestBody.target_file),  // Target video with multiple people
             face_mappings: faceMappingUrls,  // Individual face replacement images
             options: requestBody.options || {}
@@ -268,7 +268,7 @@ async function handleProcess(request, env, path) {
         runpodPayload = {
           input: {
             job_id: jobId,
-            type: 'video',  // Use video processing
+            process_type: 'single-video',  // Use video processing
             source_file: await getR2FileUrl(env, requestBody.source_file),  // Source face image
             target_file: await getR2FileUrl(env, requestBody.target_file),   // Target video
             options: requestBody.options || {}
@@ -283,7 +283,7 @@ async function handleProcess(request, env, path) {
       runpodPayload = {
         input: {
           job_id: jobId,
-          type: 'single_image',  // Normalize process type
+          process_type: 'single-image',  // Normalize process type
           source_file: await getR2FileUrl(env, requestBody.source_file),
           target_file: await getR2FileUrl(env, requestBody.target_file),
           options: requestBody.options || {}
@@ -909,7 +909,7 @@ async function handleSingleImageSwap(request, env) {
     const runpodPayload = {
       input: {
         job_id: jobId,
-        type: 'single_image',
+        process_type: 'single-image',
         source_file: await getR2FileUrl(env, sourceFileId),
         target_file: await getR2FileUrl(env, targetFileId),
         options: jobData.options

@@ -178,7 +178,6 @@ def process_single_image_swap(input_data):
         
     except Exception as e:
         print(f"Error in single image processing: {str(e)}")
-        pass
         return {
             'success': False,
             'error': str(e)
@@ -257,7 +256,6 @@ def process_multi_image_swap(input_data):
         
     except Exception as e:
         print(f"Error in multi-image processing: {str(e)}")
-        pass
         return {
             'success': False,
             'error': str(e)
@@ -539,11 +537,11 @@ def handler(job):
         
         if process_type == "single-image":
             return process_single_image_swap(job_input)
-        elif process_type == "multi-image":
+        elif process_type == "multi-image" or process_type == "multi_image":
             return process_multi_image_swap(job_input)
         elif process_type == "single-video":
             return process_single_video_swap(job_input)
-        elif process_type == "multi-video":
+        elif process_type == "multi-video" or process_type == "multi_video":
             return process_multi_video_swap(job_input)
         elif process_type == "detect_faces":
             return process_detect_faces(job_input)
