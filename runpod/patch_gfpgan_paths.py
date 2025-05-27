@@ -27,73 +27,80 @@ def patch_gfpgan_model_paths():
         import gfpgan
         from gfpgan.utils import GFPGANer
         
-        # Patch the model URLs to point to local files
-        if hasattr(gfpgan, 'utils'):
-            # Override model URLs
-            original_model_urls = getattr(gfpgan.utils, 'MODEL_URLS', {})
+        # Model mapping - map model names to actual file paths in volume
+        model_mapping = {
+            'detection_Resnet50_Final': os.path.join(models_dir, 'detection_Resnet50_Final.pth'),
+            'parsing_parsenet': os.path.join(models_dir, 'parsing_parsenet.pth'),
+            'detection_mobilenet0.25_Final': os.path.join(models_dir, 'detection_mobilenet0.25_Final.pth'),
+            'alignment_WFLW_4HG': os.path.join(models_dir, 'alignment_WFLW_4HG.pth'),
+            'headpose_hopenet': os.path.join(models_dir, 'headpose_hopenet.pth'),
+            'modnet_photographic_portrait_matting': os.path.join(models_dir, 'modnet_photographic_portrait_matting.ckpt'),
+            'recognition_arcface_ir_se50': os.path.join(models_dir, 'recognition_arcface_ir_se50.pth'),
+            'assessment_hyperIQA': os.path.join(models_dir, 'assessment_hyperIQA.pth'),
+        }
+        
+        # Check and log model availability
+        for model_name, model_path in model_mapping.items():
+            if os.path.exists(model_path):
+                logger.info(f"✅ Found local model: {model_name} at {model_path}")
+            else:
+                logger.warning(f"⚠️ Missing model: {model_name} at {model_path}")
+        
+        # Patch GFPGAN model loading
+        original_init = GFPGANer.__init__
+        
+        def patched_init(self, model_path, upscale=2, arch='clean', channel_multiplier=2, bg_upsampler=None, device=None):
+            # Force use local models directory
+            if not os.path.isabs(model_path):
+                # If relative path, make it absolute using our models directory
+                model_path = os.path.join(models_dir, model_path)
             
-            # Create local model mappings
-            local_model_paths = {
-                'detection_Resnet50_Final': os.path.join(models_dir, 'detection_Resnet50_Final.pth'),
-                'parsing_parsenet': os.path.join(models_dir, 'parsing_parsenet.pth'),
-                'detection_mobilenet0.25_Final': os.path.join(models_dir, 'detection_mobilenet0.25_Final.pth'),
-                'alignment_WFLW_4HG': os.path.join(models_dir, 'alignment_WFLW_4HG.pth'),
-                'headpose_hopenet': os.path.join(models_dir, 'headpose_hopenet.pth'),
-                'modnet_photographic_portrait_matting': os.path.join(models_dir, 'modnet_photographic_portrait_matting.ckpt'),
-                'recognition_arcface_ir_se50': os.path.join(models_dir, 'recognition_arcface_ir_se50.pth'),
-                'assessment_hyperIQA': os.path.join(models_dir, 'assessment_hyperIQA.pth')
-            }
+            # Set weights directory to our volume
+            os.environ['GFPGAN_WEIGHTS_DIR'] = gfpgan_weights_dir
             
-            # Check which models exist and log them
-            for model_name, model_path in local_model_paths.items():
-                if os.path.exists(model_path):
-                    logger.info(f"✅ Found local model: {model_name} at {model_path}")
-                else:
-                    logger.warning(f"⚠️ Missing local model: {model_name} at {model_path}")
-            
-            logger.info("✅ GFPGAN model paths patched successfully")
-            
+            return original_init(self, model_path, upscale, arch, channel_multiplier, bg_upsampler, device)
+        
+        GFPGANer.__init__ = patched_init
+        logger.info("✅ GFPGAN model paths patched successfully")
+        
     except ImportError as e:
-        logger.warning(f"⚠️ GFPGAN not available for patching: {e}")
+        logger.warning(f"⚠️ Could not import GFPGAN for patching: {e}")
     except Exception as e:
-        logger.error(f"❌ Failed to patch GFPGAN: {e}")
+        logger.error(f"❌ Error patching GFPGAN: {e}")
 
 def patch_facexlib_paths():
-    """Patch FaceXLib to use Volume models instead of downloading"""
-    
-    models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
-    
+    """Patch FaceXLib to use Volume models"""
     try:
-        # Try to import and patch FaceXLib
         import facexlib
         from facexlib.utils import load_file_from_url
+        
+        models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
         
         # Store original function
         original_load_file_from_url = load_file_from_url
         
         def patched_load_file_from_url(url, model_dir=None, progress=True, file_name=None):
-            """Patched version that checks local files first"""
+            """Patched version that uses local files instead of downloading"""
             
-            # Extract model name from URL
+            # Extract filename from URL if not provided
             if file_name is None:
                 file_name = url.split('/')[-1]
             
-            # Check if model exists locally
+            # Check if file exists in our models directory
             local_path = os.path.join(models_dir, file_name)
-            gfpgan_path = os.path.join(models_dir, 'gfpgan', 'weights', file_name)
-            
             if os.path.exists(local_path):
-                logger.info(f"✅ Using local model: {local_path}")
+                logger.info(f"✅ Using local model: {file_name} from {local_path}")
                 return local_path
-            elif os.path.exists(gfpgan_path):
-                logger.info(f"✅ Using GFPGAN model: {gfpgan_path}")
+            
+            # Check in gfpgan/weights subdirectory
+            gfpgan_path = os.path.join(models_dir, 'gfpgan', 'weights', file_name)
+            if os.path.exists(gfpgan_path):
+                logger.info(f"✅ Using local model: {file_name} from {gfpgan_path}")
                 return gfpgan_path
-            else:
-                logger.error(f"❌ Model not found locally and downloads are disabled: {file_name}")
-                logger.error(f"❌ Expected locations:")
-                logger.error(f"   - {local_path}")
-                logger.error(f"   - {gfpgan_path}")
-                raise FileNotFoundError(f"Model {file_name} not found in volume and downloads are disabled")
+            
+            # If not found locally, block the download
+            logger.error(f"❌ Model {file_name} not found in volume, blocking download from {url}")
+            raise FileNotFoundError(f"Model {file_name} not found in volume at {local_path} or {gfpgan_path}")
         
         # Replace the function
         facexlib.utils.load_file_from_url = patched_load_file_from_url
@@ -101,40 +108,43 @@ def patch_facexlib_paths():
         logger.info("✅ FaceXLib model loading patched successfully")
         
     except ImportError as e:
-        logger.warning(f"⚠️ FaceXLib not available for patching: {e}")
+        logger.warning(f"⚠️ Could not import FaceXLib for patching: {e}")
     except Exception as e:
-        logger.error(f"❌ Failed to patch FaceXLib: {e}")
+        logger.error(f"❌ Error patching FaceXLib: {e}")
 
 def patch_basicsr_paths():
-    """Patch BasicSR to use Volume models instead of downloading"""
-    
-    models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
-    
+    """Patch BasicSR to use Volume models"""
     try:
-        # Try to import and patch BasicSR
         import basicsr
         from basicsr.utils.download_util import load_file_from_url
+        
+        models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
         
         # Store original function
         original_load_file_from_url = load_file_from_url
         
         def patched_load_file_from_url(url, model_dir=None, progress=True, file_name=None):
-            """Patched version that checks local files first"""
+            """Patched version that uses local files instead of downloading"""
             
-            # Extract model name from URL
+            # Extract filename from URL if not provided
             if file_name is None:
                 file_name = url.split('/')[-1]
             
-            # Check if model exists locally
+            # Check if file exists in our models directory
             local_path = os.path.join(models_dir, file_name)
-            
             if os.path.exists(local_path):
-                logger.info(f"✅ Using local BasicSR model: {local_path}")
+                logger.info(f"✅ Using local model: {file_name} from {local_path}")
                 return local_path
-            else:
-                logger.error(f"❌ BasicSR model not found locally and downloads are disabled: {file_name}")
-                logger.error(f"❌ Expected location: {local_path}")
-                raise FileNotFoundError(f"BasicSR model {file_name} not found in volume and downloads are disabled")
+            
+            # Check in gfpgan/weights subdirectory
+            gfpgan_path = os.path.join(models_dir, 'gfpgan', 'weights', file_name)
+            if os.path.exists(gfpgan_path):
+                logger.info(f"✅ Using local model: {file_name} from {gfpgan_path}")
+                return gfpgan_path
+            
+            # If not found locally, block the download
+            logger.error(f"❌ Model {file_name} not found in volume, blocking download from {url}")
+            raise FileNotFoundError(f"Model {file_name} not found in volume at {local_path} or {gfpgan_path}")
         
         # Replace the function
         basicsr.utils.download_util.load_file_from_url = patched_load_file_from_url
@@ -142,53 +152,70 @@ def patch_basicsr_paths():
         logger.info("✅ BasicSR model loading patched successfully")
         
     except ImportError as e:
-        logger.warning(f"⚠️ BasicSR not available for patching: {e}")
+        logger.warning(f"⚠️ Could not import BasicSR for patching: {e}")
     except Exception as e:
-        logger.error(f"❌ Failed to patch BasicSR: {e}")
+        logger.error(f"❌ Error patching BasicSR: {e}")
 
 def patch_all_download_functions():
-    """Aggressively patch all known download functions to prevent model downloads"""
-    
-    models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
-    
-    # Patch urllib and requests to block downloads
+    """Patch all possible download functions to prevent model downloads"""
     try:
         import urllib.request
         import requests
         
+        models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+        
+        # Store original functions
         original_urlretrieve = urllib.request.urlretrieve
         original_requests_get = requests.get
         
         def blocked_urlretrieve(url, filename=None, reporthook=None, data=None):
-            """Block urllib downloads"""
-            if 'github.com' in url or 'huggingface.co' in url:
-                logger.error(f"❌ Blocked download attempt via urllib: {url}")
-                raise RuntimeError(f"Downloads are disabled. Model should be in volume: {models_dir}")
-            return original_urlretrieve(url, filename, reporthook, data)
+            """Block all urllib downloads"""
+            logger.error(f"🚫 Blocked urllib download attempt: {url}")
+            raise RuntimeError(f"Model downloads are disabled. All models should be in volume: {models_dir}")
         
         def patched_requests_get(url, **kwargs):
-            """Patch requests.get to block model downloads"""
-            if ('github.com' in url and ('.pth' in url or '.onnx' in url)) or \
-               ('huggingface.co' in url and ('.pth' in url or '.onnx' in url)):
-                logger.error(f"❌ Blocked download attempt via requests: {url}")
-                raise RuntimeError(f"Downloads are disabled. Model should be in volume: {models_dir}")
+            """Intercept requests.get calls for model downloads"""
+            # Allow normal HTTP requests but block known model download URLs
+            if any(domain in url for domain in ['github.com', 'huggingface.co', 'drive.google.com']) and any(ext in url for ext in ['.pth', '.onnx', '.zip']):
+                logger.error(f"🚫 Blocked requests download attempt: {url}")
+                raise RuntimeError(f"Model downloads are disabled. All models should be in volume: {models_dir}")
+            
+            # Allow other requests to proceed
             return original_requests_get(url, **kwargs)
         
-        # Apply patches
+        # Replace functions
         urllib.request.urlretrieve = blocked_urlretrieve
         requests.get = patched_requests_get
         
-        logger.info("✅ Download blocking patches applied successfully")
+        logger.info("✅ All download functions patched successfully")
         
     except Exception as e:
-        logger.warning(f"⚠️ Failed to apply download blocking patches: {e}")
+        logger.error(f"❌ Error patching download functions: {e}")
+
+def ensure_buffalo_l_extracted():
+    """Ensure buffalo_l.zip is extracted to buffalo_l directory"""
+    try:
+        models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+        buffalo_zip = os.path.join(models_dir, 'buffalo_l.zip')
+        buffalo_dir = os.path.join(models_dir, 'buffalo_l')
+        
+        if os.path.exists(buffalo_zip) and not os.path.exists(buffalo_dir):
+            logger.info(f"📦 Extracting buffalo_l.zip to {buffalo_dir}")
+            import zipfile
+            with zipfile.ZipFile(buffalo_zip, 'r') as zip_ref:
+                zip_ref.extractall(models_dir)
+            logger.info("✅ buffalo_l.zip extracted successfully")
+        elif os.path.exists(buffalo_dir):
+            logger.info("✅ buffalo_l directory already exists")
+        else:
+            logger.warning("⚠️ buffalo_l.zip not found in volume")
+            
+    except Exception as e:
+        logger.error(f"❌ Error extracting buffalo_l.zip: {e}")
 
 if __name__ == "__main__":
-    logger.info("🚀 Starting model path patching...")
-    
     patch_gfpgan_model_paths()
     patch_facexlib_paths()
     patch_basicsr_paths()
     patch_all_download_functions()
-    
-    logger.info("✅ Model path patching completed") 
+    ensure_buffalo_l_extracted() 

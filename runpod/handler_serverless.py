@@ -391,12 +391,13 @@ try:
     try:
         logger.info("🔧 Applying model path patches...")
         sys.path.insert(0, '/app/runpod')
-        from patch_gfpgan_paths import patch_gfpgan_model_paths, patch_facexlib_paths, patch_basicsr_paths, patch_all_download_functions
+        from patch_gfpgan_paths import patch_gfpgan_model_paths, patch_facexlib_paths, patch_basicsr_paths, patch_all_download_functions, ensure_buffalo_l_extracted
         
         patch_gfpgan_model_paths()
         patch_facexlib_paths()
         patch_basicsr_paths()
         patch_all_download_functions()
+        ensure_buffalo_l_extracted()
         
         logger.info("✅ Model path patches applied successfully")
     except Exception as e:
