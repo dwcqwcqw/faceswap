@@ -45,7 +45,6 @@ export default {
 function handleCORS(request, env) {
   const origin = request.headers.get('Origin')
   const allowedOrigins = [
-    'https://5e75fa24.faceswap-ce9.pages.dev',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3000',
@@ -59,11 +58,12 @@ function handleCORS(request, env) {
     'Access-Control-Allow-Credentials': 'false'
   }
 
-  if (origin && allowedOrigins.includes(origin)) {
+  // Check if origin is allowed (localhost/127.0.0.1 or *.pages.dev)
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.pages.dev'))) {
     responseHeaders['Access-Control-Allow-Origin'] = origin
   } else if (!origin) {
     // For same-origin requests or when no origin header is present
-    responseHeaders['Access-Control-Allow-Origin'] = allowedOrigins[0]
+    responseHeaders['Access-Control-Allow-Origin'] = '*'
   }
 
   return new Response(null, {
@@ -76,7 +76,6 @@ function handleCORS(request, env) {
 function addCorsHeaders(response, request) {
   const origin = request.headers.get('Origin')
   const allowedOrigins = [
-    'https://5e75fa24.faceswap-ce9.pages.dev',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3000',
@@ -85,11 +84,12 @@ function addCorsHeaders(response, request) {
 
   const newResponse = new Response(response.body, response)
   
-  if (origin && allowedOrigins.includes(origin)) {
+  // Check if origin is allowed (localhost/127.0.0.1 or *.pages.dev)
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.pages.dev'))) {
     newResponse.headers.set('Access-Control-Allow-Origin', origin)
   } else if (!origin) {
     // For same-origin requests or when no origin header is present
-    newResponse.headers.set('Access-Control-Allow-Origin', allowedOrigins[0])
+    newResponse.headers.set('Access-Control-Allow-Origin', '*')
   }
   
   newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
