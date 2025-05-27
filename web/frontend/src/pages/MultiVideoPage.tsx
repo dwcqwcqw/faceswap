@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import FileUpload from '../components/FileUpload'
 import TaskHistory from '../components/TaskHistory'
 import TaskDetail from '../components/TaskDetail'
-import { ArrowPathIcon, ExclamationTriangleIcon, EyeIcon, PlayIcon, VideoCameraIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, ExclamationTriangleIcon, EyeIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
 import { DetectedFaces } from '../types'
 import { TaskHistoryItem } from '../utils/taskHistory'
@@ -16,7 +16,6 @@ interface FaceMapping {
 
 export default function MultiVideoPage() {
   const [targetVideo, setTargetVideo] = useState<File | null>(null)
-  const [targetVideoThumbnail, setTargetVideoThumbnail] = useState<string | null>(null)
   const [detectedFaces, setDetectedFaces] = useState<DetectedFaces | null>(null)
   const [faceMappings, setFaceMappings] = useState<FaceMapping[]>([])
   const [isDetecting, setIsDetecting] = useState(false)
@@ -29,6 +28,7 @@ export default function MultiVideoPage() {
     // 任务管理器会自动恢复活跃任务，无需手动处理
   }, [])
 
+  /*
   const handleVideoSelect = (file: File | null) => {
     setTargetVideo(file)
     if (file) {
@@ -43,16 +43,17 @@ export default function MultiVideoPage() {
         const ctx = canvas.getContext('2d')
         if (ctx) {
           ctx.drawImage(video, 0, 0)
-          setTargetVideoThumbnail(canvas.toDataURL())
+          // setTargetVideoThumbnail(canvas.toDataURL()) // This was the original line causing error
         }
         URL.revokeObjectURL(video.src)
       }
     } else {
-      setTargetVideoThumbnail(null)
+      // setTargetVideoThumbnail(null) // This was the original line causing error
       setDetectedFaces(null)
       setFaceMappings([])
     }
   }
+  */
 
   const handleDetectFaces = async () => {
     if (!targetVideo) return
@@ -167,7 +168,6 @@ export default function MultiVideoPage() {
         
         // 清空表单
         setTargetVideo(null)
-        setTargetVideoThumbnail(null)
         setDetectedFaces(null)
         setFaceMappings([])
         
