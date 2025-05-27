@@ -369,6 +369,7 @@ def process_single_video_swap(input_data):
         
         # Process video face swap
         options = input_data.get('options', {})
+        temp_video_path = os.path.join(temp_dir, f'temp_video_{uuid.uuid4()}.mp4')
         output_path = os.path.join(temp_dir, f'result_{uuid.uuid4()}.mp4')
         
         # High quality video settings - Optimized for best quality
@@ -409,9 +410,9 @@ def process_single_video_swap(input_data):
         
         print(f"📹 Video info: {width}x{height}, {fps} FPS, {total_frames} frames")
         
-        # Set up video writer
+        # Set up video writer (write to temp file first, without audio)
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        out = cv2.VideoWriter(temp_video_path, fourcc, fps, (width, height))
         
         frame_count = 0
         success_count = 0
@@ -461,6 +462,40 @@ def process_single_video_swap(input_data):
         out.release()
         
         print(f"✅ Video processing completed: {frame_count} frames, {success_count} successful swaps")
+        
+        # 🎵 Merge audio from original video using FFmpeg
+        print("🎵 Merging audio from original video...")
+        try:
+            import subprocess
+            ffmpeg_cmd = [
+                'ffmpeg', '-y',  # -y to overwrite output file
+                '-i', temp_video_path,  # processed video (no audio)
+                '-i', target_path,      # original video (with audio)
+                '-c:v', 'copy',         # copy video stream
+                '-c:a', 'aac',          # encode audio to AAC
+                '-map', '0:v:0',        # use video from first input
+                '-map', '1:a:0',        # use audio from second input
+                '-shortest',            # finish when shortest stream ends
+                output_path
+            ]
+            
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                print("✅ Audio merge successful")
+            else:
+                print(f"⚠️ Audio merge failed: {result.stderr}")
+                print("📹 Using video without audio as fallback")
+                # Copy temp video to output if FFmpeg fails
+                import shutil
+                shutil.copy2(temp_video_path, output_path)
+                
+        except Exception as e:
+            print(f"⚠️ Audio merge error: {str(e)}")
+            print("📹 Using video without audio as fallback")
+            # Copy temp video to output if FFmpeg fails
+            import shutil
+            shutil.copy2(temp_video_path, output_path)
         
         # Convert result to base64 for direct return
         print("📸 Converting video result to base64...")
@@ -524,6 +559,7 @@ def process_multi_video_swap(input_data):
         
         # Process video face swap with multiple faces
         options = input_data.get('options', {})
+        temp_video_path = os.path.join(temp_dir, f'temp_video_{uuid.uuid4()}.mp4')
         output_path = os.path.join(temp_dir, f'result_{uuid.uuid4()}.mp4')
         
         # High quality video settings - Optimized for best quality
@@ -552,9 +588,9 @@ def process_multi_video_swap(input_data):
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        # Set up video writer
+        # Set up video writer (write to temp file first, without audio)
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        out = cv2.VideoWriter(temp_video_path, fourcc, fps, (width, height))
         
         frame_count = 0
         while True:
@@ -594,6 +630,42 @@ def process_multi_video_swap(input_data):
         
         cap.release()
         out.release()
+        
+        print(f"✅ Multi-video processing completed: {frame_count} frames processed")
+        
+        # 🎵 Merge audio from original video using FFmpeg
+        print("🎵 Merging audio from original video...")
+        try:
+            import subprocess
+            ffmpeg_cmd = [
+                'ffmpeg', '-y',  # -y to overwrite output file
+                '-i', temp_video_path,  # processed video (no audio)
+                '-i', target_path,      # original video (with audio)
+                '-c:v', 'copy',         # copy video stream
+                '-c:a', 'aac',          # encode audio to AAC
+                '-map', '0:v:0',        # use video from first input
+                '-map', '1:a:0',        # use audio from second input
+                '-shortest',            # finish when shortest stream ends
+                output_path
+            ]
+            
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                print("✅ Audio merge successful")
+            else:
+                print(f"⚠️ Audio merge failed: {result.stderr}")
+                print("📹 Using video without audio as fallback")
+                # Copy temp video to output if FFmpeg fails
+                import shutil
+                shutil.copy2(temp_video_path, output_path)
+                
+        except Exception as e:
+            print(f"⚠️ Audio merge error: {str(e)}")
+            print("📹 Using video without audio as fallback")
+            # Copy temp video to output if FFmpeg fails
+            import shutil
+            shutil.copy2(temp_video_path, output_path)
         
         # Convert result to base64 for direct return
         print("📸 Converting video result to base64...")
