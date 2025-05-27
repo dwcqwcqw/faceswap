@@ -1,0 +1,273 @@
+2025-05-27T03:15:35.554015077Z ==========
+2025-05-27T03:15:35.554040666Z == CUDA ==
+2025-05-27T03:15:35.554050137Z ==========
+2025-05-27T03:15:35.558873789Z CUDA Version 11.8.0
+2025-05-27T03:15:35.560918676Z Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+2025-05-27T03:15:35.563285983Z This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+2025-05-27T03:15:35.563292412Z By pulling and using the container, you accept the terms and conditions of this license:
+2025-05-27T03:15:35.563297703Z https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+2025-05-27T03:15:35.563307383Z A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+2025-05-27T03:15:37.351862104Z handler.py          :33   2025-05-27 03:15:37,351 🔧 Setting up RunPod Serverless path compatibility...
+2025-05-27T03:15:37.352192364Z handler.py          :52   2025-05-27 03:15:37,352 🔍 Detected traditional RunPod Pod environment
+2025-05-27T03:15:37.352213694Z handler.py          :138  2025-05-27 03:15:37,352 🚀 Setting up Volume models (no download)...
+2025-05-27T03:15:37.352218004Z handler.py          :143  2025-05-27 03:15:37,352 📁 Using models directory: /runpod-volume/faceswap
+2025-05-27T03:15:37.353221812Z handler.py          :159  2025-05-27 03:15:37,353 📋 Files in models directory: ['modnet_photographic_portrait_matting.ckpt', 'recognition_arcface_ir_se50.pth', 'matting_modnet_portrait.pth', 'headpose_hopenet.pth', 'alignment_WFLW_4HG.pth', 'assessment_hyperIQA.pth', 'detection_mobilenet0.25_Final.pth', 'GFPGANv1.3.pth', 'gfpgan', 'parsing_parsenet.pth', 'detection_Resnet50_Final.pth', 'buffalo_l', '=1.28.0', '=0.2.0', '=0.3.0', '=1.4.2', '=1.3.8', '=1.5.0', '=4.8.0', '=1.23.5,<2', 'w600k_r50.onnx', '1k3d68.onnx', 'det_10g.onnx', '2d106det.onnx', 'genderage.onnx', 'buffalo_l.zip', '79999_iter.pth', 'RealESRGAN_x2plus.pth', 'RealESRGAN_x4plus.pth', 'GFPGANv1.4.pth', 'inswapper_128_fp16.onnx']
+2025-05-27T03:15:37.353915771Z handler.py          :219  2025-05-27 03:15:37,353 ✅ Found Face swapper model: inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:15:37.354367480Z handler.py          :219  2025-05-27 03:15:37,354 ✅ Found Face enhancer model (GFPGAN v1.4): GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:15:37.354838460Z handler.py          :219  2025-05-27 03:15:37,354 ✅ Found Face enhancer model (GFPGAN v1.3 - alternative): GFPGANv1.3.pth (332.5MB)
+2025-05-27T03:15:37.355306789Z handler.py          :219  2025-05-27 03:15:37,355 ✅ Found Super resolution model (4x): RealESRGAN_x4plus.pth (63.9MB)
+2025-05-27T03:15:37.356056618Z handler.py          :219  2025-05-27 03:15:37,356 ✅ Found Super resolution model (2x): RealESRGAN_x2plus.pth (64.0MB)
+2025-05-27T03:15:37.356484237Z handler.py          :219  2025-05-27 03:15:37,356 ✅ Found Face parsing model (BiSeNet): 79999_iter.pth (50.8MB)
+2025-05-27T03:15:37.357220456Z handler.py          :200  2025-05-27 03:15:37,357 ✅ Found Face analysis model (directory): buffalo_l directory (5 files)
+2025-05-27T03:15:37.357748445Z handler.py          :219  2025-05-27 03:15:37,357 ✅ Found Face detection model (RetinaFace - for video processing): detection_Resnet50_Final.pth (104.4MB)
+2025-05-27T03:15:37.358287335Z handler.py          :219  2025-05-27 03:15:37,358 ✅ Found Face parsing model (ParseNet - for video processing): parsing_parsenet.pth (81.4MB)
+2025-05-27T03:15:37.358814924Z handler.py          :219  2025-05-27 03:15:37,358 ✅ Found Mobile face detection model (lightweight): detection_mobilenet0.25_Final.pth (1.7MB)
+2025-05-27T03:15:37.359324813Z handler.py          :219  2025-05-27 03:15:37,359 ✅ Found Face alignment model (WFLW): alignment_WFLW_4HG.pth (184.7MB)
+2025-05-27T03:15:37.359869282Z handler.py          :219  2025-05-27 03:15:37,359 ✅ Found Head pose estimation model: headpose_hopenet.pth (91.5MB)
+2025-05-27T03:15:37.360383051Z handler.py          :219  2025-05-27 03:15:37,360 ✅ Found Portrait matting model: modnet_photographic_portrait_matting.ckpt (25.0MB)
+2025-05-27T03:15:37.361183980Z handler.py          :219  2025-05-27 03:15:37,361 ✅ Found Face recognition model (ArcFace): recognition_arcface_ir_se50.pth (167.2MB)
+2025-05-27T03:15:37.361709879Z handler.py          :219  2025-05-27 03:15:37,361 ✅ Found Image quality assessment model: assessment_hyperIQA.pth (104.7MB)
+2025-05-27T03:15:37.362602028Z handler.py          :265  2025-05-27 03:15:37,362 ⚠️ Failed to create symlink for detection_Resnet50_Final.pth: [Errno 17] File exists: '/runpod-volume/faceswap/detection_Resnet50_Final.pth' -> '/runpod-volume/faceswap/gfpgan/weights/detection_Resnet50_Final.pth'
+2025-05-27T03:15:37.363195317Z handler.py          :265  2025-05-27 03:15:37,363 ⚠️ Failed to create symlink for parsing_parsenet.pth: [Errno 17] File exists: '/runpod-volume/faceswap/parsing_parsenet.pth' -> '/runpod-volume/faceswap/gfpgan/weights/parsing_parsenet.pth'
+2025-05-27T03:15:37.363752856Z handler.py          :265  2025-05-27 03:15:37,363 ⚠️ Failed to create symlink for detection_mobilenet0.25_Final.pth: [Errno 17] File exists: '/runpod-volume/faceswap/detection_mobilenet0.25_Final.pth' -> '/runpod-volume/faceswap/gfpgan/weights/detection_mobilenet0.25_Final.pth'
+2025-05-27T03:15:37.364380145Z handler.py          :265  2025-05-27 03:15:37,364 ⚠️ Failed to create symlink for alignment_WFLW_4HG.pth: [Errno 17] File exists: '/runpod-volume/faceswap/alignment_WFLW_4HG.pth' -> '/runpod-volume/faceswap/gfpgan/weights/alignment_WFLW_4HG.pth'
+2025-05-27T03:15:37.365047954Z handler.py          :265  2025-05-27 03:15:37,365 ⚠️ Failed to create symlink for headpose_hopenet.pth: [Errno 17] File exists: '/runpod-volume/faceswap/headpose_hopenet.pth' -> '/runpod-volume/faceswap/gfpgan/weights/headpose_hopenet.pth'
+2025-05-27T03:15:37.366404992Z handler.py          :265  2025-05-27 03:15:37,366 ⚠️ Failed to create symlink for modnet_photographic_portrait_matting.ckpt: [Errno 17] File exists: '/runpod-volume/faceswap/modnet_photographic_portrait_matting.ckpt' -> '/runpod-volume/faceswap/gfpgan/weights/modnet_photographic_portrait_matting.ckpt'
+2025-05-27T03:15:37.367017171Z handler.py          :265  2025-05-27 03:15:37,366 ⚠️ Failed to create symlink for recognition_arcface_ir_se50.pth: [Errno 17] File exists: '/runpod-volume/faceswap/recognition_arcface_ir_se50.pth' -> '/runpod-volume/faceswap/gfpgan/weights/recognition_arcface_ir_se50.pth'
+2025-05-27T03:15:37.367621501Z handler.py          :265  2025-05-27 03:15:37,367 ⚠️ Failed to create symlink for assessment_hyperIQA.pth: [Errno 17] File exists: '/runpod-volume/faceswap/assessment_hyperIQA.pth' -> '/runpod-volume/faceswap/gfpgan/weights/assessment_hyperIQA.pth'
+2025-05-27T03:15:37.367684670Z handler.py          :273  2025-05-27 03:15:37,367 🎉 Ready! Found 15/15 models (excluding buffalo_l.zip)
+2025-05-27T03:15:37.367740470Z handler.py          :274  2025-05-27 03:15:37,367 ✅ Found models: ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth', 'GFPGANv1.3.pth', 'RealESRGAN_x4plus.pth', 'RealESRGAN_x2plus.pth', '79999_iter.pth', 'buffalo_l', 'detection_Resnet50_Final.pth', 'parsing_parsenet.pth', 'detection_mobilenet0.25_Final.pth', 'alignment_WFLW_4HG.pth', 'headpose_hopenet.pth', 'modnet_photographic_portrait_matting.ckpt', 'recognition_arcface_ir_se50.pth', 'assessment_hyperIQA.pth']
+2025-05-27T03:15:37.367798320Z handler.py          :295  2025-05-27 03:15:37,367 🔄 Importing face swap modules...
+2025-05-27T03:15:37.367852820Z handler.py          :299  2025-05-27 03:15:37,367 📁 Setting models directory to: /runpod-volume/faceswap
+2025-05-27T03:15:39.167352755Z font_manager.py     :1639 2025-05-27 03:15:39,166 generated new fontManager
+2025-05-27T03:15:40.119103159Z 2025-05-27 03:15:40.118865: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2025-05-27T03:15:40.131258961Z WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+2025-05-27T03:15:40.131308961Z E0000 00:00:1748315740.131057      31 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2025-05-27T03:15:40.136237493Z E0000 00:00:1748315740.136076      31 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2025-05-27T03:15:40.147711226Z W0000 00:00:1748315740.147501      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-05-27T03:15:40.147743746Z W0000 00:00:1748315740.147517      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-05-27T03:15:40.147749196Z W0000 00:00:1748315740.147519      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-05-27T03:15:40.147753876Z W0000 00:00:1748315740.147521      31 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-05-27T03:15:41.364807000Z handler.py          :307  2025-05-27 03:15:41,364 ✅ Updated modules.globals.models_dir to: /runpod-volume/faceswap
+2025-05-27T03:15:41.366977297Z handler.py          :312  2025-05-27 03:15:41,366 ✅ Super resolution module imported successfully
+2025-05-27T03:15:41.367028427Z handler.py          :320  2025-05-27 03:15:41,366 ✅ Core modules imported successfully
+2025-05-27T03:15:41.367034367Z handler.py          :1851 2025-05-27 03:15:41,366 🚀 Starting RunPod Serverless with Volume-optimized handler...
+2025-05-27T03:15:41.367039337Z handler.py          :1852 2025-05-27 03:15:41,366 📁 Models directory: /runpod-volume/faceswap
+2025-05-27T03:15:41.367044507Z handler.py          :1853 2025-05-27 03:15:41,366 🎯 Models ready: True
+2025-05-27T03:15:41.367047127Z --- Starting Serverless Worker |  Version 1.7.9 ---
+2025-05-27T03:15:42.222978476Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
+2025-05-27T03:15:42.223025655Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
+2025-05-27T03:15:42.223031105Z {"requestId": "651d7d71-c9c1-4625-8a15-0895876426e3-u1", "message": "Started.", "level": "INFO"}
+2025-05-27T03:15:42.223112225Z handler.py          :1746 2025-05-27 03:15:42,222 🚀 RunPod Serverless Handler started
+2025-05-27T03:15:42.223118465Z handler.py          :1747 2025-05-27 03:15:42,223 📋 Job input: {
+2025-05-27T03:15:42.223123445Z   "job_id": "job_1748315728907_c8zi3gfmm",
+2025-05-27T03:15:42.223128705Z   "options": {
+2025-05-27T03:15:42.223133555Z     "execution_provider": "CPUExecutionProvider",
+2025-05-27T03:15:42.223138085Z     "mouth_mask": true,
+2025-05-27T03:15:42.223143405Z     "use_face_enhancer": true
+2025-05-27T03:15:42.223148335Z   },
+2025-05-27T03:15:42.223153135Z   "source_file": "https://faceswap-api.faceswap.workers.dev/api/download/c01976a4-e103-4c4a-a78a-7a15559571f2",
+2025-05-27T03:15:42.223158465Z   "target_file": "https://faceswap-api.faceswap.workers.dev/api/download/a2ba261d-fe7e-410a-99a6-cd45b8966d13",
+2025-05-27T03:15:42.223162685Z   "type": "single_image"
+2025-05-27T03:15:42.223166855Z }
+2025-05-27T03:15:42.223174755Z handler.py          :348  2025-05-27 03:15:42,223 🔍 Verifying models in: /runpod-volume/faceswap
+2025-05-27T03:15:42.224234114Z handler.py          :356  2025-05-27 03:15:42,224 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:15:42.224776543Z handler.py          :356  2025-05-27 03:15:42,224 ✅ Verified GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:15:42.224788023Z handler.py          :1768 2025-05-27 03:15:42,224 🎯 Processing job type: single_image
+2025-05-27T03:15:42.224792503Z handler.py          :1779 2025-05-27 03:15:42,224 📸 Processing single image face swap
+2025-05-27T03:15:42.224796753Z handler.py          :1780 2025-05-27 03:15:42,224    Source: https://faceswap-api.faceswap.workers.dev/api/download/c01976a4-e103-4c4a-a78a-7a15559571f2
+2025-05-27T03:15:42.224803643Z handler.py          :1781 2025-05-27 03:15:42,224    Target: https://faceswap-api.faceswap.workers.dev/api/download/a2ba261d-fe7e-410a-99a6-cd45b8966d13
+2025-05-27T03:15:42.224900102Z handler.py          :507  2025-05-27 03:15:42,224 🔄 Starting image downloads...
+2025-05-27T03:15:42.224930193Z handler.py          :376  2025-05-27 03:15:42,224 📥 Downloading image from: https://faceswap-api.faceswap.workers.dev/api/download/c01976a4-e103-4c4a-a78a-7a15559571f2 (attempt 1)
+2025-05-27T03:15:43.538489051Z handler.py          :383  2025-05-27 03:15:43,537 📋 Response content-type: image/jpeg
+2025-05-27T03:15:43.538543811Z handler.py          :384  2025-05-27 03:15:43,538 📋 Response size: 72543 bytes
+2025-05-27T03:15:43.542011946Z handler.py          :405  2025-05-27 03:15:43,541 📐 PIL Image format: JPEG, mode: RGB, size: (720, 720)
+2025-05-27T03:15:43.566772468Z handler.py          :426  2025-05-27 03:15:43,566 ✅ Image downloaded successfully, shape: (720, 720, 3)
+2025-05-27T03:15:43.566836498Z handler.py          :376  2025-05-27 03:15:43,566 📥 Downloading image from: https://faceswap-api.faceswap.workers.dev/api/download/a2ba261d-fe7e-410a-99a6-cd45b8966d13 (attempt 1)
+2025-05-27T03:15:44.290042047Z handler.py          :383  2025-05-27 03:15:44,289 📋 Response content-type: image/jpeg
+2025-05-27T03:15:44.290096757Z handler.py          :384  2025-05-27 03:15:44,289 📋 Response size: 5458 bytes
+2025-05-27T03:15:44.290106977Z handler.py          :405  2025-05-27 03:15:44,289 📐 PIL Image format: JPEG, mode: RGB, size: (202, 249)
+2025-05-27T03:15:44.290596476Z handler.py          :426  2025-05-27 03:15:44,290 ✅ Image downloaded successfully, shape: (249, 202, 3)
+2025-05-27T03:15:44.290611246Z handler.py          :517  2025-05-27 03:15:44,290 ✅ Both images downloaded successfully
+2025-05-27T03:15:44.290618026Z handler.py          :518  2025-05-27 03:15:44,290 📐 Source image shape: (720, 720, 3)
+2025-05-27T03:15:44.290664376Z handler.py          :519  2025-05-27 03:15:44,290 📐 Target image shape: (249, 202, 3)
+2025-05-27T03:15:44.290680566Z handler.py          :522  2025-05-27 03:15:44,290 🔍 Detecting face in source image...
+2025-05-27T03:15:44.290872256Z download_path: /root/.insightface/models/buffalo_l
+2025-05-27T03:15:44.291066416Z Downloading /root/.insightface/models/buffalo_l.zip from https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip...
+2025-05-27T03:15:48.439377297Z 
+  0%|          | 0/281857 [00:00<?, ?KB/s]
+  0%|          | 244/281857 [00:00<01:57, 2406.76KB/s]
+  1%|          | 2228/281857 [00:00<00:22, 12268.41KB/s]
+  4%|▎         | 10561/281857 [00:00<00:06, 43156.30KB/s]
+  6%|▌         | 16393/281857 [00:00<00:05, 48994.71KB/s]
+  9%|▊         | 24630/281857 [00:00<00:04, 60839.00KB/s]
+ 12%|█▏        | 34437/281857 [00:00<00:03, 73362.32KB/s]
+ 16%|█▌        | 44555/281857 [00:00<00:02, 82331.10KB/s]
+ 19%|█▊        | 52809/281857 [00:00<00:02, 76383.65KB/s]
+ 22%|██▏       | 62954/281857 [00:00<00:02, 83787.76KB/s]
+ 26%|██▌       | 73601/281857 [00:01<00:02, 89849.51KB/s]
+ 30%|██▉       | 84288/281857 [00:01<00:02, 94889.76KB/s]
+ 34%|███▎      | 94577/281857 [00:01<00:01, 97261.15KB/s]
+ 37%|███▋      | 104945/281857 [00:01<00:01, 99143.61KB/s]
+ 41%|████      | 115177/281857 [00:01<00:01, 100089.71KB/s]
+ 45%|████▍     | 125534/281857 [00:01<00:01, 101128.75KB/s]
+ 48%|████▊     | 135937/281857 [00:01<00:01, 101958.66KB/s]
+ 52%|█████▏    | 146465/281857 [00:01<00:01, 102812.22KB/s]
+ 56%|█████▌    | 157009/281857 [00:01<00:01, 103591.92KB/s]
+ 59%|█████▉    | 167377/281857 [00:01<00:01, 103453.44KB/s]
+ 63%|██████▎   | 177729/281857 [00:02<00:01, 103166.90KB/s]
+ 67%|██████▋   | 188050/281857 [00:02<00:00, 103111.47KB/s]
+ 70%|███████   | 198529/281857 [00:02<00:00, 103610.66KB/s]
+ 74%|███████▍  | 208904/281857 [00:02<00:00, 103554.17KB/s]
+ 78%|███████▊  | 219406/281857 [00:02<00:00, 103990.92KB/s]
+ 82%|████████▏ | 229807/281857 [00:02<00:00, 103594.27KB/s]
+ 85%|████████▌ | 240168/281857 [00:02<00:00, 80959.18KB/s] 
+ 88%|████████▊ | 249027/281857 [00:02<00:00, 73859.47KB/s]
+ 91%|█████████ | 257015/281857 [00:03<00:00, 66659.93KB/s]
+ 94%|█████████▎| 264165/281857 [00:03<00:00, 63406.89KB/s]
+ 96%|█████████▌| 270826/281857 [00:03<00:00, 60450.50KB/s]
+ 98%|█████████▊| 277077/281857 [00:03<00:00, 59218.41KB/s]
+100%|██████████| 281857/281857 [00:03<00:00, 80676.56KB/s]
+2025-05-27T03:15:50.423187814Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:15:50.599267949Z find model: /root/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68 ['None', 3, 192, 192] 0.0 1.0
+2025-05-27T03:15:50.645924408Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:15:50.646467948Z find model: /root/.insightface/models/buffalo_l/2d106det.onnx landmark_2d_106 ['None', 3, 192, 192] 0.0 1.0
+2025-05-27T03:15:50.683210602Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:15:50.683358812Z find model: /root/.insightface/models/buffalo_l/det_10g.onnx detection [1, 3, '?', '?'] 127.5 128.0
+2025-05-27T03:15:50.697712490Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:15:50.697755940Z find model: /root/.insightface/models/buffalo_l/genderage.onnx genderage ['None', 3, 96, 96] 0.0 1.0
+2025-05-27T03:15:51.060019913Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:15:51.241576930Z find model: /root/.insightface/models/buffalo_l/w600k_r50.onnx recognition ['None', 3, 112, 112] 127.5 127.5
+2025-05-27T03:15:51.241615660Z set det-size: (640, 640)
+2025-05-27T03:15:51.445287122Z handler.py          :527  2025-05-27 03:15:51,444 ✅ Source face detected successfully
+2025-05-27T03:15:51.445354552Z handler.py          :530  2025-05-27 03:15:51,445 🔍 Detecting face in target image...
+2025-05-27T03:15:51.664917661Z handler.py          :535  2025-05-27 03:15:51,664 ✅ Target face detected successfully
+2025-05-27T03:15:51.665053521Z handler.py          :538  2025-05-27 03:15:51,664 ⚙️ Configuring face enhancement settings...
+2025-05-27T03:15:51.665056431Z handler.py          :544  2025-05-27 03:15:51,664 🚀 Starting multi-round iterative face swap...
+2025-05-27T03:15:51.665078521Z handler.py          :548  2025-05-27 03:15:51,665 🔄 Round 1: Initial face swap...
+2025-05-27T03:15:51.666875288Z 🔍 Searching for face swapper model...
+2025-05-27T03:15:51.666918848Z    Primary models_dir: /runpod-volume/faceswap
+2025-05-27T03:15:51.666921288Z    Primary model_path: /runpod-volume/faceswap/inswapper_128_fp16.onnx
+2025-05-27T03:15:51.667130768Z    Primary exists: True
+2025-05-27T03:15:51.667380017Z 🔄 Loading face swapper model from: /runpod-volume/faceswap/inswapper_128_fp16.onnx
+2025-05-27T03:15:56.014334179Z Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+2025-05-27T03:15:56.311377091Z inswapper-shape: [1, 3, 128, 128]
+2025-05-27T03:15:56.324681091Z ✅ Face swapper model loaded successfully from: /runpod-volume/faceswap/inswapper_128_fp16.onnx
+2025-05-27T03:15:57.355523056Z handler.py          :550  2025-05-27 03:15:57,355 ✅ Round 1 completed
+2025-05-27T03:15:57.355575226Z handler.py          :553  2025-05-27 03:15:57,355 🔄 Round 2: Refinement pass...
+2025-05-27T03:15:58.457290304Z handler.py          :561  2025-05-27 03:15:58,457 ✅ Round 2 refinement applied
+2025-05-27T03:15:58.457327184Z handler.py          :568  2025-05-27 03:15:58,457 🔄 Round 3: Final precision pass...
+2025-05-27T03:15:59.662692875Z handler.py          :577  2025-05-27 03:15:59,662 ✅ Round 3 precision pass applied
+2025-05-27T03:15:59.662724665Z handler.py          :585  2025-05-27 03:15:59,662 🎨 Applying advanced face enhancement...
+2025-05-27T03:15:59.968747054Z TensorRT is not available: No module named 'torch_tensorrt'
+2025-05-27T03:15:59.968794984Z handler.py          :592  2025-05-27 03:15:59,968 ✨ Enhancement round 1/2...
+2025-05-27T03:16:01.200862515Z Downloading: "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth" to /app/gfpgan/weights/detection_Resnet50_Final.pth
+2025-05-27T03:16:03.806842943Z 
+  0%|          | 0.00/104M [00:00<?, ?B/s]
+  0%|          | 256k/104M [00:00<00:43, 2.53MB/s]
+  2%|▏         | 2.29M/104M [00:00<00:08, 13.1MB/s]
+  9%|▉         | 9.19M/104M [00:00<00:02, 35.8MB/s]
+ 18%|█▊        | 18.9M/104M [00:00<00:01, 58.5MB/s]
+ 23%|██▎       | 24.4M/104M [00:00<00:01, 51.2MB/s]
+ 31%|███       | 32.5M/104M [00:00<00:01, 61.0MB/s]
+ 41%|████      | 42.5M/104M [00:00<00:00, 74.1MB/s]
+ 48%|████▊     | 49.8M/104M [00:00<00:00, 68.1MB/s]
+ 55%|█████▍    | 57.0M/104M [00:01<00:00, 70.0MB/s]
+ 62%|██████▏   | 64.3M/104M [00:01<00:00, 72.0MB/s]
+ 69%|██████▊   | 71.6M/104M [00:01<00:00, 73.1MB/s]
+ 75%|███████▌  | 78.8M/104M [00:01<00:00, 73.9MB/s]
+ 82%|████████▏ | 86.0M/104M [00:01<00:00, 74.5MB/s]
+ 89%|████████▉ | 93.4M/104M [00:01<00:00, 75.1MB/s]
+ 96%|█████████▋| 101M/104M [00:01<00:00, 75.6MB/s] 
+100%|██████████| 104M/104M [00:01<00:00, 65.8MB/s]
+2025-05-27T03:16:04.530245072Z Downloading: "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth" to /app/gfpgan/weights/parsing_parsenet.pth
+2025-05-27T03:16:06.362076518Z 
+  0%|          | 0.00/81.4M [00:00<?, ?B/s]
+  0%|          | 256k/81.4M [00:00<00:33, 2.53MB/s]
+  3%|▎         | 2.28M/81.4M [00:00<00:06, 13.1MB/s]
+ 14%|█▍        | 11.7M/81.4M [00:00<00:01, 50.2MB/s]
+ 27%|██▋       | 22.4M/81.4M [00:00<00:00, 72.5MB/s]
+ 41%|████      | 33.0M/81.4M [00:00<00:00, 84.8MB/s]
+ 54%|█████▎    | 43.7M/81.4M [00:00<00:00, 92.3MB/s]
+ 67%|██████▋   | 54.3M/81.4M [00:00<00:00, 97.0MB/s]
+ 80%|███████▉  | 65.0M/81.4M [00:00<00:00, 100MB/s] 
+ 93%|█████████▎| 75.6M/81.4M [00:00<00:00, 102MB/s]
+100%|██████████| 81.4M/81.4M [00:00<00:00, 85.7MB/s]
+2025-05-27T03:16:10.344773740Z Selected device: cuda and device priority: ['CUDA']
+2025-05-27T03:16:10.823352288Z handler.py          :599  2025-05-27 03:16:10,822 ✅ First enhancement pass blended
+2025-05-27T03:16:10.823404198Z handler.py          :592  2025-05-27 03:16:10,823 ✨ Enhancement round 2/2...
+2025-05-27T03:16:10.970692886Z handler.py          :603  2025-05-27 03:16:10,970 ✅ Final enhancement applied
+2025-05-27T03:16:10.970742556Z handler.py          :614  2025-05-27 03:16:10,970 🎭 Applying advanced post-processing...
+2025-05-27T03:16:11.549749592Z handler.py          :621  2025-05-27 03:16:11,548 ✅ Edge smoothing applied
+2025-05-27T03:16:11.549785572Z handler.py          :626  2025-05-27 03:16:11,548 🔍 Applying AI Super Resolution for ultra-high quality...
+2025-05-27T03:16:11.549788552Z handler.py          :636  2025-05-27 03:16:11,548 📐 Using 4x super resolution for maximum quality (input: 202x249)
+2025-05-27T03:16:11.552416058Z super_resolution.py :185  2025-05-27 03:16:11,552 ✅ Real-ESRGAN modules imported successfully
+2025-05-27T03:16:11.552925607Z super_resolution.py :85   2025-05-27 03:16:11,552 🔍 Searching for RealESRGAN_x4plus.pth in multiple locations...
+2025-05-27T03:16:11.559838777Z super_resolution.py :96   2025-05-27 03:16:11,559 ✅ Found RealESRGAN_x4plus.pth at: /runpod-volume/faceswap/RealESRGAN_x4plus.pth (67040989 bytes)
+2025-05-27T03:16:11.560010447Z super_resolution.py :235  2025-05-27 03:16:11,559 🔍 Loading super resolution model: RealESRGAN_x4plus.pth
+2025-05-27T03:16:16.234897914Z super_resolution.py :262  2025-05-27 03:16:16,234 ✅ Super resolution model loaded successfully (scale: 4x)
+2025-05-27T03:16:16.234938634Z super_resolution.py :312  2025-05-27 03:16:16,234 📐 Input frame size: 202x249
+2025-05-27T03:16:16.234941644Z super_resolution.py :336  2025-05-27 03:16:16,234 🚀 Starting super resolution enhancement (4x)...
+2025-05-27T03:16:16.234943544Z super_resolution.py :337  2025-05-27 03:16:16,234 📏 Output size will be: 808x996
+2025-05-27T03:16:16.298375188Z 	Tile 1/1
+2025-05-27T03:16:16.316174771Z super_resolution.py :350  2025-05-27 03:16:16,315 ✅ Super resolution completed: 808x996
+2025-05-27T03:16:16.316196721Z handler.py          :651  2025-05-27 03:16:16,316 ✅ AI Super Resolution completed: 808x996
+2025-05-27T03:16:16.316199031Z handler.py          :669  2025-05-27 03:16:16,316 📸 Converting result to ultra-high quality image...
+2025-05-27T03:16:16.322859961Z handler.py          :688  2025-05-27 03:16:16,322 ✅ Ultra-high quality multi-round result image encoded successfully
+2025-05-27T03:16:17.080806858Z {"requestId": "651d7d71-c9c1-4625-8a15-0895876426e3-u1", "message": "Finished.", "level": "INFO"}
+2025-05-27T03:18:40.025577217Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
+2025-05-27T03:18:40.025671337Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
+2025-05-27T03:18:40.025687907Z {"requestId": "e337d767-24cb-4244-97f9-77b42a94601f-u2", "message": "Started.", "level": "INFO"}
+2025-05-27T03:18:40.025866227Z handler.py          :1746 2025-05-27 03:18:40,025 🚀 RunPod Serverless Handler started
+2025-05-27T03:18:40.025896017Z handler.py          :1747 2025-05-27 03:18:40,025 📋 Job input: {
+2025-05-27T03:18:40.025901637Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/22a0c925-f2d7-485e-8141-99bf49abe5c8",
+2025-05-27T03:18:40.025906607Z   "process_type": "detect-faces"
+2025-05-27T03:18:40.025911667Z }
+2025-05-27T03:18:40.025948467Z handler.py          :348  2025-05-27 03:18:40,025 🔍 Verifying models in: /runpod-volume/faceswap
+2025-05-27T03:18:40.027098975Z handler.py          :356  2025-05-27 03:18:40,026 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:18:40.027494774Z handler.py          :356  2025-05-27 03:18:40,027 ✅ Verified GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:18:40.027512534Z handler.py          :1768 2025-05-27 03:18:40,027 🎯 Processing job type: detect-faces
+2025-05-27T03:18:40.027521374Z handler.py          :1840 2025-05-27 03:18:40,027 ❌ Unknown or unsupported process_type: detect-faces
+2025-05-27T03:18:40.382373529Z {"requestId": "e337d767-24cb-4244-97f9-77b42a94601f-u2", "message": "Finished.", "level": "INFO"}
+2025-05-27T03:18:44.905066896Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
+2025-05-27T03:18:44.905126486Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
+2025-05-27T03:18:44.905263986Z {"requestId": "de6724c0-c4e5-47cd-8ad9-52d61f4497c8-u2", "message": "Started.", "level": "INFO"}
+2025-05-27T03:18:44.905507325Z handler.py          :1746 2025-05-27 03:18:44,905 🚀 RunPod Serverless Handler started
+2025-05-27T03:18:44.905559335Z handler.py          :1747 2025-05-27 03:18:44,905 📋 Job input: {
+2025-05-27T03:18:44.905569775Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/22a0c925-f2d7-485e-8141-99bf49abe5c8",
+2025-05-27T03:18:44.905575335Z   "process_type": "detect-faces"
+2025-05-27T03:18:44.905580405Z }
+2025-05-27T03:18:44.905654645Z handler.py          :348  2025-05-27 03:18:44,905 🔍 Verifying models in: /runpod-volume/faceswap
+2025-05-27T03:18:44.906655223Z handler.py          :356  2025-05-27 03:18:44,906 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:18:44.907226093Z handler.py          :356  2025-05-27 03:18:44,907 ✅ Verified GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:18:44.907261523Z handler.py          :1768 2025-05-27 03:18:44,907 🎯 Processing job type: detect-faces
+2025-05-27T03:18:44.907267243Z handler.py          :1840 2025-05-27 03:18:44,907 ❌ Unknown or unsupported process_type: detect-faces
+2025-05-27T03:18:45.200679540Z {"requestId": "de6724c0-c4e5-47cd-8ad9-52d61f4497c8-u2", "message": "Finished.", "level": "INFO"}
+2025-05-27T03:19:31.642820406Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
+2025-05-27T03:19:31.642898246Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
+2025-05-27T03:19:31.642997576Z {"requestId": "cb7b2c91-1bf2-453a-96ce-00d2b918b6ce-u1", "message": "Started.", "level": "INFO"}
+2025-05-27T03:19:31.643288406Z handler.py          :1746 2025-05-27 03:19:31,642 🚀 RunPod Serverless Handler started
+2025-05-27T03:19:31.643363355Z handler.py          :1747 2025-05-27 03:19:31,643 📋 Job input: {
+2025-05-27T03:19:31.643371615Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/f6480ba1-b045-43f3-9824-9f75f92d2b0e",
+2025-05-27T03:19:31.643377786Z   "process_type": "detect-faces"
+2025-05-27T03:19:31.643384186Z }
+2025-05-27T03:19:31.643388995Z handler.py          :348  2025-05-27 03:19:31,643 🔍 Verifying models in: /runpod-volume/faceswap
+2025-05-27T03:19:31.644609594Z handler.py          :356  2025-05-27 03:19:31,644 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:19:31.645394822Z handler.py          :356  2025-05-27 03:19:31,645 ✅ Verified GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:19:31.645415772Z handler.py          :1768 2025-05-27 03:19:31,645 🎯 Processing job type: detect-faces
+2025-05-27T03:19:31.645420882Z handler.py          :1840 2025-05-27 03:19:31,645 ❌ Unknown or unsupported process_type: detect-faces
+2025-05-27T03:19:31.999256278Z {"requestId": "cb7b2c91-1bf2-453a-96ce-00d2b918b6ce-u1", "message": "Finished.", "level": "INFO"}
+2025-05-27T03:19:35.712553267Z {"requestId": null, "message": "Jobs in queue: 1", "level": "INFO"}
+2025-05-27T03:19:35.712807696Z {"requestId": null, "message": "Jobs in progress: 1", "level": "INFO"}
+2025-05-27T03:19:35.712813266Z {"requestId": "ecf3fd8c-a388-44ad-bc59-f7c2ca1dffda-u2", "message": "Started.", "level": "INFO"}
+2025-05-27T03:19:35.713114596Z handler.py          :1746 2025-05-27 03:19:35,712 🚀 RunPod Serverless Handler started
+2025-05-27T03:19:35.713142096Z handler.py          :1747 2025-05-27 03:19:35,713 📋 Job input: {
+2025-05-27T03:19:35.713148656Z   "image_file": "https://faceswap-api.faceswap.workers.dev/api/download/f6480ba1-b045-43f3-9824-9f75f92d2b0e",
+2025-05-27T03:19:35.713151406Z   "process_type": "detect-faces"
+2025-05-27T03:19:35.713153676Z }
+2025-05-27T03:19:35.713191726Z handler.py          :348  2025-05-27 03:19:35,713 🔍 Verifying models in: /runpod-volume/faceswap
+2025-05-27T03:19:35.713845605Z handler.py          :356  2025-05-27 03:19:35,713 ✅ Verified inswapper_128_fp16.onnx (264.4MB)
+2025-05-27T03:19:35.714308764Z handler.py          :356  2025-05-27 03:19:35,714 ✅ Verified GFPGANv1.4.pth (332.5MB)
+2025-05-27T03:19:35.714326264Z handler.py          :1768 2025-05-27 03:19:35,714 🎯 Processing job type: detect-faces
+2025-05-27T03:19:35.714330354Z handler.py          :1840 2025-05-27 03:19:35,714 ❌ Unknown or unsupported process_type: detect-faces
+2025-05-27T03:19:36.066911312Z {"requestId": "ecf3fd8c-a388-44ad-bc59-f7c2ca1dffda-u2", "message": "Finished.", "level": "INFO"}

@@ -290,6 +290,22 @@ sys.path.insert(0, '/app/runpod')
 os.environ['DISPLAY'] = ''
 os.environ['HEADLESS'] = '1'
 
+# 预设模型路径环境变量，防止模块导入时自动下载
+models_dir = os.getenv('MODELS_DIR', '/runpod-volume/faceswap')
+gfpgan_weights_dir = os.path.join(models_dir, 'gfpgan', 'weights')
+
+# 设置所有可能的模型缓存目录
+os.environ['GFPGAN_WEIGHTS_DIR'] = gfpgan_weights_dir
+os.environ['FACEXLIB_CACHE_DIR'] = models_dir
+os.environ['TORCH_HOME'] = models_dir
+os.environ['HUB_CACHE_DIR'] = models_dir
+os.environ['BASICSR_CACHE_DIR'] = models_dir
+
+logger.info(f"🔧 Pre-configured model cache directories:")
+logger.info(f"   GFPGAN_WEIGHTS_DIR: {gfpgan_weights_dir}")
+logger.info(f"   FACEXLIB_CACHE_DIR: {models_dir}")
+logger.info(f"   TORCH_HOME: {models_dir}")
+
 # Import face swap functionality
 try:
     logger.info("🔄 Importing face swap modules...")
@@ -306,6 +322,16 @@ try:
     modules.globals.models_dir = models_dir
     logger.info(f"✅ Updated modules.globals.models_dir to: {modules.globals.models_dir}")
     
+    # 设置GFPGAN模型路径环境变量，防止自动下载
+    gfpgan_weights_dir = os.path.join(models_dir, 'gfpgan', 'weights')
+    os.environ['GFPGAN_WEIGHTS_DIR'] = gfpgan_weights_dir
+    logger.info(f"✅ Set GFPGAN_WEIGHTS_DIR to: {gfpgan_weights_dir}")
+    
+    # 设置其他可能的模型路径环境变量
+    os.environ['FACEXLIB_CACHE_DIR'] = models_dir
+    os.environ['TORCH_HOME'] = models_dir
+    logger.info(f"✅ Set model cache directories to prevent downloads")
+    
     # Import super resolution module
     try:
         from modules.processors.frame.super_resolution import enhance_resolution
@@ -319,6 +345,20 @@ try:
     
     logger.info("✅ Core modules imported successfully")
     MODULES_AVAILABLE = True
+    
+    # Apply model path patches to prevent downloads
+    try:
+        logger.info("🔧 Applying model path patches...")
+        sys.path.insert(0, '/app/runpod')
+        from patch_gfpgan_paths import patch_gfpgan_model_paths, patch_facexlib_paths, patch_basicsr_paths
+        
+        patch_gfpgan_model_paths()
+        patch_facexlib_paths()
+        patch_basicsr_paths()
+        
+        logger.info("✅ Model path patches applied successfully")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to apply model path patches: {e}")
     
 except ImportError as e:
     logger.error(f"❌ Failed to import core modules: {e}")
@@ -1807,8 +1847,8 @@ def handler(job):
             result = process_video_swap(source_data, target_data)
             return result
             
-        elif process_type == "detect_faces":
-            # Face detection - support both field name formats
+        elif process_type in ["detect_faces", "detect-faces"]:
+            # Face detection - support both field name formats and both underscore/hyphen formats
             image_url = job_input.get("image_url") or job_input.get("image_file")
             
             if not image_url:
