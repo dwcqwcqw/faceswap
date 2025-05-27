@@ -137,9 +137,7 @@ export const apiService = {
       const timeoutDuration = Math.max(120000, Math.min(file.size / 1024 / 1024 * 10000, 600000)) // 最少2分钟，最多10分钟
     
     const response = await api.post('/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      // Don't set Content-Type for FormData - browser will set it automatically with boundary
         timeout: timeoutDuration,
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
@@ -349,9 +347,7 @@ export const apiService = {
   async singleImageSwap(formData: FormData): Promise<ApiResponse<{ job_id: string }>> {
     return this.withRetry(async () => {
       const response = await api.post('/single-image-swap', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        // Don't set Content-Type for FormData - browser will set it automatically with boundary
         timeout: 120000, // 2分钟超时
       })
       

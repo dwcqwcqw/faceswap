@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Face Swap API Test</h1>
+    
+    <div>
+        <h2>Test Single Image Swap</h2>
+        <input type="file" id="sourceImage" accept="image/*">
+        <input type="file" id="targetImage" accept="image/*">
+        <button onclick="testSingleImageSwap()">Test API</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const API_BASE = 'https://faceswap-api.faceswap.workers.dev/api';
+        
+        // Create a simple 1x1 pixel image for testing
+        function createTestImage(name) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1;
+            canvas.height = 1;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(0, 0, 1, 1);
+            
+            return new Promise(resolve => {
+                canvas.toBlob(blob => {
+                    const file = new File([blob], name, { type: 'image/png' });
+                    resolve(file);
+                }, 'image/png');
+            });
+        }
+        
+        async function testSingleImageSwap() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Create test images
+                const sourceFile = await createTestImage('source.png');
+                const targetFile = await createTestImage('target.png');
+                
+                console.log('Created test files:', sourceFile, targetFile);
+                
+                // Create FormData
+                const formData = new FormData();
+                formData.append('source_image', sourceFile);
+                formData.append('target_image', targetFile);
+                
+                console.log('Sending request to:', `${API_BASE}/single-image-swap`);
+                
+                // Send request
+                const response = await fetch(`${API_BASE}/single-image-swap`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <p style="color: green;">✅ API Test Successful!</p>
+                        <p>Job ID: ${data.data.job_id}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p style="color: orange;">⚠️ API returned error:</p>
+                        <p>${data.error}</p>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                resultDiv.innerHTML = `
+                    <p style="color: red;">❌ Test Failed:</p>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        // Auto test on page load
+        window.onload = function() {
+            console.log('Page loaded, running auto test...');
+            testSingleImageSwap();
+        };
+    </script>
+</body>
+</html> 
