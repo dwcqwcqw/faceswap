@@ -178,20 +178,26 @@ def process_single_image_swap(input_data):
             )
             print("✅ Face enhancement completed")
         
-        # Save result
+        # Save result and convert to base64
         print("💾 Saving result...")
         cv2.imwrite(output_path, result_image)
         
-        # Upload result to R2
+        # Convert result to base64 for direct return
+        print("📸 Converting result to base64...")
+        with open(output_path, 'rb') as f:
+            import base64
+            result_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        # Upload result to R2 (for backup storage)
         job_id = input_data.get('job_id', str(uuid.uuid4()))
         r2_key = f"results/single_image_{job_id}_{uuid.uuid4()}.jpg"
         print(f"☁️ Uploading to R2: {r2_key}")
         result_url = upload_to_r2(output_path, r2_key)
         
-        if not result_url:
-            raise Exception("❌ Failed to upload result to R2")
-        
-        print(f"✅ Upload successful: {result_url}")
+        if result_url:
+            print(f"✅ Backup upload successful: {result_url}")
+        else:
+            print("⚠️ Backup upload failed, but continuing with base64 result")
         
         # Cleanup
         import shutil
@@ -200,7 +206,7 @@ def process_single_image_swap(input_data):
         
         return {
             'success': True,
-            'result_url': result_url,
+            'result': result_data,  # Return base64 data directly
             'process_type': 'single-image'
         }
         
@@ -289,20 +295,26 @@ def process_multi_image_swap(input_data):
             )
             print("✅ Face enhancement completed")
         
-        # Save result
+        # Save result and convert to base64
         print("💾 Saving result...")
         cv2.imwrite(output_path, result_image)
         
-        # Upload result to R2
+        # Convert result to base64 for direct return
+        print("📸 Converting result to base64...")
+        with open(output_path, 'rb') as f:
+            import base64
+            result_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        # Upload result to R2 (for backup storage)
         job_id = input_data.get('job_id', str(uuid.uuid4()))
         r2_key = f"results/multi_image_{job_id}_{uuid.uuid4()}.jpg"
         print(f"☁️ Uploading to R2: {r2_key}")
         result_url = upload_to_r2(output_path, r2_key)
         
-        if not result_url:
-            raise Exception("❌ Failed to upload result to R2")
-        
-        print(f"✅ Upload successful: {result_url}")
+        if result_url:
+            print(f"✅ Backup upload successful: {result_url}")
+        else:
+            print("⚠️ Backup upload failed, but continuing with base64 result")
         
         # Cleanup
         import shutil
@@ -311,7 +323,7 @@ def process_multi_image_swap(input_data):
         
         return {
             'success': True,
-            'result_url': result_url,
+            'result': result_data,  # Return base64 data directly
             'process_type': 'multi-image'
         }
         
@@ -440,16 +452,22 @@ def process_single_video_swap(input_data):
         
         print(f"✅ Video processing completed: {frame_count} frames, {success_count} successful swaps")
         
-        # Upload result to R2
+        # Convert result to base64 for direct return
+        print("📸 Converting video result to base64...")
+        with open(output_path, 'rb') as f:
+            import base64
+            result_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        # Upload result to R2 (for backup storage)
         job_id = input_data.get('job_id', str(uuid.uuid4()))
         r2_key = f"results/single_video_{job_id}_{uuid.uuid4()}.mp4"
         print(f"☁️ Uploading to R2: {r2_key}")
         result_url = upload_to_r2(output_path, r2_key)
         
-        if not result_url:
-            raise Exception("❌ Failed to upload result to R2")
-        
-        print(f"✅ Upload successful: {result_url}")
+        if result_url:
+            print(f"✅ Backup upload successful: {result_url}")
+        else:
+            print("⚠️ Backup upload failed, but continuing with base64 result")
         
         # Cleanup
         import shutil
@@ -458,7 +476,7 @@ def process_single_video_swap(input_data):
         
         return {
             'success': True,
-            'result_url': result_url,
+            'result': result_data,  # Return base64 data directly
             'process_type': 'single-video',
             'frames_processed': frame_count,
             'successful_swaps': success_count
@@ -565,13 +583,21 @@ def process_multi_video_swap(input_data):
         cap.release()
         out.release()
         
-        # Upload result to R2
+        # Convert result to base64 for direct return
+        print("📸 Converting video result to base64...")
+        with open(output_path, 'rb') as f:
+            import base64
+            result_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        # Upload result to R2 (for backup storage)
         job_id = input_data.get('job_id', str(uuid.uuid4()))
         r2_key = f"results/multi_video_{job_id}_{uuid.uuid4()}.mp4"
         result_url = upload_to_r2(output_path, r2_key)
         
-        if not result_url:
-            raise Exception("Failed to upload result to R2")
+        if result_url:
+            print(f"✅ Backup upload successful: {result_url}")
+        else:
+            print("⚠️ Backup upload failed, but continuing with base64 result")
         
         # Cleanup
         import shutil
@@ -579,7 +605,7 @@ def process_multi_video_swap(input_data):
         
         return {
             'success': True,
-            'result_url': result_url,
+            'result': result_data,  # Return base64 data directly
             'process_type': 'multi-video',
             'frames_processed': frame_count
         }
