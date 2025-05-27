@@ -142,14 +142,44 @@ export default function TaskDetail({ task, onClose }: TaskDetailProps) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
               {task.type === 'video' || task.type === 'multi-video' ? (
-                <video
-                  src={apiService.getDownloadUrl(task.result_url.split('/').pop() || '')}
-                  controls
-                  className="w-full rounded-lg shadow-sm"
-                  onError={(e) => {
-                    console.error('Video load error:', e);
-                  }}
-                />
+                <div className="relative">
+                  <video
+                    src={apiService.getDownloadUrl(task.result_url.split('/').pop() || '')}
+                    controls
+                    preload="metadata"
+                    className="w-full rounded-lg shadow-sm"
+                    style={{ maxHeight: '400px' }}
+                    onError={(e) => {
+                      console.error('Video load error:', e);
+                      const target = e.target as HTMLVideoElement;
+                      target.style.display = 'none';
+                      const errorDiv = target.nextElementSibling as HTMLDivElement;
+                      if (errorDiv) {
+                        errorDiv.style.display = 'flex';
+                      }
+                    }}
+                    onLoadStart={() => {
+                      console.log('Video loading started');
+                    }}
+                    onCanPlay={() => {
+                      console.log('Video can play');
+                    }}
+                  />
+                  <div 
+                    className="hidden w-full h-64 bg-gray-100 rounded-lg shadow-sm flex items-center justify-center"
+                    style={{ display: 'none' }}
+                  >
+                    <div className="text-center">
+                      <div className="text-gray-500 mb-2">视频加载失败</div>
+                      <button
+                        onClick={handleDownload}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        点击下载视频文件
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <img
                   src={apiService.getDownloadUrl(task.result_url.split('/').pop() || '')}

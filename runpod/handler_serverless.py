@@ -1221,52 +1221,188 @@ def process_video_swap(source_image_data, target_video_data):
         
         logger.info(f"✅ Video processing completed: {processed_frames} frames processed, {successful_swaps} successful face swaps")
         
+        # Enhanced video processing with face enhancement and super resolution
+        logger.info("🎨 Applying face enhancement and super resolution to video...")
+        enhanced_video_path = temp_output_path
+        
+        # Apply face enhancement to the processed video
+        try:
+            logger.info("✨ Applying face enhancement to video frames...")
+            
+            # Create enhanced video file
+            enhanced_temp = tempfile.NamedTemporaryFile(delete=False, suffix='_enhanced.mp4')
+            enhanced_temp.close()
+            
+            # Re-process video with face enhancement
+            cap_enhance = cv2.VideoCapture(temp_output_path)
+            fourcc_enhance = cv2.VideoWriter_fourcc(*'mp4v')
+            out_enhance = cv2.VideoWriter(enhanced_temp.name, fourcc_enhance, fps, (frame_width, frame_height))
+            
+            enhance_frame_count = 0
+            while True:
+                ret, frame = cap_enhance.read()
+                if not ret:
+                    break
+                
+                try:
+                    # Apply face enhancement if available
+                    from modules.processors.frame.face_enhancer import enhance_face
+                    enhanced_frame = enhance_face(frame)
+                    if enhanced_frame is not None:
+                        # Conservative blending for video stability
+                        frame = cv2.addWeighted(frame, 0.3, enhanced_frame, 0.7, 0)
+                except ImportError:
+                    pass
+                except Exception as e:
+                    logger.warning(f"⚠️ Frame enhancement failed for frame {enhance_frame_count}: {e}")
+                
+                out_enhance.write(frame)
+                enhance_frame_count += 1
+                
+                if enhance_frame_count % 60 == 0:
+                    logger.info(f"✨ Enhanced {enhance_frame_count} frames")
+            
+            cap_enhance.release()
+            out_enhance.release()
+            
+            enhanced_video_path = enhanced_temp.name
+            logger.info(f"✅ Face enhancement completed: {enhance_frame_count} frames enhanced")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Face enhancement failed: {e}, using original video")
+            enhanced_video_path = temp_output_path
+        
+        # Apply AI Super Resolution if available and needed
+        if SR_AVAILABLE and max(frame_width, frame_height) < 1024:
+            logger.info("🔍 Applying AI Super Resolution to video...")
+            try:
+                # Create super resolution enhanced video
+                sr_temp = tempfile.NamedTemporaryFile(delete=False, suffix='_sr.mp4')
+                sr_temp.close()
+                
+                # Determine scale factor
+                max_dimension = max(frame_width, frame_height)
+                if max_dimension < 512:
+                    scale_factor = 2
+                    new_width = frame_width * 2
+                    new_height = frame_height * 2
+                    logger.info(f"📐 Using 2x super resolution: {frame_width}x{frame_height} -> {new_width}x{new_height}")
+                else:
+                    scale_factor = 1
+                    new_width = frame_width
+                    new_height = frame_height
+                    logger.info(f"📐 Skipping super resolution (already good size: {frame_width}x{frame_height})")
+                
+                if scale_factor > 1:
+                    cap_sr = cv2.VideoCapture(enhanced_video_path)
+                    fourcc_sr = cv2.VideoWriter_fourcc(*'mp4v')
+                    out_sr = cv2.VideoWriter(sr_temp.name, fourcc_sr, fps, (new_width, new_height))
+                    
+                    sr_frame_count = 0
+                    while True:
+                        ret, frame = cap_sr.read()
+                        if not ret:
+                            break
+                        
+                        try:
+                            enhanced_frame = enhance_resolution(frame, scale_factor, max_size=2048)
+                            if enhanced_frame is not None:
+                                out_sr.write(enhanced_frame)
+                            else:
+                                upscaled_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                                out_sr.write(upscaled_frame)
+                        except Exception as e:
+                            logger.warning(f"⚠️ SR failed for frame {sr_frame_count}: {e}")
+                            upscaled_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                            out_sr.write(upscaled_frame)
+                        
+                        sr_frame_count += 1
+                        if sr_frame_count % 30 == 0:
+                            logger.info(f"🔍 Super resolution progress: {sr_frame_count} frames")
+                    
+                    cap_sr.release()
+                    out_sr.release()
+                    
+                    enhanced_video_path = sr_temp.name
+                    frame_width = new_width
+                    frame_height = new_height
+                    logger.info(f"✅ Super resolution completed: {sr_frame_count} frames enhanced to {new_width}x{new_height}")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Super resolution failed: {e}, using face-enhanced video")
+        
         # Preserve audio from original video using FFmpeg
-        final_video_path = temp_output_path
+        final_video_path = enhanced_video_path
         try:
             logger.info("🎵 Preserving audio from original video...")
             
             # Create final video with audio
-            final_video_with_audio = tempfile.NamedTemporaryFile(delete=False, suffix='_with_audio.mp4')
+            final_video_with_audio = tempfile.NamedTemporaryFile(delete=False, suffix='_final.mp4')
             final_video_with_audio.close()
             
-            # Use FFmpeg to combine processed video with original audio and ensure H.264 encoding
+            # Enhanced FFmpeg command with better audio handling
             ffmpeg_cmd = [
-                'ffmpeg', '-i', final_video_path,  # Processed video (no audio)
+                'ffmpeg', 
+                '-i', enhanced_video_path,          # Enhanced processed video (no audio)
                 '-i', target_video_path,            # Original video (with audio)
                 '-c:v', 'libx264',                  # Use H.264 for video
-                '-preset', 'fast',                  # Encoding speed preset
-                '-crf', '23',                       # Quality (lower = better)
+                '-preset', 'medium',                # Better quality preset
+                '-crf', '20',                       # Higher quality (lower = better)
                 '-c:a', 'aac',                      # Use AAC for audio  
-                '-b:a', '128k',                     # Audio bitrate
-                '-map', '0:v',                      # Use video from first input
-                '-map', '1:a',                      # Use audio from second input
+                '-b:a', '192k',                     # Higher audio bitrate for better quality
+                '-ar', '48000',                     # Audio sample rate
+                '-ac', '2',                         # Stereo audio
+                '-map', '0:v:0',                    # Use video from first input (enhanced)
+                '-map', '1:a:0?',                   # Use audio from second input (optional)
                 '-shortest',                        # Match shortest stream
                 '-movflags', '+faststart',          # Optimize for web streaming
+                '-avoid_negative_ts', 'make_zero',  # Fix timestamp issues
+                '-fflags', '+genpts',               # Generate presentation timestamps
                 '-y',                               # Overwrite output
                 final_video_with_audio.name
             ]
             
-            logger.info(f"🔄 Running FFmpeg command: {' '.join(ffmpeg_cmd)}")
-            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=300)
+            logger.info(f"🔄 Running enhanced FFmpeg command...")
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=600)
             
             if result.returncode == 0:
-                logger.info("✅ Audio preservation successful")
+                logger.info("✅ Audio preservation successful with enhanced video")
                 final_video_path = final_video_with_audio.name
             else:
                 logger.warning(f"⚠️ FFmpeg failed: {result.stderr}")
-                logger.info("🔄 Proceeding with video-only output")
-                try:
-                    os.unlink(final_video_with_audio.name)
-                except:
-                    pass
+                logger.info("🔄 Trying fallback audio preservation...")
+                
+                # Fallback: simpler FFmpeg command
+                fallback_cmd = [
+                    'ffmpeg', 
+                    '-i', enhanced_video_path,
+                    '-i', target_video_path,
+                    '-c', 'copy',                   # Copy streams without re-encoding
+                    '-map', '0:v',
+                    '-map', '1:a',
+                    '-shortest',
+                    '-y',
+                    final_video_with_audio.name
+                ]
+                
+                fallback_result = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=300)
+                if fallback_result.returncode == 0:
+                    logger.info("✅ Fallback audio preservation successful")
+                    final_video_path = final_video_with_audio.name
+                else:
+                    logger.warning(f"⚠️ Fallback FFmpeg also failed: {fallback_result.stderr}")
+                    logger.info("🔄 Proceeding with enhanced video-only output")
+                    try:
+                        os.unlink(final_video_with_audio.name)
+                    except:
+                        pass
                     
         except subprocess.TimeoutExpired:
-            logger.warning("⚠️ FFmpeg timeout, proceeding with video-only output")
+            logger.warning("⚠️ FFmpeg timeout, proceeding with enhanced video-only output")
         except FileNotFoundError:
-            logger.warning("⚠️ FFmpeg not found, proceeding with video-only output")
+            logger.warning("⚠️ FFmpeg not found, proceeding with enhanced video-only output")
         except Exception as e:
-            logger.warning(f"⚠️ Audio preservation failed: {e}, proceeding with video-only output")
+            logger.warning(f"⚠️ Audio preservation failed: {e}, proceeding with enhanced video-only output")
         
         # Read the final video file
         with open(final_video_path, 'rb') as f:
@@ -1996,7 +2132,7 @@ def process_video_with_multi_faces(video_path, source_faces):
             else:
                 # No faces detected, write original frame
                 out.write(frame)
-                
+            
             # Progress logging
             if frame_count % 30 == 0:
                 progress = (frame_count / total_frames) * 100
@@ -2007,26 +2143,221 @@ def process_video_with_multi_faces(video_path, source_faces):
         
         logger.info(f"✅ Video processing completed: {processed_frames}/{frame_count} frames with faces")
         
-        # Read processed video
-        with open(temp_output_path, 'rb') as f:
+        # Enhanced video processing with face enhancement and super resolution
+        logger.info("🎨 Applying face enhancement and super resolution to multi-person video...")
+        enhanced_video_path = temp_output_path
+        
+        # Apply face enhancement to the processed video
+        try:
+            logger.info("✨ Applying face enhancement to multi-person video frames...")
+            
+            # Create enhanced video file
+            enhanced_temp = tempfile.NamedTemporaryFile(delete=False, suffix='_enhanced.mp4')
+            enhanced_temp.close()
+            
+            # Re-process video with face enhancement
+            cap_enhance = cv2.VideoCapture(temp_output_path)
+            fourcc_enhance = cv2.VideoWriter_fourcc(*'mp4v')
+            out_enhance = cv2.VideoWriter(enhanced_temp.name, fourcc_enhance, fps, (width, height))
+            
+            enhance_frame_count = 0
+            while True:
+                ret, frame = cap_enhance.read()
+                if not ret:
+                    break
+                
+                try:
+                    # Apply face enhancement if available
+                    from modules.processors.frame.face_enhancer import enhance_face
+                    enhanced_frame = enhance_face(frame)
+                    if enhanced_frame is not None:
+                        # Conservative blending for video stability
+                        frame = cv2.addWeighted(frame, 0.3, enhanced_frame, 0.7, 0)
+                except ImportError:
+                    pass
+                except Exception as e:
+                    logger.warning(f"⚠️ Frame enhancement failed for frame {enhance_frame_count}: {e}")
+                
+                out_enhance.write(frame)
+                enhance_frame_count += 1
+                
+                if enhance_frame_count % 60 == 0:
+                    logger.info(f"✨ Enhanced {enhance_frame_count} frames")
+            
+            cap_enhance.release()
+            out_enhance.release()
+            
+            enhanced_video_path = enhanced_temp.name
+            logger.info(f"✅ Multi-person face enhancement completed: {enhance_frame_count} frames enhanced")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Face enhancement failed: {e}, using original video")
+            enhanced_video_path = temp_output_path
+        
+        # Apply AI Super Resolution if available and needed
+        if SR_AVAILABLE and max(width, height) < 1024:
+            logger.info("🔍 Applying AI Super Resolution to multi-person video...")
+            try:
+                # Create super resolution enhanced video
+                sr_temp = tempfile.NamedTemporaryFile(delete=False, suffix='_sr.mp4')
+                sr_temp.close()
+                
+                # Determine scale factor for multi-person video
+                max_dimension = max(width, height)
+                if max_dimension < 512:
+                    scale_factor = 2
+                    new_width = width * 2
+                    new_height = height * 2
+                    logger.info(f"📐 Using 2x super resolution for multi-person video: {width}x{height} -> {new_width}x{new_height}")
+                else:
+                    scale_factor = 1
+                    new_width = width
+                    new_height = height
+                    logger.info(f"📐 Skipping super resolution (already good size: {width}x{height})")
+                
+                if scale_factor > 1:
+                    cap_sr = cv2.VideoCapture(enhanced_video_path)
+                    fourcc_sr = cv2.VideoWriter_fourcc(*'mp4v')
+                    out_sr = cv2.VideoWriter(sr_temp.name, fourcc_sr, fps, (new_width, new_height))
+                    
+                    sr_frame_count = 0
+                    while True:
+                        ret, frame = cap_sr.read()
+                        if not ret:
+                            break
+                        
+                        try:
+                            enhanced_frame = enhance_resolution(frame, scale_factor, max_size=2048)
+                            if enhanced_frame is not None:
+                                out_sr.write(enhanced_frame)
+                            else:
+                                upscaled_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                                out_sr.write(upscaled_frame)
+                        except Exception as e:
+                            logger.warning(f"⚠️ SR failed for frame {sr_frame_count}: {e}")
+                            upscaled_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+                            out_sr.write(upscaled_frame)
+                        
+                        sr_frame_count += 1
+                        if sr_frame_count % 30 == 0:
+                            logger.info(f"🔍 Multi-person super resolution progress: {sr_frame_count} frames")
+                    
+                    cap_sr.release()
+                    out_sr.release()
+                    
+                    enhanced_video_path = sr_temp.name
+                    width = new_width
+                    height = new_height
+                    logger.info(f"✅ Multi-person super resolution completed: {sr_frame_count} frames enhanced to {new_width}x{new_height}")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Super resolution failed: {e}, using face-enhanced video")
+        
+        # Preserve audio from original video using FFmpeg
+        final_video_path = enhanced_video_path
+        try:
+            logger.info("🎵 Preserving audio from original multi-person video...")
+            
+            # Create final video with audio
+            final_video_with_audio = tempfile.NamedTemporaryFile(delete=False, suffix='_final.mp4')
+            final_video_with_audio.close()
+            
+            # Enhanced FFmpeg command with better audio handling
+            ffmpeg_cmd = [
+                'ffmpeg', 
+                '-i', enhanced_video_path,          # Enhanced processed video (no audio)
+                '-i', temp_input_path,              # Original video (with audio)
+                '-c:v', 'libx264',                  # Use H.264 for video
+                '-preset', 'medium',                # Better quality preset
+                '-crf', '20',                       # Higher quality (lower = better)
+                '-c:a', 'aac',                      # Use AAC for audio  
+                '-b:a', '192k',                     # Higher audio bitrate for better quality
+                '-ar', '48000',                     # Audio sample rate
+                '-ac', '2',                         # Stereo audio
+                '-map', '0:v:0',                    # Use video from first input (enhanced)
+                '-map', '1:a:0?',                   # Use audio from second input (optional)
+                '-shortest',                        # Match shortest stream
+                '-movflags', '+faststart',          # Optimize for web streaming
+                '-avoid_negative_ts', 'make_zero',  # Fix timestamp issues
+                '-fflags', '+genpts',               # Generate presentation timestamps
+                '-y',                               # Overwrite output
+                final_video_with_audio.name
+            ]
+            
+            logger.info(f"🔄 Running enhanced FFmpeg command for multi-person video...")
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=600)
+            
+            if result.returncode == 0:
+                logger.info("✅ Audio preservation successful with enhanced multi-person video")
+                final_video_path = final_video_with_audio.name
+            else:
+                logger.warning(f"⚠️ FFmpeg failed: {result.stderr}")
+                logger.info("🔄 Trying fallback audio preservation...")
+                
+                # Fallback: simpler FFmpeg command
+                fallback_cmd = [
+                    'ffmpeg', 
+                    '-i', enhanced_video_path,
+                    '-i', temp_input_path,
+                    '-c', 'copy',                   # Copy streams without re-encoding
+                    '-map', '0:v',
+                    '-map', '1:a',
+                    '-shortest',
+                    '-y',
+                    final_video_with_audio.name
+                ]
+                
+                fallback_result = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=300)
+                if fallback_result.returncode == 0:
+                    logger.info("✅ Fallback audio preservation successful for multi-person video")
+                    final_video_path = final_video_with_audio.name
+                else:
+                    logger.warning(f"⚠️ Fallback FFmpeg also failed: {fallback_result.stderr}")
+                    logger.info("🔄 Proceeding with enhanced multi-person video-only output")
+                    try:
+                        os.unlink(final_video_with_audio.name)
+                    except:
+                        pass
+                    
+        except subprocess.TimeoutExpired:
+            logger.warning("⚠️ FFmpeg timeout, proceeding with enhanced multi-person video-only output")
+        except FileNotFoundError:
+            logger.warning("⚠️ FFmpeg not found, proceeding with enhanced multi-person video-only output")
+        except Exception as e:
+            logger.warning(f"⚠️ Audio preservation failed: {e}, proceeding with enhanced multi-person video-only output")
+        
+        # Read the final video file
+        with open(final_video_path, 'rb') as f:
             result_video_data = f.read()
         
-        # Cleanup
-        if temp_input_path != video_path:  # Only delete if it's a temp file
-            os.unlink(temp_input_path)
-        os.unlink(temp_output_path)
+        # Cleanup temporary files
+        try:
+            if temp_input_path != video_path:  # Only delete if it's a temp file
+                os.unlink(temp_input_path)
+            os.unlink(temp_output_path)
+            
+            # Cleanup enhanced video files
+            if enhanced_video_path != temp_output_path and os.path.exists(enhanced_video_path):
+                os.unlink(enhanced_video_path)
+            if final_video_path != enhanced_video_path and os.path.exists(final_video_path):
+                os.unlink(final_video_path)
+        except Exception as cleanup_error:
+            logger.warning(f"⚠️ Cleanup error: {cleanup_error}")
         
         # Encode to base64
         result_data = base64.b64encode(result_video_data).decode()
         
+        logger.info("✅ Enhanced multi-person video face swap with audio preservation completed successfully")
         return {
             "result": result_data,
             "total_faces_mapped": len(source_faces),
             "total_frames": frame_count,
             "processed_frames": processed_frames,
+            "fps": fps,
+            "resolution": f"{width}x{height}",
             "processing_type": "multi-person-video",
-            "quality_level": "high",
-            "enhanced": True
+            "enhanced": True,
+            "quality_level": "ultra-high" if SR_AVAILABLE else "high"
         }
         
     except Exception as e:
