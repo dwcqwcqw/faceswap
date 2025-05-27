@@ -109,7 +109,7 @@ def get_content_type(file_path):
 def process_single_image_swap(input_data):
     """Process single person image face swap"""
     try:
-        print("Processing single image face swap...")
+        print("🎯 Processing single person image face swap...")
         
         # Create temporary directory
         temp_dir = tempfile.mkdtemp()
@@ -121,11 +121,13 @@ def process_single_image_swap(input_data):
         source_path = os.path.join(temp_dir, 'source.jpg')
         target_path = os.path.join(temp_dir, 'target.jpg')
         
+        print(f"📥 Downloading source: {source_url}")
         if not download_from_url(source_url, source_path):
-            raise Exception("Failed to download source image")
+            raise Exception("❌ Failed to download source image")
         
+        print(f"📥 Downloading target: {target_url}")
         if not download_from_url(target_url, target_path):
-            raise Exception("Failed to download target image")
+            raise Exception("❌ Failed to download target image")
         
         # Process face swap
         options = input_data.get('options', {})
@@ -134,41 +136,67 @@ def process_single_image_swap(input_data):
         # High quality settings
         frame_processors = ['face_swapper', 'face_enhancer']
         
-        # Perform face swap
+        # Load images
+        print("📂 Loading images...")
         source_image = cv2.imread(source_path)
         target_image = cv2.imread(target_path)
         
         if source_image is None or target_image is None:
-            raise Exception("Failed to load images")
+            raise Exception("❌ Failed to load images")
         
-        # Swap faces
+        print(f"✅ Images loaded - Source: {source_image.shape}, Target: {target_image.shape}")
+        
+        # Detect faces
+        print("🔍 Detecting faces...")
+        from modules.face_analyser import get_one_face
+        
+        source_face = get_one_face(source_image)
+        if source_face is None:
+            raise Exception("❌ No face detected in source image")
+        print("✅ Source face detected")
+        
+        target_face = get_one_face(target_image)
+        if target_face is None:
+            raise Exception("❌ No face detected in target image")
+        print("✅ Target face detected")
+        
+        # Swap faces with correct parameters
+        print("🔄 Starting face swap...")
         result_image = swap_face(
-            source_image=source_image,
-            target_image=target_image,
-            model_path=get_model_path('inswapper_128_fp16.onnx')
+            source_face=source_face,
+            target_face=target_face,
+            temp_frame=target_image
         )
+        print("✅ Face swap completed")
         
         # Enhance faces if requested
         if 'face_enhancer' in frame_processors:
+            print("✨ Enhancing faces...")
             result_image = enhance_faces(
                 image=result_image,
                 model_path=get_model_path('GFPGANv1.4.pth')
             )
+            print("✅ Face enhancement completed")
         
         # Save result
+        print("💾 Saving result...")
         cv2.imwrite(output_path, result_image)
         
         # Upload result to R2
         job_id = input_data.get('job_id', str(uuid.uuid4()))
         r2_key = f"results/single_image_{job_id}_{uuid.uuid4()}.jpg"
+        print(f"☁️ Uploading to R2: {r2_key}")
         result_url = upload_to_r2(output_path, r2_key)
         
         if not result_url:
-            raise Exception("Failed to upload result to R2")
+            raise Exception("❌ Failed to upload result to R2")
+        
+        print(f"✅ Upload successful: {result_url}")
         
         # Cleanup
         import shutil
         shutil.rmtree(temp_dir)
+        print("🧹 Cleanup completed")
         
         return {
             'success': True,
@@ -177,7 +205,7 @@ def process_single_image_swap(input_data):
         }
         
     except Exception as e:
-        print(f"Error in single image processing: {str(e)}")
+        print(f"❌ Error in single image processing: {str(e)}")
         return {
             'success': False,
             'error': str(e)
@@ -186,7 +214,7 @@ def process_single_image_swap(input_data):
 def process_multi_image_swap(input_data):
     """Process multi-person image face swap"""
     try:
-        print("Processing multi-person image face swap...")
+        print("👥 Processing multi-person image face swap...")
         
         # Create temporary directory
         temp_dir = tempfile.mkdtemp()
@@ -198,11 +226,13 @@ def process_multi_image_swap(input_data):
         source_path = os.path.join(temp_dir, 'source.jpg')
         target_path = os.path.join(temp_dir, 'target.jpg')
         
+        print(f"📥 Downloading source: {source_url}")
         if not download_from_url(source_url, source_path):
-            raise Exception("Failed to download source image")
+            raise Exception("❌ Failed to download source image")
         
+        print(f"📥 Downloading target: {target_url}")
         if not download_from_url(target_url, target_path):
-            raise Exception("Failed to download target image")
+            raise Exception("❌ Failed to download target image")
         
         # Process face swap with multiple faces
         options = input_data.get('options', {})
@@ -212,41 +242,72 @@ def process_multi_image_swap(input_data):
         frame_processors = ['face_swapper', 'face_enhancer']
         
         # Load images
+        print("📂 Loading images...")
         source_image = cv2.imread(source_path)
         target_image = cv2.imread(target_path)
         
         if source_image is None or target_image is None:
-            raise Exception("Failed to load images")
+            raise Exception("❌ Failed to load images")
         
-        # Detect and swap all faces
-        result_image = swap_face(
-            source_image=source_image,
-            target_image=target_image,
-            model_path=get_model_path('inswapper_128_fp16.onnx'),
-            swap_all_faces=True  # Enable multi-face swapping
-        )
+        print(f"✅ Images loaded - Source: {source_image.shape}, Target: {target_image.shape}")
+        
+        # Detect faces
+        print("🔍 Detecting faces...")
+        from modules.face_analyser import get_one_face, get_many_faces
+        
+        source_face = get_one_face(source_image)
+        if source_face is None:
+            raise Exception("❌ No face detected in source image")
+        print("✅ Source face detected")
+        
+        target_faces = get_many_faces(target_image)
+        if not target_faces or len(target_faces) == 0:
+            raise Exception("❌ No faces detected in target image")
+        print(f"✅ {len(target_faces)} target face(s) detected")
+        
+        # Swap all faces
+        print("🔄 Starting multi-face swap...")
+        result_image = target_image.copy()
+        
+        for i, target_face in enumerate(target_faces):
+            print(f"   🔄 Swapping face {i+1}/{len(target_faces)}...")
+            result_image = swap_face(
+                source_face=source_face,
+                target_face=target_face,
+                temp_frame=result_image
+            )
+            print(f"   ✅ Face {i+1} swap completed")
+        
+        print("✅ All face swaps completed")
         
         # Enhance faces if requested
         if 'face_enhancer' in frame_processors:
+            print("✨ Enhancing faces...")
             result_image = enhance_faces(
                 image=result_image,
                 model_path=get_model_path('GFPGANv1.4.pth')
             )
+            print("✅ Face enhancement completed")
         
         # Save result
+        print("💾 Saving result...")
         cv2.imwrite(output_path, result_image)
         
         # Upload result to R2
         job_id = input_data.get('job_id', str(uuid.uuid4()))
         r2_key = f"results/multi_image_{job_id}_{uuid.uuid4()}.jpg"
+        print(f"☁️ Uploading to R2: {r2_key}")
         result_url = upload_to_r2(output_path, r2_key)
         
         if not result_url:
-            raise Exception("Failed to upload result to R2")
+            raise Exception("❌ Failed to upload result to R2")
+        
+        print(f"✅ Upload successful: {result_url}")
         
         # Cleanup
         import shutil
         shutil.rmtree(temp_dir)
+        print("🧹 Cleanup completed")
         
         return {
             'success': True,
@@ -255,7 +316,7 @@ def process_multi_image_swap(input_data):
         }
         
     except Exception as e:
-        print(f"Error in multi-image processing: {str(e)}")
+        print(f"❌ Error in multi-image processing: {str(e)}")
         return {
             'success': False,
             'error': str(e)
@@ -264,7 +325,7 @@ def process_multi_image_swap(input_data):
 def process_single_video_swap(input_data):
     """Process single person video face swap"""
     try:
-        print("Processing single person video face swap...")
+        print("🎬 Processing single person video face swap...")
         
         # Create temporary directory
         temp_dir = tempfile.mkdtemp()
@@ -276,11 +337,13 @@ def process_single_video_swap(input_data):
         source_path = os.path.join(temp_dir, 'source.jpg')
         target_path = os.path.join(temp_dir, 'target.mp4')
         
+        print(f"📥 Downloading source: {source_url}")
         if not download_from_url(source_url, source_path):
-            raise Exception("Failed to download source image")
+            raise Exception("❌ Failed to download source image")
         
+        print(f"📥 Downloading target: {target_url}")
         if not download_from_url(target_url, target_path):
-            raise Exception("Failed to download target video")
+            raise Exception("❌ Failed to download target video")
         
         # Process video face swap
         options = input_data.get('options', {})
@@ -296,75 +359,113 @@ def process_single_video_swap(input_data):
             'keep_audio': True
         }
         
-        # Load source image
+        # Load source image and detect face
+        print("📂 Loading source image...")
         source_image = cv2.imread(source_path)
         if source_image is None:
-            raise Exception("Failed to load source image")
+            raise Exception("❌ Failed to load source image")
+        
+        print("🔍 Detecting source face...")
+        from modules.face_analyser import get_one_face
+        source_face = get_one_face(source_image)
+        if source_face is None:
+            raise Exception("❌ No face detected in source image")
+        print("✅ Source face detected")
         
         # Process video frame by frame
+        print("🎬 Opening target video...")
         cap = cv2.VideoCapture(target_path)
         if not cap.isOpened():
-            raise Exception("Failed to open target video")
+            raise Exception("❌ Failed to open target video")
         
         # Get video properties
         fps = cap.get(cv2.CAP_PROP_FPS)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        print(f"📹 Video info: {width}x{height}, {fps} FPS, {total_frames} frames")
         
         # Set up video writer
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
         
         frame_count = 0
+        success_count = 0
+        
+        print("🔄 Starting frame-by-frame processing...")
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
             
-            # Swap face in current frame
-            result_frame = swap_face(
-                source_image=source_image,
-                target_image=frame,
-                model_path=get_model_path('inswapper_128_fp16.onnx')
-            )
+            try:
+                # Detect face in current frame
+                target_face = get_one_face(frame)
+                
+                if target_face is not None:
+                    # Swap face in current frame
+                    result_frame = swap_face(
+                        source_face=source_face,
+                        target_face=target_face,
+                        temp_frame=frame
+                    )
+                    
+                    # Enhance face if requested
+                    if 'face_enhancer' in video_settings['frame_processors']:
+                        result_frame = enhance_faces(
+                            image=result_frame,
+                            model_path=get_model_path('GFPGANv1.4.pth')
+                        )
+                    
+                    out.write(result_frame)
+                    success_count += 1
+                else:
+                    # No face detected, write original frame
+                    out.write(frame)
+                
+            except Exception as e:
+                print(f"⚠️ Error processing frame {frame_count}: {e}")
+                # Write original frame on error
+                out.write(frame)
             
-            # Enhance face if requested
-            if 'face_enhancer' in video_settings['frame_processors']:
-                result_frame = enhance_faces(
-                    image=result_frame,
-                    model_path=get_model_path('GFPGANv1.4.pth')
-                )
-            
-            out.write(result_frame)
             frame_count += 1
             
             if frame_count % 30 == 0:
-                print(f"Processed {frame_count} frames...")
+                progress = (frame_count / total_frames) * 100 if total_frames > 0 else 0
+                print(f"📹 Progress: {frame_count}/{total_frames} frames ({progress:.1f}%), {success_count} faces swapped")
         
         cap.release()
         out.release()
         
+        print(f"✅ Video processing completed: {frame_count} frames, {success_count} successful swaps")
+        
         # Upload result to R2
         job_id = input_data.get('job_id', str(uuid.uuid4()))
         r2_key = f"results/single_video_{job_id}_{uuid.uuid4()}.mp4"
+        print(f"☁️ Uploading to R2: {r2_key}")
         result_url = upload_to_r2(output_path, r2_key)
         
         if not result_url:
-            raise Exception("Failed to upload result to R2")
+            raise Exception("❌ Failed to upload result to R2")
+        
+        print(f"✅ Upload successful: {result_url}")
         
         # Cleanup
         import shutil
         shutil.rmtree(temp_dir)
+        print("🧹 Cleanup completed")
         
         return {
             'success': True,
             'result_url': result_url,
             'process_type': 'single-video',
-            'frames_processed': frame_count
+            'frames_processed': frame_count,
+            'successful_swaps': success_count
         }
         
     except Exception as e:
-        print(f"Error in single video processing: {str(e)}")
+        print(f"❌ Error in single video processing: {str(e)}")
         return {
             'success': False,
             'error': str(e)
@@ -373,7 +474,7 @@ def process_single_video_swap(input_data):
 def process_multi_video_swap(input_data):
     """Process multi-person video face swap"""
     try:
-        print("Processing multi-person video face swap...")
+        print("🎬👥 Processing multi-person video face swap...")
         
         # Create temporary directory
         temp_dir = tempfile.mkdtemp()
@@ -430,13 +531,23 @@ def process_multi_video_swap(input_data):
             if not ret:
                 break
             
-            # Swap all faces in current frame
-            result_frame = swap_face(
-                source_image=source_image,
-                target_image=frame,
-                model_path=get_model_path('inswapper_128_fp16.onnx'),
-                swap_all_faces=True  # Enable multi-face swapping
-            )
+            # Get faces and swap all faces in current frame
+            from modules.face_analyser import get_one_face, get_many_faces
+            source_face = get_one_face(source_image)
+            target_faces = get_many_faces(frame)
+            
+            result_frame = frame.copy()
+            
+            if source_face is not None and target_faces:
+                for target_face in target_faces:
+                    result_frame = swap_face(
+                        source_face=source_face,
+                        target_face=target_face,
+                        temp_frame=result_frame
+                    )
+            else:
+                # No faces detected, keep original frame
+                result_frame = frame
             
             # Enhance faces if requested
             if 'face_enhancer' in video_settings['frame_processors']:
