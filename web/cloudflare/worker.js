@@ -22,6 +22,8 @@ export default {
         return addCorsHeaders(await handleDetectFaces(request, env), request)
       } else if (path.startsWith('/api/cancel/')) {
         return addCorsHeaders(await handleCancel(request, env, path), request)
+      } else if (path.startsWith('/api/single-image-swap')) {
+        return addCorsHeaders(await handleSingleImageSwap(request, env), request)
       } else {
         return new Response('Not Found', { status: 404 })
       }
@@ -805,6 +807,169 @@ async function scheduleFileDeletion(env, fileName, delayMs) {
   // This would typically use Durable Objects or scheduled workers
   // For now, just log the intent
   console.log(`🗑️ File ${fileName} scheduled for deletion in ${delayMs}ms`)
+}
+
+// Single image swap with FormData upload
+async function handleSingleImageSwap(request, env) {
+  try {
+    console.log('Single image swap request received');
+    console.log('Content-Type:', request.headers.get('content-type'));
+    
+    // Check if request has form data
+    const contentType = request.headers.get('content-type');
+    if (!contentType || !contentType.includes('multipart/form-data')) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Content-Type must be multipart/form-data'
+      }), { status: 400, headers: { 'Content-Type': 'application/json' }})
+    }
+    
+    const formData = await request.formData()
+    const sourceImage = formData.get('source_image')
+    const targetImage = formData.get('target_image')
+    
+    console.log('Source image received:', sourceImage ? sourceImage.name : 'null');
+    console.log('Target image received:', targetImage ? targetImage.name : 'null');
+    
+    if (!sourceImage || !targetImage) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Both source_image and target_image are required'
+      }), { status: 400, headers: { 'Content-Type': 'application/json' }})
+    }
+
+    // Upload source image to R2
+    const sourceFileId = generateFileId()
+    const sourceExtension = getFileExtension(sourceImage.name)
+    const sourceFileName = `uploads/${sourceFileId}.${sourceExtension}`
+
+    console.log('Uploading source image to R2:', sourceFileName);
+
+    const sourceUploadResult = await env.FACESWAP_BUCKET.put(sourceFileName, sourceImage.stream(), {
+      httpMetadata: {
+        contentType: sourceImage.type
+      },
+      customMetadata: {
+        originalName: sourceImage.name,
+        uploadTime: new Date().toISOString(),
+        fileType: sourceImage.type,
+        fileSize: sourceImage.size.toString()
+      }
+    })
+
+    if (!sourceUploadResult) {
+      throw new Error('Failed to upload source image to R2')
+    }
+
+    // Upload target image to R2
+    const targetFileId = generateFileId()
+    const targetExtension = getFileExtension(targetImage.name)
+    const targetFileName = `uploads/${targetFileId}.${targetExtension}`
+
+    console.log('Uploading target image to R2:', targetFileName);
+
+    const targetUploadResult = await env.FACESWAP_BUCKET.put(targetFileName, targetImage.stream(), {
+      httpMetadata: {
+        contentType: targetImage.type
+      },
+      customMetadata: {
+        originalName: targetImage.name,
+        uploadTime: new Date().toISOString(),
+        fileType: targetImage.type,
+        fileSize: targetImage.size.toString()
+      }
+    })
+
+    if (!targetUploadResult) {
+      throw new Error('Failed to upload target image to R2')
+    }
+
+    // Generate job ID
+    const jobId = generateJobId()
+    
+    // Store job in KV with pending status
+    const jobData = {
+      id: jobId,
+      type: 'single-image',
+      status: 'pending',
+      progress: 0,
+      created_at: new Date().toISOString(),
+      source_file: sourceFileId,
+      target_file: targetFileId,
+      options: {
+        mouth_mask: true,
+        use_face_enhancer: true,
+        execution_provider: 'CPUExecutionProvider'
+      }
+    }
+    
+    await env.JOBS.put(jobId, JSON.stringify(jobData))
+
+    // Prepare RunPod request
+    const runpodPayload = {
+      input: {
+        job_id: jobId,
+        type: 'single_image',
+        source_file: await getR2FileUrl(env, sourceFileId),
+        target_file: await getR2FileUrl(env, targetFileId),
+        options: jobData.options
+      }
+    }
+
+    console.log(`🚀 Sending to RunPod:`, JSON.stringify(runpodPayload, null, 2));
+
+    // Send to RunPod
+    const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/run`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RUNPOD_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(runpodPayload)
+    })
+
+    const runpodResult = await runpodResponse.json()
+    console.log(`📊 RunPod response:`, JSON.stringify(runpodResult, null, 2));
+    
+    if (!runpodResponse.ok) {
+      console.error('❌ RunPod error:', runpodResult);
+      throw new Error(`RunPod error: ${runpodResult.error || 'Unknown error'}`)
+    }
+
+    // Update job with RunPod ID and processing status
+    jobData.runpod_id = runpodResult.id
+    jobData.status = 'processing'
+    await env.JOBS.put(jobId, JSON.stringify(jobData))
+
+    console.log(`✅ Job ${jobId} created and started with RunPod ID: ${runpodResult.id}`);
+
+    // Set expiration for uploaded files (24 hours)
+    await scheduleFileDeletion(env, sourceFileName, 24 * 60 * 60 * 1000)
+    await scheduleFileDeletion(env, targetFileName, 24 * 60 * 60 * 1000)
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        job_id: jobId
+      }
+    }), {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+  } catch (error) {
+    console.error('Single image swap error:', error)
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Single image swap failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+  }
 }
 
 
