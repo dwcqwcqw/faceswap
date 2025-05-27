@@ -2,106 +2,52 @@ import { useState, useEffect } from 'react'
 import FileUpload from '../components/FileUpload'
 import TaskHistory from '../components/TaskHistory'
 import TaskDetail from '../components/TaskDetail'
-import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, PlayIcon, VideoCameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, ExclamationTriangleIcon, PlayIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
-import { ProcessingJob } from '../types'
-import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
+import { TaskHistoryItem } from '../utils/taskHistory'
+import { taskManager } from '../utils/taskManager'
 
 export default function VideoPage() {
   const [sourceVideo, setSourceVideo] = useState<File | null>(null)
   const [targetFace, setTargetFace] = useState<File | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 在组件加载时检查是否有活跃任务需要恢复
+  // 组件加载时的初始化
   useEffect(() => {
-    const activeTask = taskHistory.getLatestActiveTask('video')
-    if (activeTask) {
-      console.log('🔄 恢复活跃视频任务:', activeTask.id)
-      setProcessingStatus(activeTask)
-      setIsProcessing(true)
-      setError(null)
-      
-      // 恢复轮询
-      setTimeout(() => pollJobStatus(activeTask.id), 1000)
-    }
+    // 任务管理器会自动恢复活跃任务，无需手动处理
   }, [])
-
-  const pollJobStatus = async (jobId: string) => {
-    try {
-      const response = await apiService.getJobStatus(jobId)
-      if (response.success && response.data) {
-        const status = response.data
-        setProcessingStatus(status)
-        
-        // Update task history
-        taskHistory.updateTask(jobId, {
-          ...status,
-          updated_at: new Date().toISOString()
-        })
-        
-        if (status.status === 'completed') {
-          setIsProcessing(false)
-        } else if (status.status === 'failed') {
-          setIsProcessing(false)
-          setError(status.error_message || '处理失败')
-        } else {
-          setTimeout(() => pollJobStatus(jobId), 3000)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to check job status:', error)
-      setError('无法获取处理状态')
-      setIsProcessing(false)
-    }
-  }
 
   const handleProcess = async () => {
     if (!sourceVideo || !targetFace) return
     
-    setIsProcessing(true)
+    // 检查是否可以启动新任务
+    if (!taskManager.canStartNewTask()) {
+      setError(`已达到最大并发任务数限制 (${taskManager.getConcurrentTaskCount()}/5)`)
+      return
+    }
+    
+    setIsSubmitting(true)
     setError(null)
-    setProcessingStatus(null)
 
     try {
-      // Upload source video
-      console.log('上传原视频...')
+      // Upload source video (actually the face image)
+      console.log('上传人脸图片...')
       const sourceResponse = await apiService.uploadFile(sourceVideo)
       if (!sourceResponse.success || !sourceResponse.data) {
-        throw new Error('原视频上传失败')
+        throw new Error('人脸图片上传失败')
       }
 
-      // Upload target face
-      console.log('上传目标人脸...')
+      // Upload target video
+      console.log('上传目标视频...')
       const targetResponse = await apiService.uploadFile(targetFace)
       if (!targetResponse.success || !targetResponse.data) {
-        throw new Error('目标人脸上传失败')
+        throw new Error('目标视频上传失败')
       }
 
       // Start processing
       console.log('开始视频换脸处理...')
-      console.log('📋 Request payload:', {
-        source_file: sourceResponse.data.fileId,
-        target_file: targetResponse.data.fileId,
-        source_file_info: {
-          name: sourceVideo.name,
-          type: sourceVideo.type,
-          size: sourceVideo.size
-        },
-        target_file_info: {
-          name: targetFace.name,
-          type: targetFace.type,  
-          size: targetFace.size
-        },
-        options: {
-          keep_fps: true,
-          video_quality: 18,
-          mouth_mask: true,
-        }
-      })
-      
       const processResponse = await apiService.processSingleVideo({
         source_file: sourceResponse.data.fileId,
         target_file: targetResponse.data.fileId,
@@ -114,30 +60,24 @@ export default function VideoPage() {
 
       if (processResponse.success && processResponse.data) {
         const jobId = processResponse.data.jobId
+        console.log('✅ 视频换脸任务创建成功:', jobId)
         
-        const initialStatus: ProcessingJob = {
-          id: jobId,
-          status: 'pending' as const,
-          progress: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-        
-        setProcessingStatus(initialStatus)
-        
-        // Add to task history
-        const historyTask: TaskHistoryItem = {
-          ...initialStatus,
-          title: `视频换脸 - ${sourceVideo.name} → ${targetFace.name}`,
-          type: 'video',
-          files: {
+        // 使用任务管理器启动任务
+        await taskManager.startTask(
+          jobId,
+          'video',
+          `视频换脸 - ${targetFace.name} → ${sourceVideo.name}`,
+          {
             source: sourceVideo.name,
             target: targetFace.name
           }
-        }
-        taskHistory.addTask(historyTask)
+        )
         
-        setTimeout(() => pollJobStatus(jobId), 2000)
+        // 清空表单
+        setSourceVideo(null)
+        setTargetFace(null)
+        
+        console.log('✅ 视频换脸任务已提交，可以继续提交新任务')
       } else {
         throw new Error('处理启动失败')
       }
@@ -145,34 +85,21 @@ export default function VideoPage() {
     } catch (error: any) {
       console.error('视频处理错误:', error)
       setError(error.message || '视频处理过程中出现错误')
-      setIsProcessing(false)
-    }
-  }
-
-  const handleDownload = () => {
-    if (processingStatus?.result_url) {
-      const link = document.createElement('a')
-      link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')
-      link.download = 'video-face-swap-result.mp4'
-      link.click()
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleTaskSelect = (task: TaskHistoryItem) => {
     setSelectedHistoryTask(task)
-    // Clear current processing state to show historical result
-    setProcessingStatus(null)
-    setIsProcessing(false)
     setError(null)
   }
 
   const handleCloseTaskDetail = () => {
     setSelectedHistoryTask(null)
-    }
+  }
 
-
-
-  const canProcess = sourceVideo && targetFace && !isProcessing
+  const canProcess = sourceVideo && targetFace && !isSubmitting
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -199,49 +126,6 @@ export default function VideoPage() {
               <h3 className="text-sm font-medium text-red-800">处理错误</h3>
               <p className="text-sm text-red-700 mt-1">{error}</p>
               
-              {/* 错误类型判断和建议 */}
-              <div className="mt-3 text-sm text-red-600">
-                {error.includes('unexpected EOF') || error.includes('corrupted') ? (
-                  <div className="bg-red-100 p-3 rounded border-l-4 border-red-500">
-                    <p className="font-medium">🛠️ 文件损坏问题的解决方案：</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>请重新选择文件并重试</li>
-                      <li>确保文件完整且未损坏</li>
-                      <li>尝试使用其他视频格式（MP4/AVI/MOV）</li>
-                      <li>检查网络连接是否稳定</li>
-                    </ul>
-                  </div>
-                ) : error.includes('timeout') || error.includes('超时') ? (
-                  <div className="bg-yellow-100 p-3 rounded border-l-4 border-yellow-500">
-                    <p className="font-medium">⏱️ 超时问题的解决方案：</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>检查网络连接</li>
-                      <li>尝试压缩视频文件大小</li>
-                      <li>稍后重试</li>
-                    </ul>
-            </div>
-                ) : error.includes('format') || error.includes('格式') ? (
-                  <div className="bg-blue-100 p-3 rounded border-l-4 border-blue-500">
-                    <p className="font-medium">📁 格式问题的解决方案：</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>确保使用支持的视频格式（MP4、AVI、MOV）</li>
-                      <li>避免使用损坏或特殊格式的文件</li>
-                      <li>尝试重新编码视频</li>
-                    </ul>
-          </div>
-                ) : (
-                  <div className="bg-gray-100 p-3 rounded border-l-4 border-gray-500">
-                    <p className="font-medium">💡 通用解决方案：</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>检查网络连接</li>
-                      <li>刷新页面重试</li>
-                      <li>更换不同的视频文件</li>
-                      <li>稍后再试</li>
-                    </ul>
-        </div>
-      )}
-              </div>
-              
               {/* 重试按钮 */}
               <div className="mt-4 flex space-x-3">
                 <button
@@ -265,8 +149,6 @@ export default function VideoPage() {
         </div>
       )}
 
-      {/* Video Size Warning - Removed size restrictions */}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Source Face Upload */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -282,24 +164,14 @@ export default function VideoPage() {
           />
           {sourceVideo && (
             <div className="mt-4">
-              <div className="bg-gray-100 rounded-lg p-4 flex items-center">
-                <PhotoIcon className="h-8 w-8 text-gray-400 mr-3" />
-                <div>
-                  <p className="font-medium text-gray-900">{sourceVideo.name}</p>
-                  <p className="text-sm text-gray-500">
-                    文件大小: {(sourceVideo.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    类型: {sourceVideo.type}
-                  </p>
-                </div>
-              </div>
-              {/* Image preview */}
               <img
                 src={URL.createObjectURL(sourceVideo)}
                 alt="人脸图片预览"
-                className="w-full h-48 object-cover rounded-lg mt-3"
+                className="w-full h-48 object-cover rounded-lg"
               />
+              <p className="text-sm text-gray-500 mt-2">
+                文件大小: {(sourceVideo.size / 1024 / 1024).toFixed(2)} MB
+              </p>
             </div>
           )}
         </div>
@@ -318,25 +190,15 @@ export default function VideoPage() {
           />
           {targetFace && (
             <div className="mt-4">
-              <div className="bg-gray-100 rounded-lg p-4 flex items-center">
-                <VideoCameraIcon className="h-8 w-8 text-gray-400 mr-3" />
-                <div>
-                  <p className="font-medium text-gray-900">{targetFace.name}</p>
-                  <p className="text-sm text-gray-500">
-                    文件大小: {(targetFace.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    类型: {targetFace.type}
-                  </p>
-                </div>
-              </div>
-              {/* Video preview */}
               <video
                 src={URL.createObjectURL(targetFace)}
-                className="w-full h-48 object-cover rounded-lg mt-3"
+                className="w-full h-48 object-cover rounded-lg"
                 controls
                 preload="metadata"
               />
+              <p className="text-sm text-gray-500 mt-2">
+                文件大小: {(targetFace.size / 1024 / 1024).toFixed(2)} MB
+              </p>
             </div>
           )}
         </div>
@@ -356,10 +218,10 @@ export default function VideoPage() {
             transition-colors
           `}
         >
-          {isProcessing ? (
+          {isSubmitting ? (
             <>
               <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
-              处理中...
+              提交中...
             </>
           ) : (
             <>
@@ -368,84 +230,9 @@ export default function VideoPage() {
             </>
           )}
         </button>
-        
       </div>
 
-      {/* Processing Status */}
-      {processingStatus && isProcessing && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-          <div className="flex items-center">
-            <div className="loading-spinner mr-3"></div>
-            <div>
-              <h3 className="text-lg font-medium text-blue-900">正在处理您的视频换脸请求</h3>
-              <p className="text-blue-700">任务ID: {processingStatus.id}</p>
-              <p className="text-blue-700">
-                状态: {processingStatus.status} | 进度: {processingStatus.progress}%
-              </p>
-              <p className="text-sm text-blue-600 mt-2">
-                ⚠️ 视频处理通常需要较长时间，请耐心等待...
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 bg-blue-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${processingStatus.progress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
 
-      {/* Result */}
-      {processingStatus?.status === 'completed' && processingStatus.result_url && !isProcessing && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">视频换脸结果</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              {/* Video display only - no image fallback needed for video results */}
-              <video
-                src={apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')}
-                className="w-full rounded-lg shadow-sm"
-                controls
-                preload="metadata"
-                onError={(e) => {
-                  console.error('Video load error:', e);
-                  // Show error message instead of fallback
-                  const errorDiv = e.currentTarget.nextElementSibling as HTMLDivElement;
-                  if (errorDiv) {
-                    errorDiv.style.display = 'block';
-                  }
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              <div 
-                className="text-center py-8 text-red-600" 
-                style={{ display: 'none' }}
-              >
-                ❌ 视频加载失败，请尝试重新下载
-              </div>
-            </div>
-            <div className="flex flex-col justify-center">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">视频换脸完成！</h4>
-              <p className="text-gray-600 mb-4">
-                您的视频换脸结果已生成，点击下载按钮保存视频文件。
-              </p>
-              <button
-                onClick={handleDownload}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mb-3"
-              >
-                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                下载视频结果
-              </button>
-              
-              <div className="text-sm text-gray-500">
-                <p>💡 提示：下载的视频文件可能较大，请确保网络连接稳定</p>
-                <p>🎬 结果格式：MP4高质量视频</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Task Detail */}
       {selectedHistoryTask && (
@@ -465,14 +252,14 @@ export default function VideoPage() {
       <div className="mt-8 bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-3">视频换脸最佳实践:</h3>
         <ul className="text-sm text-gray-600 space-y-2">
-          <li>• <strong>格式支持：</strong>人脸图片支持 JPG、PNG、BMP、TIFF、WebP、GIF、HEIC等格式</li>
-          <li>• <strong>视频格式：</strong>支持 MP4、AVI、MOV、MKV、WMV、FLV、3GP、WebM等格式</li>
-          <li>• 确保视频中的人脸清晰可见，避免被遮挡或模糊</li>
-          <li>• 使用高质量的人脸图片作为替换源，效果更佳</li>
-          <li>• 替换图片中的人脸最好与视频中的角度和光线相似</li>
-          <li>• <strong>⚡ 优化建议：</strong>使用较短的视频（30秒内）和较低分辨率（720p）可显著减少处理时间</li>
-          <li>• <strong>🎬 质量设置：</strong>系统平衡了质量和速度，保留人脸增强以确保最佳效果</li>
-          <li>• <strong>📱 移动设备：</strong>建议在WiFi环境下使用，避免使用移动数据</li>
+          <li>• <strong>格式支持：</strong>视频支持 MP4、AVI、MOV、MKV、WMV等格式</li>
+          <li>• 使用高分辨率、人脸清晰的图片和视频</li>
+          <li>• 确保人脸图片中的人脸朝向正前方</li>
+          <li>• 视频中的人脸应该清晰可见，避免被遮挡</li>
+          <li>• <strong>⏰ 处理时间：</strong>视频换脸通常需要5-15分钟，具体取决于视频长度</li>
+          <li>• <strong>🎬 输出质量：</strong>系统会保持原视频的帧率和高质量输出</li>
+          <li>• <strong>🔊 音频保留：</strong>处理后的视频会保留原始音频</li>
+          <li>• <strong>📱 网络建议：</strong>强烈建议在WiFi环境下使用</li>
         </ul>
       </div>
     </div>

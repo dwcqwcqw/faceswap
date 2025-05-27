@@ -2,69 +2,34 @@ import { useState, useEffect } from 'react'
 import FileUpload from '../components/FileUpload'
 import TaskHistory from '../components/TaskHistory'
 import TaskDetail from '../components/TaskDetail'
-import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
-import { ProcessingJob } from '../types'
-import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
+import { TaskHistoryItem } from '../utils/taskHistory'
+import { taskManager } from '../utils/taskManager'
 
 export default function SingleImagePage() {
   const [sourceImage, setSourceImage] = useState<File | null>(null)
   const [targetFace, setTargetFace] = useState<File | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 在组件加载时检查是否有活跃任务需要恢复
+  // 组件加载时的初始化
   useEffect(() => {
-    const activeTask = taskHistory.getLatestActiveTask('single-image')
-    if (activeTask) {
-      console.log('🔄 恢复活跃任务:', activeTask.id)
-      setProcessingStatus(activeTask)
-      setIsProcessing(true)
-      setError(null)
-      
-      // 恢复轮询
-      setTimeout(() => pollJobStatus(activeTask.id), 1000)
-    }
+    // 任务管理器会自动恢复活跃任务，无需手动处理
   }, [])
-
-  const pollJobStatus = async (jobId: string) => {
-    try {
-      const response = await apiService.getJobStatus(jobId)
-      if (response.success && response.data) {
-        const status = response.data
-        setProcessingStatus(status)
-        
-        // Update task history
-        taskHistory.updateTask(jobId, {
-          ...status,
-          updated_at: new Date().toISOString()
-        })
-        
-        if (status.status === 'completed') {
-          setIsProcessing(false)
-        } else if (status.status === 'failed') {
-          setIsProcessing(false)
-          setError(status.error_message || '处理失败')
-        } else {
-          // Continue polling if still processing
-          setTimeout(() => pollJobStatus(jobId), 3000)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to check job status:', error)
-      setError('无法获取处理状态')
-      setIsProcessing(false)
-    }
-  }
 
   const handleProcess = async () => {
     if (!sourceImage || !targetFace) return
     
-    setIsProcessing(true)
+    // 检查是否可以启动新任务
+    if (!taskManager.canStartNewTask()) {
+      setError(`已达到最大并发任务数限制 (${taskManager.getConcurrentTaskCount()}/5)`)
+      return
+    }
+    
+    setIsSubmitting(true)
     setError(null)
-    setProcessingStatus(null)
 
     try {
       // Upload source image
@@ -89,10 +54,7 @@ export default function SingleImagePage() {
       
       console.log('✅ 目标人脸上传成功:', targetResponse.data.fileId)
 
-      // Verify both files can be accessed before processing
-      console.log('验证文件可访问性...')
-      
-      // Start processing only after both uploads are confirmed
+      // Start processing
       console.log('开始处理...', {
         source_file: sourceResponse.data.fileId,
         target_file: targetResponse.data.fileId
@@ -112,30 +74,22 @@ export default function SingleImagePage() {
         const jobId = processResponse.data.jobId
         console.log('✅ 处理任务创建成功:', jobId)
         
-        const initialStatus: ProcessingJob = {
-          id: jobId,
-          status: 'pending' as const,
-          progress: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-        
-        setProcessingStatus(initialStatus)
-        
-        // Add to task history
-        const historyTask: TaskHistoryItem = {
-          ...initialStatus,
-          title: `单图换脸 - ${sourceImage.name} → ${targetFace.name}`,
-          type: 'single-image',
-          files: {
+        // 使用任务管理器启动任务
+        await taskManager.startTask(
+          jobId,
+          'single-image',
+          `单图换脸 - ${sourceImage.name} → ${targetFace.name}`,
+          {
             source: sourceImage.name,
             target: targetFace.name
           }
-        }
-        taskHistory.addTask(historyTask)
+        )
         
-        // Start polling for status
-        setTimeout(() => pollJobStatus(jobId), 2000)
+        // 清空表单
+        setSourceImage(null)
+        setTargetFace(null)
+        
+        console.log('✅ 任务已提交，可以继续提交新任务')
       } else {
         throw new Error(`处理启动失败: ${processResponse.error || '未知错误'}`)
       }
@@ -143,24 +97,13 @@ export default function SingleImagePage() {
     } catch (error: any) {
       console.error('处理错误:', error)
       setError(error.message || '处理过程中出现错误')
-      setIsProcessing(false)
-    }
-  }
-
-  const handleDownload = () => {
-    if (processingStatus?.result_url) {
-      const link = document.createElement('a')
-      link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')
-      link.download = 'face-swap-result.jpg'
-      link.click()
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleTaskSelect = (task: TaskHistoryItem) => {
     setSelectedHistoryTask(task)
-    // Clear current processing state to show historical result
-    setProcessingStatus(null)
-    setIsProcessing(false)
     setError(null)
   }
 
@@ -168,7 +111,7 @@ export default function SingleImagePage() {
     setSelectedHistoryTask(null)
   }
 
-  const canProcess = sourceImage && targetFace && !isProcessing
+  const canProcess = sourceImage && targetFace && !isSubmitting
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -330,10 +273,10 @@ export default function SingleImagePage() {
             transition-colors
           `}
         >
-          {isProcessing ? (
+          {isSubmitting ? (
             <>
               <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
-              处理中...
+              提交中...
             </>
           ) : (
             <>
@@ -344,62 +287,7 @@ export default function SingleImagePage() {
         </button>
       </div>
 
-      {/* Processing Status */}
-      {processingStatus && isProcessing && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-          <div className="flex items-center">
-            <div className="loading-spinner mr-3"></div>
-            <div>
-              <h3 className="text-lg font-medium text-blue-900">正在处理您的换脸请求</h3>
-              <p className="text-blue-700">
-                任务ID: {processingStatus.id}
-              </p>
-              <p className="text-blue-700">
-                状态: {processingStatus.status} | 进度: {processingStatus.progress}%
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 bg-blue-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${processingStatus.progress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
 
-      {/* Result */}
-      {processingStatus?.status === 'completed' && processingStatus.result_url && !isProcessing && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">换脸结果</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <img
-                src={apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')}
-                alt="换脸结果"
-                className="w-full rounded-lg shadow-sm"
-                onError={(e) => {
-                  console.error('Image load error:', e);
-                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+加载失败</dGV4dD48L3N2Zz4=';
-                }}
-              />
-            </div>
-            <div className="flex flex-col justify-center">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">换脸完成！</h4>
-              <p className="text-gray-600 mb-4">
-                您的换脸结果已生成，点击下载按钮保存图片。
-              </p>
-              <button
-                onClick={handleDownload}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                下载结果
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Task Detail */}
       {selectedHistoryTask && (

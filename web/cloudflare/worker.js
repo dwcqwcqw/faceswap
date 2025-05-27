@@ -20,6 +20,8 @@ export default {
         return await handleDownload(request, env, path)
       } else if (path.startsWith('/api/detect-faces')) {
         return await handleDetectFaces(request, env)
+      } else if (path.startsWith('/api/cancel/')) {
+        return await handleCancel(request, env, path)
       } else {
         return new Response('Not Found', { status: 404 })
       }
@@ -514,6 +516,90 @@ export async function handleDownload(request, env, path) {
     return new Response('Download failed', { 
       status: 500,
       headers: { 'Access-Control-Allow-Origin': '*' }
+    })
+  }
+}
+
+// Cancel/Stop job
+export async function handleCancel(request, env, path) {
+  try {
+    const jobId = path.split('/').pop()
+    console.log(`🛑 Cancelling job: ${jobId}`);
+    
+    // Get job from KV
+    const jobData = await env.JOBS.get(jobId)
+    if (!jobData) {
+      console.log(`❌ Job not found: ${jobId}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Job not found'
+      }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+    }
+
+    const job = JSON.parse(jobData)
+    console.log(`🔍 Job status: ${job.status}, RunPod ID: ${job.runpod_id}`);
+
+    // If job is already completed or failed, can't cancel
+    if (job.status === 'completed' || job.status === 'failed') {
+      console.log(`⚠️ Job already finished: ${job.status}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Job already ${job.status}`
+      }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }})
+    }
+
+    // Try to cancel RunPod job if it exists
+    if (job.runpod_id) {
+      try {
+        console.log(`🔄 Cancelling RunPod job: ${job.runpod_id}`);
+        const runpodResponse = await fetch(`https://api.runpod.ai/v2/${env.RUNPOD_ENDPOINT_ID}/cancel/${job.runpod_id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.RUNPOD_TOKEN}`
+          }
+        })
+
+        if (runpodResponse.ok) {
+          console.log(`✅ RunPod job cancelled successfully`);
+        } else {
+          console.log(`⚠️ RunPod cancel failed: ${runpodResponse.status} ${runpodResponse.statusText}`);
+          // Continue anyway - we'll mark our job as cancelled
+        }
+      } catch (runpodError) {
+        console.log(`⚠️ RunPod cancel error: ${runpodError.message}`);
+        // Continue anyway - we'll mark our job as cancelled
+      }
+    }
+
+    // Update job status to cancelled
+    job.status = 'failed'
+    job.error_message = '任务已被用户取消'
+    job.updated_at = new Date().toISOString()
+    
+    await env.JOBS.put(jobId, JSON.stringify(job))
+    console.log(`✅ Job marked as cancelled: ${jobId}`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: { message: 'Job cancelled successfully' }
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Cancel error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Cancel failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     })
   }
 }

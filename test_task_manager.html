@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务管理器测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .task-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status-processing {
+            background-color: #e3f2fd;
+        }
+        .status-completed {
+            background-color: #e8f5e8;
+        }
+        .status-failed {
+            background-color: #ffebee;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: #2196f3;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #f44336;
+            color: white;
+        }
+        .btn-success {
+            background-color: #4caf50;
+            color: white;
+        }
+        .log {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>任务管理器测试</h1>
+    
+    <div>
+        <h2>操作</h2>
+        <button class="btn-primary" onclick="addTestTask()">添加测试任务</button>
+        <button class="btn-success" onclick="checkTaskHistory()">检查任务历史</button>
+        <button class="btn-danger" onclick="clearTestTasks()">清理测试任务</button>
+        <button class="btn-primary" onclick="simulateTaskUpdate()">模拟任务更新</button>
+    </div>
+
+    <div>
+        <h2>任务历史 (localStorage)</h2>
+        <div id="taskHistory"></div>
+    </div>
+
+    <div>
+        <h2>活跃任务 (TaskManager)</h2>
+        <div id="activeTasks"></div>
+    </div>
+
+    <div>
+        <h2>日志</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let logContent = '';
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContent += `[${timestamp}] ${message}\n`;
+            document.getElementById('log').textContent = logContent;
+            console.log(message);
+        }
+
+        // 模拟任务历史管理器
+        class TaskHistoryManager {
+            constructor() {
+                this.STORAGE_KEY = 'faceswap_task_history';
+            }
+
+            getHistory() {
+                try {
+                    const stored = localStorage.getItem(this.STORAGE_KEY);
+                    if (!stored) return [];
+                    
+                    const history = JSON.parse(stored);
+                    return history.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                } catch (error) {
+                    log('Failed to load task history: ' + error.message);
+                    return [];
+                }
+            }
+
+            addTask(task) {
+                try {
+                    const history = this.getHistory();
+                    
+                    const existingIndex = history.findIndex(item => item.id === task.id);
+                    
+                    if (existingIndex >= 0) {
+                        history[existingIndex] = task;
+                    } else {
+                        history.unshift(task);
+                        
+                        if (history.length > 50) {
+                            history.splice(50);
+                        }
+                    }
+                    
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(history));
+                    log(`✅ 任务已添加到历史: ${task.id}`);
+                } catch (error) {
+                    log('Failed to save task to history: ' + error.message);
+                }
+            }
+
+            getActiveTasks() {
+                return this.getHistory().filter(task => 
+                    task.status === 'pending' || task.status === 'processing'
+                );
+            }
+
+            updateTask(taskId, updates) {
+                try {
+                    const history = this.getHistory();
+                    const taskIndex = history.findIndex(item => item.id === taskId);
+                    
+                    if (taskIndex >= 0) {
+                        history[taskIndex] = { ...history[taskIndex], ...updates };
+                        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(history));
+                        log(`✅ 任务已更新: ${taskId}`);
+                    }
+                } catch (error) {
+                    log('Failed to update task history: ' + error.message);
+                }
+            }
+        }
+
+        const taskHistory = new TaskHistoryManager();
+
+        function addTestTask() {
+            const testTask = {
+                id: 'test_video_task_' + Date.now(),
+                type: 'video',
+                title: '测试视频换脸任务',
+                status: 'processing',
+                progress: Math.floor(Math.random() * 100),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                files: {
+                    source: 'test_face.jpg',
+                    target: 'test_video.mp4'
+                }
+            };
+
+            taskHistory.addTask(testTask);
+            log(`🆕 添加测试任务: ${testTask.id} (${testTask.status}, ${testTask.progress}%)`);
+            updateDisplay();
+        }
+
+        function checkTaskHistory() {
+            const history = taskHistory.getHistory();
+            const activeTasks = taskHistory.getActiveTasks();
+            
+            log(`📋 任务历史总数: ${history.length}`);
+            log(`🔄 活跃任务数: ${activeTasks.length}`);
+            
+            activeTasks.forEach(task => {
+                log(`  - ${task.id}: ${task.status} (${task.progress}%)`);
+            });
+            
+            updateDisplay();
+        }
+
+        function clearTestTasks() {
+            const history = taskHistory.getHistory();
+            const filtered = history.filter(task => !task.id.startsWith('test_'));
+            localStorage.setItem('faceswap_task_history', JSON.stringify(filtered));
+            log(`🧹 已清理测试任务，剩余: ${filtered.length}`);
+            updateDisplay();
+        }
+
+        function simulateTaskUpdate() {
+            const activeTasks = taskHistory.getActiveTasks();
+            if (activeTasks.length === 0) {
+                log('⚠️ 没有活跃任务可更新');
+                return;
+            }
+
+            const task = activeTasks[0];
+            const newProgress = Math.min(100, task.progress + Math.floor(Math.random() * 20));
+            const newStatus = newProgress >= 100 ? 'completed' : 'processing';
+
+            taskHistory.updateTask(task.id, {
+                progress: newProgress,
+                status: newStatus,
+                updated_at: new Date().toISOString()
+            });
+
+            log(`🔄 更新任务 ${task.id}: ${newStatus} (${newProgress}%)`);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // 更新任务历史显示
+            const history = taskHistory.getHistory();
+            const historyHtml = history.map(task => `
+                <div class="task-item status-${task.status}">
+                    <strong>${task.title}</strong> (${task.id})<br>
+                    状态: ${task.status} | 进度: ${task.progress}% | 类型: ${task.type}<br>
+                    创建: ${new Date(task.created_at).toLocaleString()}<br>
+                    更新: ${new Date(task.updated_at).toLocaleString()}
+                </div>
+            `).join('');
+            document.getElementById('taskHistory').innerHTML = historyHtml || '<p>暂无任务历史</p>';
+
+            // 更新活跃任务显示
+            const activeTasks = taskHistory.getActiveTasks();
+            const activeHtml = activeTasks.map(task => `
+                <div class="task-item status-${task.status}">
+                    <strong>${task.title}</strong> (${task.id})<br>
+                    状态: ${task.status} | 进度: ${task.progress}%<br>
+                    <button class="btn-danger" onclick="cancelTask('${task.id}')">取消任务</button>
+                </div>
+            `).join('');
+            document.getElementById('activeTasks').innerHTML = activeHtml || '<p>暂无活跃任务</p>';
+        }
+
+        function cancelTask(taskId) {
+            taskHistory.updateTask(taskId, {
+                status: 'failed',
+                error_message: '用户手动取消',
+                updated_at: new Date().toISOString()
+            });
+            log(`🛑 取消任务: ${taskId}`);
+            updateDisplay();
+        }
+
+        // 初始化显示
+        log('🚀 任务管理器测试页面已加载');
+        updateDisplay();
+
+        // 定期更新显示
+        setInterval(updateDisplay, 2000);
+    </script>
+</body>
+</html> 

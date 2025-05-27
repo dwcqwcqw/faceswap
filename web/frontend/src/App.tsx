@@ -5,7 +5,6 @@ import SingleImagePage from './pages/SingleImagePage'
 import MultiImagePage from './pages/MultiImagePage'
 import VideoPage from './pages/VideoPage'
 import MultiVideoPage from './pages/MultiVideoPage'
-
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">

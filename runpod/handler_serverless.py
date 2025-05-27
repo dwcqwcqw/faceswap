@@ -166,7 +166,7 @@ def extract_buffalo_l_if_needed(volume_models_dir):
                 # Cleanup temp directory if extraction failed
                 shutil.rmtree(temp_extract)
                 
-        except Exception as e:
+except Exception as e:
             logger.warning(f"⚠️ Failed to extract {os.path.basename(archive_path)}: {e}")
             continue
     
@@ -216,7 +216,7 @@ def setup_insightface_paths_early(volume_models_dir):
         else:
             logger.warning("⚠️ buffalo_l directory not found for early InsightFace setup")
             
-    except Exception as e:
+except Exception as e:
         logger.error(f"❌ Error in early InsightFace setup: {e}")
 
 def setup_volume_models():
@@ -491,9 +491,9 @@ def verify_models():
                 logger.error(f"❌ Missing critical model: {model_name}")
                 return False
         
-        return True
+            return True
         
-    except Exception as e:
+        except Exception as e:
         logger.error(f"❌ Model verification failed: {e}")
         return False
 
@@ -1392,10 +1392,10 @@ def process_video_swap(source_image_data, target_video_data):
                 else:
                     logger.warning(f"⚠️ Fallback FFmpeg also failed: {fallback_result.stderr}")
                     logger.info("🔄 Proceeding with enhanced video-only output")
-                    try:
-                        os.unlink(final_video_with_audio.name)
-                    except:
-                        pass
+                try:
+                    os.unlink(final_video_with_audio.name)
+                except:
+                    pass
                     
         except subprocess.TimeoutExpired:
             logger.warning("⚠️ FFmpeg timeout, proceeding with enhanced video-only output")
@@ -2168,14 +2168,14 @@ def process_video_with_multi_faces(video_path, source_faces):
                 
                 try:
                     # Apply face enhancement if available
-                    from modules.processors.frame.face_enhancer import enhance_face
+                        from modules.processors.frame.face_enhancer import enhance_face
                     enhanced_frame = enhance_face(frame)
-                    if enhanced_frame is not None:
+                        if enhanced_frame is not None:
                         # Conservative blending for video stability
                         frame = cv2.addWeighted(frame, 0.3, enhanced_frame, 0.7, 0)
-                except ImportError:
-                    pass
-                except Exception as e:
+                    except ImportError:
+                        pass
+                    except Exception as e:
                     logger.warning(f"⚠️ Frame enhancement failed for frame {enhance_frame_count}: {e}")
                 
                 out_enhance.write(frame)
@@ -2233,7 +2233,7 @@ def process_video_with_multi_faces(video_path, source_faces):
                             else:
                                 upscaled_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
                                 out_sr.write(upscaled_frame)
-                        except Exception as e:
+            except Exception as e:
                             logger.warning(f"⚠️ SR failed for frame {sr_frame_count}: {e}")
                             upscaled_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
                             out_sr.write(upscaled_frame)
@@ -2314,10 +2314,10 @@ def process_video_with_multi_faces(video_path, source_faces):
                 else:
                     logger.warning(f"⚠️ Fallback FFmpeg also failed: {fallback_result.stderr}")
                     logger.info("🔄 Proceeding with enhanced multi-person video-only output")
-                    try:
-                        os.unlink(final_video_with_audio.name)
-                    except:
-                        pass
+                try:
+                    os.unlink(final_video_with_audio.name)
+                except:
+                    pass
                     
         except subprocess.TimeoutExpired:
             logger.warning("⚠️ FFmpeg timeout, proceeding with enhanced multi-person video-only output")

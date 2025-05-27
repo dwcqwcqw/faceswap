@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import FileUpload from '../components/FileUpload'
 import TaskHistory from '../components/TaskHistory'
 import TaskDetail from '../components/TaskDetail'
-import { ArrowPathIcon, DocumentArrowDownIcon, ExclamationTriangleIcon, EyeIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, ExclamationTriangleIcon, EyeIcon } from '@heroicons/react/24/outline'
 import apiService from '../services/api'
-import { ProcessingJob, DetectedFaces, ApiResponse } from '../types'
-import { taskHistory, TaskHistoryItem } from '../utils/taskHistory'
+import { DetectedFaces, ApiResponse } from '../types'
+import { TaskHistoryItem } from '../utils/taskHistory'
+import { taskManager } from '../utils/taskManager'
 
 interface FaceMapping {
   faceId: string;
@@ -18,58 +19,19 @@ export default function MultiImagePage() {
   const [detectedFaces, setDetectedFaces] = useState<DetectedFaces | null>(null)
   const [faceMappings, setFaceMappings] = useState<FaceMapping[]>([])
   const [isDetecting, setIsDetecting] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processingStatus, setProcessingStatus] = useState<ProcessingJob | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // 添加延迟控制状态
   const [lastRequestTime, setLastRequestTime] = useState<number>(0)
   const [requestInProgress, setRequestInProgress] = useState(false)
   const MIN_REQUEST_INTERVAL = 10000 // 10秒最小间隔
 
-  // 在组件加载时检查是否有活跃任务需要恢复
+  // 组件加载时的初始化
   useEffect(() => {
-    const activeTask = taskHistory.getLatestActiveTask('multi-image')
-    if (activeTask) {
-      console.log('🔄 恢复活跃多人任务:', activeTask.id)
-      setProcessingStatus(activeTask)
-      setIsProcessing(true)
-      setError(null)
-      
-      // 恢复轮询
-      setTimeout(() => pollJobStatus(activeTask.id), 1000)
-    }
+    // 任务管理器会自动恢复活跃任务，无需手动处理
   }, [])
-
-  const pollJobStatus = async (jobId: string) => {
-    try {
-      const response = await apiService.getJobStatus(jobId)
-      if (response.success && response.data) {
-        const status = response.data
-        setProcessingStatus(status)
-        
-        // Update task history
-        taskHistory.updateTask(jobId, {
-          ...status,
-          updated_at: new Date().toISOString()
-        })
-        
-        if (status.status === 'completed') {
-          setIsProcessing(false)
-        } else if (status.status === 'failed') {
-          setIsProcessing(false)
-          setError(status.error_message || '处理失败')
-        } else {
-          setTimeout(() => pollJobStatus(jobId), 3000)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to check job status:', error)
-      setError('无法获取处理状态')
-      setIsProcessing(false)
-    }
-  }
 
   const handleDetectFaces = async () => {
     if (!targetImage) return
@@ -180,9 +142,14 @@ export default function MultiImagePage() {
   const handleProcess = async () => {
     if (!targetImage || !detectedFaces || faceMappings.some(m => !m.sourceFile)) return
     
-    setIsProcessing(true)
+    // 检查是否可以启动新任务
+    if (!taskManager.canStartNewTask()) {
+      setError(`已达到最大并发任务数限制 (${taskManager.getConcurrentTaskCount()}/5)`)
+      return
+    }
+    
+    setIsSubmitting(true)
     setError(null)
-    setProcessingStatus(null)
 
     try {
       // Upload target image (the original multi-person image)
@@ -223,30 +190,25 @@ export default function MultiImagePage() {
 
       if (processResponse.success && processResponse.data) {
         const jobId = processResponse.data.jobId
+        console.log('✅ 多人换脸任务创建成功:', jobId)
         
-        const initialStatus: ProcessingJob = {
-          id: jobId,
-          status: 'pending' as const,
-          progress: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-        
-        setProcessingStatus(initialStatus)
-        
-        // Add to task history
-        const historyTask: TaskHistoryItem = {
-          ...initialStatus,
-          title: `多人换脸 - ${targetImage.name} (${faceMappings.length}个人脸)`,
-          type: 'multi-image',
-          files: {
+        // 使用任务管理器启动任务
+        await taskManager.startTask(
+          jobId,
+          'multi-image',
+          `多人换脸 - ${targetImage.name} (${faceMappings.length}个人脸)`,
+          {
             target: targetImage.name,
             source: faceMappings.map(m => m.sourceFile?.name).filter(Boolean).join(', ')
           }
-        }
-        taskHistory.addTask(historyTask)
+        )
         
-        setTimeout(() => pollJobStatus(jobId), 2000)
+        // 清空表单
+        setTargetImage(null)
+        setDetectedFaces(null)
+        setFaceMappings([])
+        
+        console.log('✅ 多人换脸任务已提交，可以继续提交新任务')
       } else {
         throw new Error('处理启动失败')
       }
@@ -254,35 +216,22 @@ export default function MultiImagePage() {
     } catch (error: any) {
       console.error('处理错误:', error)
       setError(error.message || '处理过程中出现错误')
-      setIsProcessing(false)
-    }
-  }
-
-  const handleDownload = () => {
-    if (processingStatus?.result_url) {
-      const link = document.createElement('a')
-      link.href = apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')
-      link.download = 'multi-face-swap-result.jpg'
-      link.click()
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleTaskSelect = (task: TaskHistoryItem) => {
     setSelectedHistoryTask(task)
-    // Clear current processing state to show historical result
-    setProcessingStatus(null)
-    setIsProcessing(false)
     setError(null)
   }
 
   const handleCloseTaskDetail = () => {
     setSelectedHistoryTask(null)
-    }
-
-
+  }
 
   const canDetect = targetImage && !isDetecting && !detectedFaces
-  const canProcess = targetImage && detectedFaces && faceMappings.every(m => m.sourceFile) && !isProcessing
+  const canProcess = targetImage && detectedFaces && faceMappings.every(m => m.sourceFile) && !isSubmitting
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -559,10 +508,10 @@ export default function MultiImagePage() {
               transition-colors
             `}
           >
-            {isProcessing ? (
+            {isSubmitting ? (
               <>
                 <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
-                处理中...
+                提交中...
               </>
             ) : (
               <>
@@ -580,60 +529,7 @@ export default function MultiImagePage() {
         </div>
       )}
 
-      {/* Processing Status */}
-      {processingStatus && isProcessing && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-          <div className="flex items-center">
-            <div className="loading-spinner mr-3"></div>
-            <div>
-              <h3 className="text-lg font-medium text-blue-900">正在处理您的多人换脸请求</h3>
-              <p className="text-blue-700">任务ID: {processingStatus.id}</p>
-              <p className="text-blue-700">
-                状态: {processingStatus.status} | 进度: {processingStatus.progress}%
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 bg-blue-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${processingStatus.progress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      {/* Result */}
-      {processingStatus?.status === 'completed' && processingStatus.result_url && !isProcessing && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">多人换脸结果</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <img
-                src={apiService.getDownloadUrl(processingStatus.result_url.split('/').pop() || '')}
-                alt="多人换脸结果"
-                className="w-full rounded-lg shadow-sm"
-                onError={(e) => {
-                  console.error('Image load error:', e);
-                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y3ZjdmNyIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+加载失败</dGV4dD48L3N2Zz4=';
-                }}
-              />
-            </div>
-            <div className="flex flex-col justify-center">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">多人换脸完成！</h4>
-              <p className="text-gray-600 mb-4">
-                您的多人换脸结果已生成，点击下载按钮保存图片。
-              </p>
-              <button
-                onClick={handleDownload}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                下载结果
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      
 
       {/* Task Detail */}
       {selectedHistoryTask && (
