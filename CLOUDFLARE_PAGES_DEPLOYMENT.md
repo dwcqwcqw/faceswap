@@ -40,11 +40,16 @@ web/frontend/
 3. **配置构建设置**
    ```
    Framework preset: Vite
-   Build command: cd web/frontend && npm run build
+   Build command: cd web/frontend && npm install && npm run build
    Build output directory: web/frontend/dist
    Root directory: /
    Node.js version: 18.x
    ```
+   
+   **重要**: 如果使用monorepo结构，请确保：
+   - Root directory设置为 `/` (项目根目录)
+   - Build command包含完整路径: `cd web/frontend && npm install && npm run build`
+   - Build output directory使用完整路径: `web/frontend/dist`
 
 4. **环境变量配置**
    ```
@@ -109,25 +114,33 @@ Cloudflare Worker已配置允许所有来源：
 
 ## 🐛 **常见问题解决**
 
-### 1. **路由404错误**
+### 1. **构建命令未执行**
+**问题**: 部署日志显示 "No build command specified. Skipping build step."
+**解决**: 
+- 在Cloudflare Pages设置中正确配置构建命令
+- 对于monorepo: `cd web/frontend && npm install && npm run build`
+- 确保Build output directory设置为: `web/frontend/dist`
+- 确保Root directory设置为: `/`
+
+### 2. **路由404错误**
 **问题**: 直接访问 `/video` 等路由返回404
 **解决**: 确保 `_redirects` 文件在构建输出中
 
-### 2. **API请求失败**
+### 3. **API请求失败**
 **问题**: 前端无法连接到后端API
 **解决**: 
 - 检查API_BASE_URL配置
 - 确认Cloudflare Worker正常运行
 - 检查CORS设置
 
-### 3. **构建失败**
+### 4. **构建失败**
 **问题**: Cloudflare Pages构建失败
 **解决**:
 - 检查Node.js版本（推荐18.x）
 - 确认构建命令路径正确
 - 检查package.json依赖
 
-### 4. **静态资源加载失败**
+### 5. **静态资源加载失败**
 **问题**: CSS/JS文件404
 **解决**: 确认 `base: '/'` 在vite.config.ts中设置
 

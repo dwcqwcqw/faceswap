@@ -1,0 +1,13 @@
+name = "faceswap-frontend"
+compatibility_date = "2024-01-15"
+
+[env.production]
+pages_build_output_dir = "dist"
+
+[build]
+command = "npm run build"
+cwd = "."
+
+[build.environment_variables]
+NODE_VERSION = "18"
+NPM_VERSION = "latest" 
