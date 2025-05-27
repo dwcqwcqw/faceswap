@@ -102,13 +102,13 @@ export default function VideoPage() {
   const canProcess = sourceVideo && targetFace && !isSubmitting
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">视频换脸</h1>
-        <p className="mt-2 text-lg text-gray-600">
+    <div className="max-w-6xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">视频换脸</h1>
+        <p className="mt-2 text-base sm:text-lg text-gray-600">
           上传人脸图片和目标视频，AI将为视频中的人脸进行换脸处理
         </p>
-        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
           <div className="flex items-center justify-center">
             <div className="text-blue-800 text-sm">
               💡 <strong>上传要求：</strong>左侧上传人脸图片，右侧上传目标视频
@@ -120,24 +120,22 @@ export default function VideoPage() {
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2 flex-shrink-0" />
+          <div className="flex flex-col sm:flex-row">
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-0 sm:mr-2 mb-2 sm:mb-0 flex-shrink-0" />
             <div className="flex-1">
               <h3 className="text-sm font-medium text-red-800">处理错误</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-              
-              {/* 重试按钮 */}
-              <div className="mt-4 flex space-x-3">
+              <p className="text-sm text-red-700 mt-1 break-words">{error}</p>
+              <div className="mt-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   onClick={() => setError(null)}
-                  className="inline-flex items-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  className="inline-flex items-center justify-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
                   关闭错误信息
                 </button>
                 {canProcess && (
                   <button
                     onClick={handleProcess}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                   >
                     <ArrowPathIcon className="h-4 w-4 mr-1" />
                     重试处理
@@ -149,12 +147,12 @@ export default function VideoPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
         {/* Source Face Upload */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
           <FileUpload
-            label="人脸图片"
-            description="上传要替换的人脸图片"
+            label="源人脸图片"
+            description="上传要替换到视频中的人脸图片"
             onFileSelect={setSourceVideo}
             currentFile={sourceVideo}
             onRemove={() => setSourceVideo(null)}
@@ -166,10 +164,10 @@ export default function VideoPage() {
             <div className="mt-4">
               <img
                 src={URL.createObjectURL(sourceVideo)}
-                alt="人脸图片预览"
-                className="w-full h-48 object-cover rounded-lg"
+                alt="源人脸"
+                className="w-full h-40 sm:h-48 object-cover rounded-lg"
               />
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-xs sm:text-sm text-gray-500 mt-2">
                 文件大小: {(sourceVideo.size / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
@@ -177,7 +175,7 @@ export default function VideoPage() {
         </div>
 
         {/* Target Video Upload */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
           <FileUpload
             label="目标视频"
             description="上传需要换脸的视频文件"
@@ -185,18 +183,18 @@ export default function VideoPage() {
             currentFile={targetFace}
             onRemove={() => setTargetFace(null)}
             accept={{ 
-              'video/*': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.3gp', '.m4v', '.webm', '.ogg', '.mpg', '.mpeg']
+              'video/*': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.3gp', '.m4v', '.webm']
             }}
           />
           {targetFace && (
             <div className="mt-4">
               <video
                 src={URL.createObjectURL(targetFace)}
-                className="w-full h-48 object-cover rounded-lg"
                 controls
-                preload="metadata"
+                className="w-full h-40 sm:h-48 rounded-lg"
+                style={{ maxHeight: '200px' }}
               />
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-xs sm:text-sm text-gray-500 mt-2">
                 文件大小: {(targetFace.size / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
@@ -205,12 +203,12 @@ export default function VideoPage() {
       </div>
 
       {/* Process Button */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-6 sm:mb-8">
         <button
           onClick={handleProcess}
           disabled={!canProcess}
           className={`
-            inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md
+            inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md w-full sm:w-auto
             ${canProcess
               ? 'text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
               : 'text-gray-400 bg-gray-200 cursor-not-allowed'
@@ -225,14 +223,12 @@ export default function VideoPage() {
             </>
           ) : (
             <>
-              <PlayIcon className="h-5 w-5 mr-2" />
+              <ArrowPathIcon className="h-5 w-5 mr-2" />
               开始视频换脸
             </>
           )}
         </button>
       </div>
-
-
 
       {/* Task Detail */}
       {selectedHistoryTask && (
@@ -249,17 +245,15 @@ export default function VideoPage() {
       />
 
       {/* Tips */}
-      <div className="mt-8 bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-3">视频换脸最佳实践:</h3>
-        <ul className="text-sm text-gray-600 space-y-2">
-          <li>• <strong>格式支持：</strong>视频支持 MP4、AVI、MOV、MKV、WMV等格式</li>
-          <li>• 使用高分辨率、人脸清晰的图片和视频</li>
-          <li>• 确保人脸图片中的人脸朝向正前方</li>
-          <li>• 视频中的人脸应该清晰可见，避免被遮挡</li>
-          <li>• <strong>⏰ 处理时间：</strong>视频换脸通常需要5-15分钟，具体取决于视频长度</li>
-          <li>• <strong>🎬 输出质量：</strong>系统会保持原视频的帧率和高质量输出</li>
-          <li>• <strong>🔊 音频保留：</strong>处理后的视频会保留原始音频</li>
-          <li>• <strong>📱 网络建议：</strong>强烈建议在WiFi环境下使用</li>
+      <div className="mt-6 sm:mt-8 bg-gray-50 rounded-lg p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3">获得最佳效果的建议:</h3>
+        <ul className="text-xs sm:text-sm text-gray-600 space-y-2">
+          <li>• 使用高分辨率、人脸清晰的源人脸图片</li>
+          <li>• 确保源人脸图片中的人脸朝向正前方</li>
+          <li>• 视频中的人脸应该清晰可见，避免过度遮挡</li>
+          <li>• 支持多种视频格式：MP4、AVI、MOV、MKV、WMV等</li>
+          <li>• 视频处理时间较长，请耐心等待</li>
+          <li>• 建议使用较短的视频（1-2分钟）以减少处理时间</li>
         </ul>
       </div>
     </div>

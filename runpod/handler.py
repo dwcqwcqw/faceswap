@@ -178,6 +178,7 @@ def process_single_image_swap(input_data):
         
     except Exception as e:
         print(f"Error in single image processing: {str(e)}")
+        pass
         return {
             'success': False,
             'error': str(e)
@@ -256,6 +257,7 @@ def process_multi_image_swap(input_data):
         
     except Exception as e:
         print(f"Error in multi-image processing: {str(e)}")
+        pass
         return {
             'success': False,
             'error': str(e)

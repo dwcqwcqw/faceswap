@@ -345,6 +345,24 @@ export const apiService = {
     }, 'processSingleImage')
   },
 
+  // Single image face swap with direct FormData upload
+  async singleImageSwap(formData: FormData): Promise<ApiResponse<{ job_id: string }>> {
+    return this.withRetry(async () => {
+      const response = await api.post('/single-image-swap', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 120000, // 2分钟超时
+      })
+      
+      if (!response.data?.success || !response.data?.data?.job_id) {
+        throw new Error('单人图片换脸任务创建失败，未获得有效任务ID')
+      }
+      
+      return response.data
+    }, 'singleImageSwap')
+  },
+
   // Multi-person image face swap
   async processMultiImage(request: FaceSwapRequest): Promise<ApiResponse<{ jobId: string }>> {
     // Add high quality default options
@@ -536,4 +554,4 @@ export const apiService = {
   },
 }
 
-export default apiService 
+export default apiService

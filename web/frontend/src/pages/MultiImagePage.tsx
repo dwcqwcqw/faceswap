@@ -234,16 +234,17 @@ export default function MultiImagePage() {
   const canProcess = targetImage && detectedFaces && faceMappings.every(m => m.sourceFile) && !isSubmitting
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">多人图片换脸</h1>
-        <p className="mt-2 text-lg text-gray-600">
-          上传包含多人的目标图片，系统将识别所有人脸并允许您为每个人脸选择替换的源人脸
+    <div className="container-xs sm:max-w-6xl mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-6 lg:px-8 mb-16 sm:mb-0">
+      <div className="text-center mb-4 sm:mb-6 lg:mb-8">
+        <h1 className="heading-responsive text-gray-900">多人图片换脸</h1>
+        <p className="mt-2 text-mobile-body sm:text-base lg:text-lg text-gray-600 max-w-3xl mx-auto">
+          上传包含多人的图片，系统将识别所有人脸并允许您为每个人脸选择替换的源人脸
         </p>
-        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="mt-3 sm:mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
           <div className="flex items-center justify-center">
-            <div className="text-blue-800 text-sm">
-              💡 <strong>操作流程：</strong>1. 上传目标图片（包含多人） → 2. 检测人脸 → 3. 为每个人脸选择替换的源人脸图片 → 4. 开始换脸
+            <div className="text-blue-800 text-xs sm:text-sm text-center leading-relaxed">
+              💡 <strong>操作流程：</strong><br className="sm:hidden" />
+              1. 上传目标图片（包含多人） → 2. 检测人脸 → 3. 为每个人脸选择替换的源人脸图片 → 4. 开始换脸
             </div>
           </div>
         </div>
@@ -251,94 +252,33 @@ export default function MultiImagePage() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-red-800">处理错误</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-              
-              {/* 错误类型判断和建议 */}
-              <div className="mt-3 text-sm text-red-600">
-                {error.includes('unexpected EOF') || error.includes('corrupted') ? (
-                  <div className="bg-red-100 p-3 rounded border-l-4 border-red-500">
-                    <p className="font-medium">🛠️ 文件损坏问题的解决方案：</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>请重新选择文件并重试</li>
-                      <li>确保文件完整且未损坏</li>
-                      <li>尝试使用其他图片格式（JPG/PNG）</li>
-                      <li>检查网络连接是否稳定</li>
-                    </ul>
-                  </div>
-                ) : error.includes('timeout') || error.includes('超时') ? (
-                  <div className="bg-yellow-100 p-3 rounded border-l-4 border-yellow-500">
-                    <p className="font-medium">⏱️ 超时问题的解决方案：</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>检查网络连接</li>
-                      <li>尝试压缩图片大小</li>
-                      <li>稍后重试</li>
-                    </ul>
-                  </div>
-                ) : error.includes('format') || error.includes('格式') ? (
-                  <div className="bg-blue-100 p-3 rounded border-l-4 border-blue-500">
-                    <p className="font-medium">📁 格式问题的解决方案：</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>确保使用支持的图片格式（JPG、PNG）</li>
-                      <li>避免使用损坏或特殊格式的文件</li>
-                      <li>尝试重新保存图片</li>
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="bg-gray-100 p-3 rounded border-l-4 border-gray-500">
-                    <p className="font-medium">💡 通用解决方案：</p>
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>检查网络连接</li>
-                      <li>刷新页面重试</li>
-                      <li>更换不同的图片文件</li>
-                      <li>稍后再试</li>
-                    </ul>
-                  </div>
-                )}
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 animate-slide-down">
+          <div className="flex flex-col">
+            <div className="flex items-start">
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-medium text-red-800">处理错误</h3>
+                <p className="text-sm text-red-700 mt-1 break-words">{error}</p>
               </div>
-              
-              {/* 重试按钮 */}
-              <div className="mt-4 flex space-x-3">
-                <button
-                  onClick={() => setError(null)}
-                  className="inline-flex items-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  关闭错误信息
-                </button>
-                {canProcess && (
-                  <button
-                    onClick={handleProcess}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  >
-                    <ArrowPathIcon className="h-4 w-4 mr-1" />
-                    重试处理
-                  </button>
-                )}
-                {canDetect && (
-                  <button
-                    onClick={handleDetectFaces}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <EyeIcon className="h-4 w-4 mr-1" />
-                    重新检测人脸
-                  </button>
-                )}
-              </div>
+            </div>
+            <div className="mt-4 flex flex-col xs:flex-row space-y-2 xs:space-y-0 xs:space-x-3">
+              <button
+                onClick={() => setError(null)}
+                className="touch-target flex-1 xs:flex-initial inline-flex items-center justify-center px-3 py-2 border border-red-300 text-sm font-medium rounded-lg text-red-700 bg-white hover:bg-red-50 focus-enhanced transition-colors"
+              >
+                关闭错误信息
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Step 1: Upload Target Image */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">第一步：上传目标图片</h2>
+      {/* Step 1: Target Image Upload */}
+      <div className="card-mobile sm:bg-white sm:rounded-lg sm:shadow-sm sm:border sm:border-gray-200 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
+        <h2 className="text-mobile-title sm:text-lg lg:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">步骤 1: 上传目标图片</h2>
         <FileUpload
-          label="包含多人的目标图片"
-          description="上传包含多个人脸的目标图片"
+          label="目标图片（包含多人）"
+          description="上传包含多个人脸的图片，系统将自动检测所有人脸"
           onFileSelect={setTargetImage}
           currentFile={targetImage}
           onRemove={() => {
@@ -350,50 +290,42 @@ export default function MultiImagePage() {
             'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
           }}
         />
-        {targetImage && (
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div>
-              <img
-                src={URL.createObjectURL(targetImage)}
-                alt="原图"
-                className="w-full h-64 object-cover rounded-lg"
-              />
-              <p className="text-sm text-gray-500 mt-2">
-                文件大小: {(targetImage.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-            <div className="flex flex-col justify-center">
+
+
+        {/* Face Detection Button */}
+        {targetImage && !detectedFaces && (
+          <div className="mt-4 sm:mt-6 text-center">
+            <div className="flex flex-col items-center justify-center">
               <button
                 onClick={handleDetectFaces}
                 disabled={!canDetect}
                 className={`
-                  inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md
+                  btn-mobile w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg transition-all duration-200 focus-enhanced
                   ${canDetect
-                    ? 'text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                    ? 'text-white bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transform hover:scale-105'
                     : 'text-gray-400 bg-gray-200 cursor-not-allowed'
                   }
-                  transition-colors
                 `}
               >
                 {isDetecting ? (
                   <>
-                    <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                    检测人脸中...
+                    <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
+                    <span>检测人脸中...</span>
                   </>
                 ) : (
                   <>
-                    <EyeIcon className="h-4 w-4 mr-2" />
-                    检测人脸
+                    <EyeIcon className="h-5 w-5 mr-2" />
+                    <span>检测人脸</span>
                   </>
                 )}
               </button>
               {canDetect && (
-                <p className="text-sm text-blue-600 mt-2">
+                <p className="text-xs sm:text-sm text-blue-600 mt-3 text-center px-2">
                   💡 提示：人脸检测通常需要1-3分钟，请耐心等待
                 </p>
               )}
               {isDetecting && (
-                <p className="text-sm text-orange-600 mt-2">
+                <p className="text-xs sm:text-sm text-orange-600 mt-3 text-center px-2">
                   ⏳ 正在检测人脸，请勿关闭页面，预计需要1-3分钟...
                 </p>
               )}
@@ -404,89 +336,55 @@ export default function MultiImagePage() {
 
       {/* Step 2: Detected Faces and Target Upload */}
       {detectedFaces && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            第二步：为每个检测到的人脸选择替换的源人脸 (检测到 {detectedFaces.faces.length} 个人脸)
+        <div className="card-mobile sm:bg-white sm:rounded-lg sm:shadow-sm sm:border sm:border-gray-200 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
+          <h2 className="text-mobile-title sm:text-lg lg:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
+            步骤 2: 为每个人脸选择替换图片 ({detectedFaces.faces.length} 个人脸)
           </h2>
+          <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6 leading-relaxed">
+            系统检测到 {detectedFaces.faces.length} 个人脸，请为每个人脸上传对应的替换图片。
+            人脸编号按从左到右、从上到下的顺序排列。
+          </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {detectedFaces.faces.map((face, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-3">人脸 {index + 1}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+            {detectedFaces.faces.map((face: any, index: number) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-2 sm:mb-3">
+                  人脸 {index + 1}：这个位置的人脸将被替换为您上传的图片
+                </h3>
                 
-                {/* Face preview from original image */}
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">原图中的人脸:</p>
-                  {face.preview ? (
-                    <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                      <img
-                        src={`data:image/jpeg;base64,${face.preview}`}
-                        alt={`人脸 ${index + 1}`}
-                        className="max-w-full max-h-full object-contain rounded"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <span className="text-gray-500 text-sm block">
-                          位置: ({face.x}, {face.y})
-                        </span>
-                        <span className="text-gray-500 text-sm block">
-                          大小: {face.width} × {face.height}
-                        </span>
-                        <span className="text-gray-500 text-sm block">
-                          置信度: {(face.confidence * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {face.preview && (
-                    <div className="text-xs text-gray-500 mt-1 bg-gray-50 p-2 rounded">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <span className="font-medium">位置:</span> ({face.x}, {face.y})
-                        </div>
-                        <div>
-                          <span className="font-medium">大小:</span> {face.width} × {face.height}
-                        </div>
-                        <div>
-                          <span className="font-medium">置信度:</span> {(face.confidence * 100).toFixed(1)}%
-                        </div>
-                        {face.center_x && face.center_y && (
-                          <div>
-                            <span className="font-medium">中心:</span> ({face.center_x}, {face.center_y})
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-1 text-blue-600 text-xs">
-                        💡 人脸 {index + 1}：这个位置的人脸将被替换为您上传的图片
-                      </div>
-                    </div>
-                  )}
+                {/* Show detected face */}
+                <div className="mb-3 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-gray-600 mb-2">检测到的人脸:</p>
+                  <div className="relative">
+                    <img
+                      src={URL.createObjectURL(targetImage!)}
+                      alt={`检测到的人脸 ${index + 1}`}
+                      className="w-full h-24 sm:h-32 object-cover rounded border"
+                      style={{
+                        objectPosition: `${-face.x + 50}px ${-face.y + 50}px`
+                      }}
+                    />
+                    <div className="absolute inset-0 border-2 border-blue-500 rounded"></div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    位置: ({face.x}, {face.y}) | 置信度: {(face.confidence * 100).toFixed(1)}%
+                  </p>
                 </div>
 
-                {/* Target face upload */}
-                <FileUpload
-                  label={`替换人脸 ${index + 1}`}
-                  description="上传要替换的人脸图片"
-                  onFileSelect={(file) => handleFaceFileSelect(index, file)}
-                  currentFile={faceMappings[index]?.sourceFile || null}
-                  onRemove={() => handleFaceFileSelect(index, null)}
-                  accept={{ 
-              'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
-            }}
-                />
+                {/* Upload replacement face */}
+                <div>
+                  <FileUpload
+                    label={`替换人脸 ${index + 1}`}
+                    description="上传要替换到此位置的人脸图片"
+                    onFileSelect={(file) => handleFaceFileSelect(index, file)}
+                    currentFile={faceMappings[index]?.sourceFile || null}
+                    onRemove={() => handleFaceFileSelect(index, null)}
+                    accept={{ 
+                      'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
+                    }}
+                  />
 
-                {/* Target face preview */}
-                {faceMappings[index]?.previewUrl && (
-                  <div className="mt-3">
-                    <img
-                      src={faceMappings[index].previewUrl}
-                      alt={`替换人脸 ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg"
-                    />
-                  </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
@@ -495,23 +393,22 @@ export default function MultiImagePage() {
 
       {/* Step 3: Process Button */}
       {detectedFaces && (
-        <div className="text-center mb-8">
+        <div className="text-center mb-4 sm:mb-6 lg:mb-8">
           <button
             onClick={handleProcess}
             disabled={!canProcess}
             className={`
-              inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md
+              btn-mobile w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-lg transition-all duration-200 focus-enhanced transform
               ${canProcess
-                ? 'text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+                ? 'text-white bg-primary-600 hover:bg-primary-700 hover:scale-105 shadow-lg hover:shadow-xl'
                 : 'text-gray-400 bg-gray-200 cursor-not-allowed'
               }
-              transition-colors
             `}
           >
             {isSubmitting ? (
               <>
                 <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
-                提交中...
+                <span>处理中...</span>
               </>
             ) : (
               <>
@@ -520,16 +417,13 @@ export default function MultiImagePage() {
               </>
             )}
           </button>
-          
-          {faceMappings.some(m => !m.sourceFile) && (
-            <p className="mt-2 text-sm text-red-600">
-              请为所有检测到的人脸上传替换图片
+          {canProcess && (
+            <p className="text-sm text-gray-600 mt-2">
+              已为 {faceMappings.filter(m => m.sourceFile).length}/{faceMappings.length} 个人脸选择了替换图片
             </p>
           )}
         </div>
       )}
-
-      
 
       {/* Task Detail */}
       {selectedHistoryTask && (
@@ -546,19 +440,15 @@ export default function MultiImagePage() {
       />
 
       {/* Tips */}
-      <div className="mt-8 bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-3">多人图片换脸最佳实践:</h3>
-        <ul className="text-sm text-gray-600 space-y-2">
-          <li>• <strong>格式支持：</strong>图片支持 JPG、PNG、BMP、TIFF、WebP、GIF、HEIC等格式</li>
-          <li>• 确保原图中的人脸清晰可见，避免被遮挡或模糊</li>
-          <li>• 为每个检测到的人脸准备相应的高质量替换图片</li>
-          <li>• 替换图片中的人脸最好与原图中的角度和光线相似</li>
-          <li>• <strong>⏰ 处理时间：</strong>人脸检测通常需要1-3分钟，处理多人图片需要更长时间</li>
-          <li>• <strong>🔄 重试建议：</strong>如果检测超时，请检查网络连接后重试</li>
-          <li>• <strong>💡 优化建议：</strong>使用人脸较少的图片（2-3人）可显著减少处理时间</li>
-          <li>• 💡 人脸按位置自动排序：从上到下，从左到右</li>
-          <li>• <strong>⚠️ 注意事项：</strong>请勿在检测或处理过程中关闭页面</li>
-          <li>• <strong>📱 网络建议：</strong>强烈建议在WiFi环境下使用</li>
+      <div className="mt-6 sm:mt-8 bg-gray-50 rounded-lg p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3">获得最佳效果的建议:</h3>
+        <ul className="text-xs sm:text-sm text-gray-600 space-y-2">
+          <li>• 使用高分辨率、人脸清晰、光线充足的图片</li>
+          <li>• 确保替换人脸图片中的人脸朝向正前方</li>
+          <li>• 人脸编号按从左到右、从上到下的顺序排列</li>
+          <li>• 尽量使用光线条件相似的图片</li>
+          <li>• 支持多种图片格式：JPG、PNG、BMP、TIFF、WebP、GIF、HEIC等</li>
+          <li>• 多人换脸处理时间较长，请耐心等待</li>
         </ul>
       </div>
     </div>

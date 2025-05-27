@@ -22,9 +22,10 @@ code {
   @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600;
 }
 
-/* Custom file upload styles */
+/* Custom file upload styles - responsive */
 .dropzone {
-  @apply border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer transition-colors;
+  @apply border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center cursor-pointer transition-colors;
+  min-height: 120px;
 }
 
 .dropzone:hover {
@@ -33,4 +34,143 @@ code {
 
 .dropzone.active {
   @apply border-primary-600 bg-primary-100;
+}
+
+/* Enhanced responsive utilities */
+@media (max-width: 640px) {
+  .dropzone {
+    @apply p-3;
+    min-height: 100px;
+  }
+  
+  /* Mobile-optimized button sizes */
+  .btn-mobile {
+    @apply py-3 px-4 text-base;
+    min-height: 44px; /* iOS minimum touch target */
+  }
+  
+  /* Mobile card adjustments */
+  .card-mobile {
+    @apply rounded-lg shadow-sm border border-gray-200 p-4;
+  }
+  
+  /* Mobile typography adjustments */
+  .text-mobile-title {
+    @apply text-xl font-bold;
+  }
+  
+  .text-mobile-body {
+    @apply text-sm leading-relaxed;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  /* Tablet-specific adjustments */
+  .tablet-grid {
+    @apply grid-cols-1 md:grid-cols-2;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small mobile devices */
+  .dropzone {
+    @apply p-2;
+    min-height: 80px;
+  }
+  
+  .container-xs {
+    @apply px-3;
+  }
+  
+  .text-xs-mobile {
+    @apply text-xs;
+  }
+}
+
+/* Image preview responsive styles */
+.image-preview {
+  @apply w-full rounded-lg object-cover;
+  max-height: 200px;
+}
+
+@media (min-width: 640px) {
+  .image-preview {
+    max-height: 240px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .image-preview {
+    max-height: 300px;
+  }
+}
+
+/* Touch-friendly interactive elements */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Responsive navigation improvements */
+@media (max-width: 768px) {
+  .nav-mobile {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50;
+  }
+  
+  .nav-mobile-item {
+    @apply flex-1 py-2 px-1 text-center;
+  }
+}
+
+/* Grid responsiveness improvements */
+.responsive-grid {
+  @apply grid gap-4;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid {
+    @apply gap-6;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid {
+    @apply gap-8;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+
+/* Responsive text scaling */
+.heading-responsive {
+  @apply text-2xl font-bold;
+}
+
+@media (min-width: 640px) {
+  .heading-responsive {
+    @apply text-3xl;
+  }
+}
+
+@media (min-width: 1024px) {
+  .heading-responsive {
+    @apply text-4xl;
+  }
+}
+
+/* Focus improvements for accessibility */
+.focus-enhanced:focus {
+  @apply outline-none ring-2 ring-primary-500 ring-opacity-50;
+}
+
+/* Print styles for better print support */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-friendly {
+    @apply bg-white text-black;
+  }
 } 

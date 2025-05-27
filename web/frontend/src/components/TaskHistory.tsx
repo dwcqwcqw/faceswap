@@ -201,29 +201,29 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <h3 className="text-lg font-medium text-gray-900">
+          <div className="flex items-center min-w-0 flex-1">
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate">
               {taskType ? getTaskTypeLabel(taskType) : '任务历史'}
             </h3>
             {activeTasks.length > 0 && (
-              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                {activeTasks.length} 个活跃任务
+              <span className="ml-2 inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 flex-shrink-0">
+                {activeTasks.length} 个活跃
               </span>
             )}
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 text-sm"
             >
               {isExpanded ? '收起' : '展开'}
             </button>
             {tasks.length > 0 && (
               <button
                 onClick={handleClearHistory}
-                className="text-red-400 hover:text-red-600 text-sm"
+                className="text-red-400 hover:text-red-600 text-sm hidden sm:block"
               >
                 清空历史
               </button>
@@ -233,25 +233,36 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
 
         {/* Filters */}
         {isExpanded && (
-          <div className="mt-4 flex space-x-2">
-            {[
-              { key: 'all', label: '全部', count: tasks.length },
-              { key: 'active', label: '进行中', count: activeTasks.length },
-              { key: 'completed', label: '已完成', count: tasks.filter(t => t.status === 'completed').length },
-              { key: 'failed', label: '失败', count: tasks.filter(t => t.status === 'failed').length }
-            ].map(({ key, label, count }) => (
+          <div className="mt-4">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'all', label: '全部', count: tasks.length },
+                { key: 'active', label: '进行中', count: activeTasks.length },
+                { key: 'completed', label: '已完成', count: tasks.filter(t => t.status === 'completed').length },
+                { key: 'failed', label: '失败', count: tasks.filter(t => t.status === 'failed').length }
+              ].map(({ key, label, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key as any)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    filter === key
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {label} ({count})
+                </button>
+              ))}
+            </div>
+            {/* Mobile clear button */}
+            {tasks.length > 0 && (
               <button
-                key={key}
-                onClick={() => setFilter(key as any)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  filter === key
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                onClick={handleClearHistory}
+                className="mt-3 text-red-400 hover:text-red-600 text-sm sm:hidden"
               >
-                {label} ({count})
+                清空历史记录
               </button>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -260,27 +271,29 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
       {isExpanded && (
         <div className="max-h-96 overflow-y-auto">
           {filteredTasks.length === 0 ? (
-            <div className="px-6 py-8 text-center text-gray-500">
+            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
               <ClockIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
               <p>暂无任务记录</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
               {filteredTasks.map((task) => (
-                <div key={task.id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center">
-                        {getStatusIcon(task.status)}
-                        <div className="ml-3 flex-1">
+                <div key={task.id} className="px-4 sm:px-6 py-4 hover:bg-gray-50">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex-1 min-w-0 mb-3 sm:mb-0">
+                      <div className="flex items-start sm:items-center">
+                        <div className="flex-shrink-0 mt-1 sm:mt-0">
+                          {getStatusIcon(task.status)}
+                        </div>
+                        <div className="ml-3 flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {task.title}
                           </p>
-                          <div className="flex items-center mt-1 text-xs text-gray-500">
+                          <div className="flex flex-col sm:flex-row sm:items-center mt-1 text-xs text-gray-500 space-y-1 sm:space-y-0">
                             <span className="capitalize">{task.type.replace('-', ' ')}</span>
-                            <span className="mx-1">•</span>
+                            <span className="hidden sm:inline mx-1">•</span>
                             <span>{getStatusText(task.status)}</span>
-                            <span className="mx-1">•</span>
+                            <span className="hidden sm:inline mx-1">•</span>
                             <span>{formatDate(task.created_at)}</span>
                           </div>
                           {(task.progress > 0 || task.status === 'processing') && (
@@ -309,7 +322,7 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center space-x-2 ml-4">
+                    <div className="flex items-center justify-end space-x-2 sm:ml-4">
                       {(task.status === 'pending' || task.status === 'processing') && (
                         <button
                           onClick={() => handleCancelTask(task)}
