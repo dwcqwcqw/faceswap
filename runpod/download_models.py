@@ -75,7 +75,7 @@ def extract_zip(zip_path, extract_to, remove_after=True):
             zip_ref.extractall(extract_to)
         
         # Only remove downloaded zip files, not existing workspace files
-        if remove_after and '/workspace/' not in zip_path:
+        if remove_after and '/workspace/' not in zip_path and '/runpod-volume/' not in zip_path:
             os.remove(zip_path)  # Clean up zip file
             print(f"✅ Extracted and removed {os.path.basename(zip_path)}")
         else:
@@ -89,9 +89,10 @@ def check_existing_models(models_dir):
     """Check for existing models in various locations"""
     existing_models = {}
     
-    # Check runpod-volume/workspace/faceswap directory (user mentioned models are there)
+    # Check runpod-volume paths and workspace directory (user mentioned models are there)
     workspace_paths = [
         '/runpod-volume/workspace/faceswap',
+        '/runpod-volume/faceswap',
         '/workspace/faceswap'
     ]
     
