@@ -45,8 +45,19 @@ code {
   
   /* Mobile-optimized button sizes */
   .btn-mobile {
-    @apply py-3 px-4 text-base;
+    @apply py-3 px-4 text-base w-full;
     min-height: 44px; /* iOS minimum touch target */
+    word-wrap: break-word;
+    white-space: normal;
+    text-align: center;
+  }
+  
+  /* Button text should not break unnecessarily on larger screens */
+  @media (min-width: 640px) {
+    .btn-mobile {
+      @apply w-auto;
+      white-space: nowrap;
+    }
   }
   
   /* Mobile card adjustments */
@@ -87,21 +98,26 @@ code {
   }
 }
 
-/* Image preview responsive styles */
+/* Image and video preview responsive styles */
 .image-preview {
-  @apply w-full rounded-lg object-cover;
-  max-height: 200px;
+  @apply w-full rounded-lg object-contain;
+  max-height: 300px;
+}
+
+.video-preview {
+  @apply w-full rounded-lg;
+  max-height: 300px;
 }
 
 @media (min-width: 640px) {
-  .image-preview {
-    max-height: 240px;
+  .image-preview, .video-preview {
+    max-height: 400px;
   }
 }
 
 @media (min-width: 1024px) {
-  .image-preview {
-    max-height: 300px;
+  .image-preview, .video-preview {
+    max-height: 500px;
   }
 }
 

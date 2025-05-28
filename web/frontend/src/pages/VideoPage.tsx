@@ -160,18 +160,7 @@ export default function VideoPage() {
               'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
             }}
           />
-          {sourceVideo && (
-            <div className="mt-4">
-              <img
-                src={URL.createObjectURL(sourceVideo)}
-                alt="源人脸"
-                className="w-full h-40 sm:h-48 object-cover rounded-lg"
-              />
-              <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                文件大小: {(sourceVideo.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-          )}
+
         </div>
 
         {/* Target Video Upload */}
@@ -186,19 +175,7 @@ export default function VideoPage() {
               'video/*': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.3gp', '.m4v', '.webm']
             }}
           />
-          {targetFace && (
-            <div className="mt-4">
-              <video
-                src={URL.createObjectURL(targetFace)}
-                controls
-                className="w-full h-40 sm:h-48 rounded-lg"
-                style={{ maxHeight: '200px' }}
-              />
-              <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                文件大小: {(targetFace.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-          )}
+
         </div>
       </div>
 

@@ -127,23 +127,39 @@ export default function FileUpload({
             )}
           </div>
 
-          {/* Image Preview */}
-          {isImageFile && currentFile && (
+          {/* File Preview */}
+          {currentFile && (
             <div className="relative">
-              <img
-                src={previewUrl || URL.createObjectURL(currentFile)}
-                alt="文件预览"
-                className="image-preview border border-gray-200 shadow-sm"
-                onLoad={() => {
-                  // Clean up any previous preview URL
-                  if (previewUrl && previewUrl !== URL.createObjectURL(currentFile)) {
-                    URL.revokeObjectURL(previewUrl);
-                  }
-                }}
-              />
+              {isImageFile ? (
+                <img
+                  src={previewUrl || URL.createObjectURL(currentFile)}
+                  alt="文件预览"
+                  className="w-full max-w-full h-auto rounded-lg border border-gray-200 shadow-sm object-contain"
+                  style={{ maxHeight: '400px' }}
+                  onLoad={() => {
+                    // Clean up any previous preview URL
+                    if (previewUrl && previewUrl !== URL.createObjectURL(currentFile)) {
+                      URL.revokeObjectURL(previewUrl);
+                    }
+                  }}
+                />
+              ) : currentFile.type.startsWith('video/') ? (
+                <video
+                  controls
+                  className="w-full max-w-full h-auto rounded-lg border border-gray-200 shadow-sm"
+                  style={{ maxHeight: '400px' }}
+                >
+                  <source src={URL.createObjectURL(currentFile)} type={currentFile.type} />
+                  您的浏览器不支持视频播放
+                </video>
+              ) : (
+                <div className="w-full h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500 text-sm">文件预览不可用</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100">
                 <span className="text-white text-sm font-medium bg-black bg-opacity-50 px-3 py-1 rounded-full">
-                  预览图片
+                  {isImageFile ? '预览图片' : currentFile.type.startsWith('video/') ? '播放视频' : '预览文件'}
                 </span>
               </div>
             </div>

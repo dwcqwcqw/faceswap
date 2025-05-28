@@ -791,27 +791,61 @@ def process_multi_video_swap(input_data):
         }
 
 def process_detect_faces(input_data):
-    """Detect faces in image"""
+    """Detect faces in image or video"""
     try:
-        print("Detecting faces...")
+        print("🔍 Detecting faces...")
         
         # Create temporary directory
         temp_dir = tempfile.mkdtemp()
         
-        # Download image
-        image_url = input_data.get('image_file')
-        image_path = os.path.join(temp_dir, 'image.jpg')
+        # Download file
+        file_url = input_data.get('image_file')
+        print(f"📥 Downloading file from: {file_url}")
         
-        if not download_from_url(image_url, image_path):
-            raise Exception("Failed to download image")
+        # Try to determine file type from URL or download it to check
+        temp_file_path = os.path.join(temp_dir, 'temp_file')
         
-        # Load image
-        image = cv2.imread(image_path)
-        if image is None:
-            raise Exception("Failed to load image")
+        if not download_from_url(file_url, temp_file_path):
+            raise Exception("Failed to download file")
+        
+        # Check if it's a video file by trying to open with OpenCV VideoCapture
+        cap = cv2.VideoCapture(temp_file_path)
+        is_video = cap.isOpened() and cap.get(cv2.CAP_PROP_FRAME_COUNT) > 0
+        
+        if is_video:
+            print("📹 Detected video file, extracting first frame for face detection")
+            
+            # Read first frame
+            ret, frame = cap.read()
+            cap.release()
+            
+            if not ret or frame is None:
+                raise Exception("Failed to extract frame from video")
+            
+            # Use the first frame for face detection
+            image = frame
+            print(f"✅ Extracted first frame: {image.shape}")
+            
+        else:
+            print("🖼️ Detected image file")
+            # Try to load as image
+            image_path = os.path.join(temp_dir, 'image.jpg')
+            
+            # Copy and rename file with proper extension
+            import shutil
+            shutil.copy2(temp_file_path, image_path)
+            
+            # Load image
+            image = cv2.imread(image_path)
+            if image is None:
+                raise Exception("Failed to load image")
+            
+            print(f"✅ Loaded image: {image.shape}")
         
         # Detect faces
+        print("🔍 Starting face detection...")
         faces = detect_faces(image)
+        print(f"✅ Face detection completed, found {len(faces)} faces")
         
         # Cleanup
         import shutil
@@ -820,18 +854,23 @@ def process_detect_faces(input_data):
         return {
             'success': True,
             'faces_detected': len(faces),
+            'file_type': 'video' if is_video else 'image',
             'faces': [
                 {
                     'bbox': face['bbox'],
                     'confidence': face['confidence'],
-                    'landmarks': face.get('landmarks', [])
+                    'landmarks': face.get('landmarks', []),
+                    'x': face['bbox'][0] if 'bbox' in face else 0,
+                    'y': face['bbox'][1] if 'bbox' in face else 0,
+                    'width': face['bbox'][2] if 'bbox' in face else 0,
+                    'height': face['bbox'][3] if 'bbox' in face else 0
                 }
                 for face in faces
             ]
         }
         
     except Exception as e:
-        print(f"Error in face detection: {str(e)}")
+        print(f"❌ Error in face detection: {str(e)}")
         return {
             'success': False,
             'error': str(e)

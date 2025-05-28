@@ -197,16 +197,17 @@ export default function MultiVideoPage() {
   const canProcess = targetVideo && detectedFaces && faceMappings.every(m => m.sourceFile) && !isSubmitting
 
   return (
-    <div className="max-w-6xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">多人视频换脸</h1>
-        <p className="mt-2 text-base sm:text-lg text-gray-600">
-          上传包含多人的目标视频，系统将识别所有人脸并允许您为每个人脸选择替换的源人脸
+    <div className="container-xs sm:max-w-6xl mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-6 lg:px-8 mb-16 sm:mb-0">
+      <div className="text-center mb-4 sm:mb-6 lg:mb-8">
+        <h1 className="heading-responsive text-gray-900">多人视频换脸</h1>
+        <p className="mt-2 text-mobile-body sm:text-base lg:text-lg text-gray-600 max-w-3xl mx-auto">
+          上传包含多人的视频，系统将识别所有人脸并允许您为每个人脸选择替换的源人脸
         </p>
-        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+        <div className="mt-3 sm:mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
           <div className="flex items-center justify-center">
-            <div className="text-blue-800 text-sm">
-              💡 <strong>操作流程：</strong>1. 上传目标视频（包含多人） → 2. 检测人脸 → 3. 为每个人脸选择替换的源人脸图片 → 4. 开始换脸
+            <div className="text-blue-800 text-xs sm:text-sm text-center leading-relaxed">
+              💡 <strong>操作流程：</strong><br className="sm:hidden" />
+              1. 上传目标视频（包含多人） → 2. 检测人脸 → 3. 为每个人脸选择替换的源人脸图片 → 4. 开始换脸
             </div>
           </div>
         </div>
@@ -214,28 +215,30 @@ export default function MultiVideoPage() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex flex-col sm:flex-row">
-            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-0 sm:mr-2 mb-2 sm:mb-0 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-red-800">处理错误</h3>
-              <p className="text-sm text-red-700 mt-1 break-words">{error}</p>
-              <div className="mt-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-                <button
-                  onClick={() => setError(null)}
-                  className="inline-flex items-center justify-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  关闭错误信息
-                </button>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 animate-slide-down">
+          <div className="flex flex-col">
+            <div className="flex items-start">
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-medium text-red-800">处理错误</h3>
+                <p className="text-sm text-red-700 mt-1 break-words">{error}</p>
               </div>
+            </div>
+            <div className="mt-4 flex flex-col xs:flex-row space-y-2 xs:space-y-0 xs:space-x-3">
+              <button
+                onClick={() => setError(null)}
+                className="touch-target flex-1 xs:flex-initial inline-flex items-center justify-center px-3 py-2 border border-red-300 text-sm font-medium rounded-lg text-red-700 bg-white hover:bg-red-50 focus-enhanced transition-colors"
+              >
+                关闭错误信息
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Step 1: Target Video Upload */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">步骤 1: 上传目标视频</h2>
+      <div className="card-mobile sm:bg-white sm:rounded-lg sm:shadow-sm sm:border sm:border-gray-200 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
+        <h2 className="text-mobile-title sm:text-lg lg:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">步骤 1: 上传目标视频</h2>
         <FileUpload
           label="目标视频（包含多人）"
           description="上传包含多个人脸的视频，系统将自动检测所有人脸"
@@ -250,34 +253,21 @@ export default function MultiVideoPage() {
             'video/*': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.3gp', '.m4v', '.webm']
           }}
         />
-        {targetVideo && (
-          <div className="mt-4">
-            <video
-              src={URL.createObjectURL(targetVideo)}
-              controls
-              className="w-full max-w-md mx-auto h-48 sm:h-64 rounded-lg"
-              style={{ maxHeight: '300px' }}
-            />
-            <p className="text-xs sm:text-sm text-gray-500 mt-2 text-center">
-              文件大小: {(targetVideo.size / 1024 / 1024).toFixed(2)} MB
-            </p>
-          </div>
-        )}
+
 
         {/* Face Detection Button */}
         {targetVideo && !detectedFaces && (
-          <div className="mt-6 text-center">
+          <div className="mt-4 sm:mt-6 text-center">
             <div className="flex flex-col items-center justify-center">
               <button
                 onClick={handleDetectFaces}
                 disabled={!canDetect}
                 className={`
-                  inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md w-full sm:w-auto
+                  btn-mobile w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg transition-all duration-200 focus-enhanced
                   ${canDetect
-                    ? 'text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                    ? 'text-white bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transform hover:scale-105'
                     : 'text-gray-400 bg-gray-200 cursor-not-allowed'
                   }
-                  transition-colors
                 `}
               >
                 {isDetecting ? (
@@ -293,12 +283,12 @@ export default function MultiVideoPage() {
                 )}
               </button>
               {canDetect && (
-                <p className="text-sm text-blue-600 mt-2 text-center">
+                <p className="text-xs sm:text-sm text-blue-600 mt-3 text-center px-2">
                   💡 提示：视频人脸检测通常需要3-5分钟，请耐心等待
                 </p>
               )}
               {isDetecting && (
-                <p className="text-sm text-orange-600 mt-2 text-center">
+                <p className="text-xs sm:text-sm text-orange-600 mt-3 text-center px-2">
                   ⏳ 正在检测视频中的人脸，请勿关闭页面，预计需要3-5分钟...
                 </p>
               )}
@@ -309,11 +299,11 @@ export default function MultiVideoPage() {
 
       {/* Step 2: Detected Faces and Source Upload */}
       {detectedFaces && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
+        <div className="card-mobile sm:bg-white sm:rounded-lg sm:shadow-sm sm:border sm:border-gray-200 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
+          <h2 className="text-mobile-title sm:text-lg lg:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
             步骤 2: 为每个人脸选择替换图片 ({detectedFaces.faces.length} 个人脸)
           </h2>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6 leading-relaxed">
             系统检测到 {detectedFaces.faces.length} 个人脸，请为每个人脸上传对应的替换图片。
             人脸编号按从左到右、从上到下的顺序排列。
           </p>
@@ -375,12 +365,11 @@ export default function MultiVideoPage() {
             onClick={handleProcess}
             disabled={!canProcess}
             className={`
-              inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md w-full sm:w-auto
+              btn-mobile w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg transition-all duration-200 focus-enhanced
               ${canProcess
-                ? 'text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+                ? 'text-white bg-primary-600 hover:bg-primary-700 hover:scale-105 shadow-lg hover:shadow-xl'
                 : 'text-gray-400 bg-gray-200 cursor-not-allowed'
               }
-              transition-colors
             `}
           >
             {isSubmitting ? (

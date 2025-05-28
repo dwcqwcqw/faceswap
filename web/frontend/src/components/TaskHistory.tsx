@@ -11,7 +11,7 @@ interface TaskHistoryProps {
 export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps) {
   const [tasks, setTasks] = useState<TaskHistoryItem[]>([])
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'failed'>('all')
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true)
 
   const getTaskTypeLabel = (type: TaskHistoryItem['type']) => {
     switch (type) {
