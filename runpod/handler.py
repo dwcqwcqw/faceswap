@@ -178,6 +178,25 @@ def process_single_image_swap(input_data):
         )
         print("✅ Face enhancement completed")
         
+        # 🔍 Check if image needs super-resolution (low resolution images)
+        height, width = result_image.shape[:2]
+        total_pixels = height * width
+        print(f"📏 Image resolution: {width}x{height} ({total_pixels:,} pixels)")
+        
+        # If image is low resolution (less than 0.5MP), apply super-resolution
+        if total_pixels < 500000:  # 500K pixels threshold
+            try:
+                print("🔧 Applying super-resolution for low resolution image...")
+                # Use OpenCV for simple bicubic upscaling (more reliable than external models)
+                scale_factor = 2
+                new_width = int(width * scale_factor)
+                new_height = int(height * scale_factor)
+                result_image = cv2.resize(result_image, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+                print(f"✅ Super-resolution completed: {new_width}x{new_height}")
+            except Exception as e:
+                print(f"⚠️ Super-resolution failed, continuing: {str(e)}")
+                # Continue without super-resolution if it fails
+        
         # Save result and convert to base64
         print("💾 Saving result...")
         cv2.imwrite(output_path, result_image)
@@ -227,20 +246,43 @@ def process_multi_image_swap(input_data):
         # Create temporary directory
         temp_dir = tempfile.mkdtemp()
         
-        # Download source and target images
+        # Check if we have face_mappings (new multi-face approach) or single source (legacy)
+        face_mappings = input_data.get('face_mappings', {})
         source_url = input_data.get('source_file')
         target_url = input_data.get('target_file')
         
-        source_path = os.path.join(temp_dir, 'source.jpg')
+        if not target_url:
+            raise Exception("❌ Target file URL is required")
+        
+        # Download target image
         target_path = os.path.join(temp_dir, 'target.jpg')
-        
-        print(f"📥 Downloading source: {source_url}")
-        if not download_from_url(source_url, source_path):
-            raise Exception("❌ Failed to download source image")
-        
         print(f"📥 Downloading target: {target_url}")
         if not download_from_url(target_url, target_path):
             raise Exception("❌ Failed to download target image")
+        
+        # Handle different input modes
+        if face_mappings:
+            print(f"🔄 Using face mappings mode with {len(face_mappings)} face(s)")
+            # Download all source face images
+            source_faces = {}
+            for face_id, face_url in face_mappings.items():
+                if face_url:
+                    face_path = os.path.join(temp_dir, f'source_{face_id}.jpg')
+                    print(f"📥 Downloading source face {face_id}: {face_url}")
+                    if download_from_url(face_url, face_path):
+                        source_faces[face_id] = face_path
+                    else:
+                        print(f"⚠️ Failed to download source face {face_id}, skipping")
+        else:
+            print("🔄 Using legacy single source mode")
+            # Legacy mode: single source image for all faces
+            if not source_url:
+                raise Exception("❌ Source file URL is required in legacy mode")
+                
+            source_path = os.path.join(temp_dir, 'source.jpg')
+            print(f"📥 Downloading source: {source_url}")
+            if not download_from_url(source_url, source_path):
+                raise Exception("❌ Failed to download source image")
         
         # Process face swap with multiple faces
         options = input_data.get('options', {})
@@ -249,24 +291,16 @@ def process_multi_image_swap(input_data):
         # High quality settings
         frame_processors = ['face_swapper', 'face_enhancer']
         
-        # Load images
-        print("📂 Loading images...")
-        source_image = cv2.imread(source_path)
+        # Load target image
+        print("📂 Loading target image...")
         target_image = cv2.imread(target_path)
+        if target_image is None:
+            raise Exception("❌ Failed to load target image")
+        print(f"✅ Target image loaded: {target_image.shape}")
         
-        if source_image is None or target_image is None:
-            raise Exception("❌ Failed to load images")
-        
-        print(f"✅ Images loaded - Source: {source_image.shape}, Target: {target_image.shape}")
-        
-        # Detect faces
-        print("🔍 Detecting faces...")
+        # Detect target faces
+        print("🔍 Detecting target faces...")
         from modules.face_analyser import get_one_face, get_many_faces
-        
-        source_face = get_one_face(source_image)
-        if source_face is None:
-            raise Exception("❌ No face detected in source image")
-        print("✅ Source face detected")
         
         target_faces = get_many_faces(target_image)
         if not target_faces or len(target_faces) == 0:
@@ -280,18 +314,52 @@ def process_multi_image_swap(input_data):
         else:
             print(f"✅ {len(target_faces)} target face(s) detected")
         
-        # Swap all faces
+        # Process face swapping
         print("🔄 Starting multi-face swap...")
         result_image = target_image.copy()
         
-        for i, target_face in enumerate(target_faces):
-            print(f"   🔄 Swapping face {i+1}/{len(target_faces)}...")
-            result_image = swap_face(
-                source_face=source_face,
-                target_face=target_face,
-                temp_frame=result_image
-            )
-            print(f"   ✅ Face {i+1} swap completed")
+        if face_mappings:
+            # New mode: specific source face for each detected face
+            for i, target_face in enumerate(target_faces):
+                face_key = f"face_{i}"
+                if face_key in source_faces:
+                    source_path = source_faces[face_key]
+                    source_image = cv2.imread(source_path)
+                    if source_image is not None:
+                        source_face = get_one_face(source_image)
+                        if source_face is not None:
+                            print(f"   🔄 Swapping face {i+1}/{len(target_faces)} with specific source...")
+                            result_image = swap_face(
+                                source_face=source_face,
+                                target_face=target_face,
+                                temp_frame=result_image
+                            )
+                            print(f"   ✅ Face {i+1} swap completed")
+                        else:
+                            print(f"   ⚠️ No face detected in source image for face {i+1}, skipping")
+                    else:
+                        print(f"   ⚠️ Failed to load source image for face {i+1}, skipping")
+                else:
+                    print(f"   ⚠️ No source mapping for face {i+1}, skipping")
+        else:
+            # Legacy mode: use single source for all faces
+            source_image = cv2.imread(source_path)
+            if source_image is None:
+                raise Exception("❌ Failed to load source image")
+            
+            source_face = get_one_face(source_image)
+            if source_face is None:
+                raise Exception("❌ No face detected in source image")
+            print("✅ Source face detected")
+            
+            for i, target_face in enumerate(target_faces):
+                print(f"   🔄 Swapping face {i+1}/{len(target_faces)}...")
+                result_image = swap_face(
+                    source_face=source_face,
+                    target_face=target_face,
+                    temp_frame=result_image
+                )
+                print(f"   ✅ Face {i+1} swap completed")
         
         print("✅ All face swaps completed")
         
@@ -302,6 +370,25 @@ def process_multi_image_swap(input_data):
             model_path=get_model_path('GFPGANv1.4.pth')
         )
         print("✅ Face enhancement completed")
+        
+        # 🔍 Check if image needs super-resolution (low resolution images)
+        height, width = result_image.shape[:2]
+        total_pixels = height * width
+        print(f"📏 Image resolution: {width}x{height} ({total_pixels:,} pixels)")
+        
+        # If image is low resolution (less than 0.5MP), apply super-resolution
+        if total_pixels < 500000:  # 500K pixels threshold
+            try:
+                print("🔧 Applying super-resolution for low resolution image...")
+                # Use OpenCV for simple bicubic upscaling (more reliable than external models)
+                scale_factor = 2
+                new_width = int(width * scale_factor)
+                new_height = int(height * scale_factor)
+                result_image = cv2.resize(result_image, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+                print(f"✅ Super-resolution completed: {new_width}x{new_height}")
+            except Exception as e:
+                print(f"⚠️ Super-resolution failed, continuing: {str(e)}")
+                # Continue without super-resolution if it fails
         
         # Save result and convert to base64
         print("💾 Saving result...")

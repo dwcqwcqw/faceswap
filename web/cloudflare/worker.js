@@ -504,7 +504,11 @@ async function handleDownload(request, env, path) {
     // Set response headers for file download
     const headers = new Headers()
     headers.set('Content-Type', contentType)
-    headers.set('Content-Disposition', `attachment; filename="${metadata.originalName || fileId}"`)
+    
+    // Extract extension from the found fileName for proper download filename
+    const extension = fileName.split('.').pop()
+    const downloadFilename = metadata.originalName || `faceswap-result.${extension}`
+    headers.set('Content-Disposition', `attachment; filename="${downloadFilename}"`)
     headers.set('Cache-Control', 'public, max-age=3600') // Cache for 1 hour
     
     return new Response(file.body, { headers })

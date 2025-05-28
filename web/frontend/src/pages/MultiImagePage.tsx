@@ -22,6 +22,7 @@ export default function MultiImagePage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [imageSize, setImageSize] = useState<{width: number, height: number} | null>(null)
   
   // 添加延迟控制状态
   const [lastRequestTime, setLastRequestTime] = useState<number>(0)
@@ -178,8 +179,11 @@ export default function MultiImagePage() {
 
       // Start processing
       console.log('开始处理多人换脸...')
+      console.log('📋 Face mappings:', uploadedMappings)
+      console.log('📋 Target file ID:', targetResponse.data.fileId)
+      
       const processResponse = await apiService.processMultiImage({
-        source_file: '', // Not used for multi-face - individual mappings are used instead
+        source_file: Object.values(uploadedMappings)[0] || '', // Use first face as fallback for source_file 
         target_file: targetResponse.data.fileId,
         face_mappings: uploadedMappings,
         options: {
@@ -355,19 +359,34 @@ export default function MultiImagePage() {
                 {/* Show detected face */}
                 <div className="mb-3 sm:mb-4">
                   <p className="text-xs sm:text-sm text-gray-600 mb-2">检测到的人脸:</p>
-                  <div className="relative">
+                  <div className="relative overflow-hidden rounded border">
+                    {/* Full image with face highlight */}
                     <img
                       src={URL.createObjectURL(targetImage!)}
-                      alt={`检测到的人脸 ${index + 1}`}
-                      className="w-full h-24 sm:h-32 object-cover rounded border"
-                      style={{
-                        objectPosition: `${-face.x + 50}px ${-face.y + 50}px`
+                      alt={`原图 ${index + 1}`}
+                      className="w-full h-24 sm:h-32 object-contain"
+                      onLoad={(e) => {
+                        const img = e.target as HTMLImageElement
+                        setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
                       }}
                     />
-                    <div className="absolute inset-0 border-2 border-blue-500 rounded"></div>
+                                         {/* Face overlay box */}
+                     <div 
+                       className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20"
+                       style={{
+                         left: `${imageSize ? (face.x / imageSize.width) * 100 : 0}%`,
+                         top: `${imageSize ? (face.y / imageSize.height) * 100 : 0}%`,
+                         width: `${imageSize ? ((face.width || 50) / imageSize.width) * 100 : 10}%`,
+                         height: `${imageSize ? ((face.height || 50) / imageSize.height) * 100 : 10}%`,
+                       }}
+                    >
+                      <div className="absolute -top-6 left-0 text-xs text-blue-600 font-medium bg-white px-1 rounded">
+                        #{index + 1}
+                      </div>
+                    </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    位置: ({face.x}, {face.y}) | 置信度: {(face.confidence * 100).toFixed(1)}%
+                    位置: ({Math.round(face.x)}, {Math.round(face.y)}) | 尺寸: {Math.round(face.width || 0)}×{Math.round(face.height || 0)} | 置信度: {(face.confidence * 100).toFixed(1)}%
                   </p>
                 </div>
 
