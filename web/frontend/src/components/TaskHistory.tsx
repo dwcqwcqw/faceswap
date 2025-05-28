@@ -120,10 +120,26 @@ export default function TaskHistory({ onTaskSelect, taskType }: TaskHistoryProps
   const handleDownload = (task: TaskHistoryItem) => {
     if (task.result_url) {
       const link = document.createElement('a')
-      link.href = apiService.getDownloadUrl(task.result_url.split('/').pop() || '')
+      const resultId = task.result_url.split('/').pop() || ''
+      link.href = apiService.getDownloadUrl(resultId)
       
-      const extension = task.type === 'single-video' || task.type === 'multi-video' ? 'mp4' : 'jpg'
-      link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`
+      // 从task.result_url或resultId获取扩展名，如果没有则根据类型推断
+      let extension = 'jpg'
+      if (resultId.includes('.')) {
+        // 如果resultId包含扩展名，直接使用
+        extension = resultId.split('.').pop() || extension
+      } else {
+        // 否则根据任务类型推断
+        extension = task.type === 'single-video' || task.type === 'multi-video' ? 'mp4' : 'jpg'
+      }
+      
+      // 生成更友好的文件名
+      let baseFileName = task.title.replace(/[^a-zA-Z0-9\-_\u4e00-\u9fa5]/g, '_')
+      if (baseFileName.length > 50) {
+        baseFileName = baseFileName.substring(0, 50)
+      }
+      
+      link.download = `${baseFileName}.${extension}`
       link.click()
     }
   }

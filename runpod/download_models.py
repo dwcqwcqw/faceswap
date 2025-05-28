@@ -67,14 +67,19 @@ def download_file(url, filepath, description=""):
         print(f"❌ Error downloading {description}: {str(e)}")
         return False
 
-def extract_zip(zip_path, extract_to):
+def extract_zip(zip_path, extract_to, remove_after=True):
     """Extract zip file"""
     try:
         print(f"📂 Extracting {os.path.basename(zip_path)}...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(extract_to)
-        os.remove(zip_path)  # Clean up zip file
-        print(f"✅ Extracted {os.path.basename(zip_path)}")
+        
+        # Only remove downloaded zip files, not existing workspace files
+        if remove_after and '/workspace/' not in zip_path:
+            os.remove(zip_path)  # Clean up zip file
+            print(f"✅ Extracted and removed {os.path.basename(zip_path)}")
+        else:
+            print(f"✅ Extracted {os.path.basename(zip_path)} (keeping original)")
         return True
     except Exception as e:
         print(f"❌ Error extracting {os.path.basename(zip_path)}: {str(e)}")
@@ -84,31 +89,69 @@ def check_existing_models(models_dir):
     """Check for existing models in various locations"""
     existing_models = {}
     
-    # Check workspace/faceswap root directory (user mentioned models are there)
-    if os.path.exists('/workspace/faceswap'):
-        for filename in ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth']:
-            workspace_path = os.path.join('/workspace/faceswap', filename)
-            if os.path.exists(workspace_path):
-                # Copy or symlink to models directory
-                models_path = os.path.join(models_dir, filename)
-                if not os.path.exists(models_path):
+    # Check runpod-volume/workspace/faceswap directory (user mentioned models are there)
+    workspace_paths = [
+        '/runpod-volume/workspace/faceswap',
+        '/workspace/faceswap'
+    ]
+    
+    for workspace_root in workspace_paths:
+        if os.path.exists(workspace_root):
+            print(f"🔍 Checking workspace: {workspace_root}")
+            
+            # Check for buffalo_l.zip in workspace root
+            buffalo_zip_path = os.path.join(workspace_root, 'buffalo_l.zip')
+            if os.path.exists(buffalo_zip_path):
+                print(f"✅ Found buffalo_l.zip in workspace: {buffalo_zip_path}")
+                # Extract it to models directory if not already extracted
+                buffalo_dir = os.path.join(models_dir, 'buffalo_l')
+                if not os.path.exists(buffalo_dir) or not os.listdir(buffalo_dir):
+                    print(f"📂 Extracting buffalo_l.zip from workspace...")
+                    os.makedirs(buffalo_dir, exist_ok=True)
+                    if extract_zip(buffalo_zip_path, models_dir, remove_after=False):
+                        existing_models['buffalo_l.zip'] = True
+                else:
+                    existing_models['buffalo_l.zip'] = True
+            
+            # Check for extracted buffalo_l directory
+            buffalo_workspace_dir = os.path.join(workspace_root, 'buffalo_l')
+            if os.path.exists(buffalo_workspace_dir) and os.listdir(buffalo_workspace_dir):
+                print(f"✅ Found extracted buffalo_l directory in workspace: {buffalo_workspace_dir}")
+                buffalo_models_dir = os.path.join(models_dir, 'buffalo_l')
+                if not os.path.exists(buffalo_models_dir):
                     try:
-                        # Try to create symlink first, fallback to copy
-                        os.symlink(workspace_path, models_path)
-                        print(f"🔗 Linked {filename} from workspace")
+                        os.symlink(buffalo_workspace_dir, buffalo_models_dir)
+                        print(f"🔗 Linked buffalo_l directory from workspace")
                     except:
                         import shutil
-                        shutil.copy2(workspace_path, models_path)
-                        print(f"📋 Copied {filename} from workspace")
-                existing_models[filename] = True
+                        shutil.copytree(buffalo_workspace_dir, buffalo_models_dir)
+                        print(f"📋 Copied buffalo_l directory from workspace")
+                existing_models['buffalo_l.zip'] = True
+            
+            # Check for other model files
+            for filename in ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth', '79999_iter.pth', 'RealESRGAN_x4plus.pth', 'RealESRGAN_x2plus.pth']:
+                workspace_path = os.path.join(workspace_root, filename)
+                if os.path.exists(workspace_path):
+                    # Copy or symlink to models directory
+                    models_path = os.path.join(models_dir, filename)
+                    if not os.path.exists(models_path):
+                        try:
+                            # Try to create symlink first, fallback to copy
+                            os.symlink(workspace_path, models_path)
+                            print(f"🔗 Linked {filename} from workspace")
+                        except:
+                            import shutil
+                            shutil.copy2(workspace_path, models_path)
+                            print(f"📋 Copied {filename} from workspace")
+                    existing_models[filename] = True
     
     # Check models directory itself
-    for filename in ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth', '79999_iter.pth']:
+    for filename in ['inswapper_128_fp16.onnx', 'GFPGANv1.4.pth', '79999_iter.pth', 'RealESRGAN_x4plus.pth', 'RealESRGAN_x2plus.pth']:
         model_path = os.path.join(models_dir, filename)
         if os.path.exists(model_path):
             existing_models[filename] = True
     
-    # Check buffalo_l directory
+    # Check buffalo_l directory in models
     buffalo_dir = os.path.join(models_dir, 'buffalo_l')
     if os.path.exists(buffalo_dir) and os.listdir(buffalo_dir):
         existing_models['buffalo_l.zip'] = True

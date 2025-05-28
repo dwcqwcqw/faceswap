@@ -777,13 +777,16 @@ async function storeResultFromBase64(env, base64Data, jobId) {
   // Determine file type from base64 header or default to jpg
   let contentType = 'image/jpeg'
   let extension = 'jpg'
+  let originalName = `faceswap-result.jpg`
   
   if (base64Data.startsWith('data:image/png')) {
     contentType = 'image/png'
     extension = 'png'
+    originalName = `faceswap-result.png`
   } else if (base64Data.startsWith('data:video/mp4')) {
     contentType = 'video/mp4'
     extension = 'mp4'
+    originalName = `faceswap-result.mp4`
   }
   
   const resultFileId = generateFileId()
@@ -799,7 +802,8 @@ async function storeResultFromBase64(env, base64Data, jobId) {
     customMetadata: {
       jobId: jobId,
       storeTime: new Date().toISOString(),
-      source: 'base64'
+      source: 'base64',
+      originalName: originalName
     }
   })
   

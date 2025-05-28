@@ -367,26 +367,30 @@ export default function MultiImagePage() {
                       className="w-full h-24 sm:h-32 object-contain"
                       onLoad={(e) => {
                         const img = e.target as HTMLImageElement
-                        setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
+                        if (!imageSize) {
+                          setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
+                        }
                       }}
                     />
-                                         {/* Face overlay box */}
-                     <div 
-                       className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20"
-                       style={{
-                         left: `${imageSize ? (face.x / imageSize.width) * 100 : 0}%`,
-                         top: `${imageSize ? (face.y / imageSize.height) * 100 : 0}%`,
-                         width: `${imageSize ? ((face.width || 50) / imageSize.width) * 100 : 10}%`,
-                         height: `${imageSize ? ((face.height || 50) / imageSize.height) * 100 : 10}%`,
-                       }}
-                    >
-                      <div className="absolute -top-6 left-0 text-xs text-blue-600 font-medium bg-white px-1 rounded">
-                        #{index + 1}
+                    {/* Face overlay box */}
+                    {imageSize && face.x !== undefined && face.y !== undefined && (
+                      <div 
+                        className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20"
+                        style={{
+                          left: `${(face.x / imageSize.width) * 100}%`,
+                          top: `${(face.y / imageSize.height) * 100}%`,
+                          width: `${((face.width || 50) / imageSize.width) * 100}%`,
+                          height: `${((face.height || 50) / imageSize.height) * 100}%`,
+                        }}
+                      >
+                        <div className="absolute -top-6 left-0 text-xs text-blue-600 font-medium bg-white px-1 rounded">
+                          #{index + 1}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    位置: ({Math.round(face.x)}, {Math.round(face.y)}) | 尺寸: {Math.round(face.width || 0)}×{Math.round(face.height || 0)} | 置信度: {(face.confidence * 100).toFixed(1)}%
+                    位置: ({Math.round(face.x || 0)}, {Math.round(face.y || 0)}) | 尺寸: {Math.round(face.width || 0)}×{Math.round(face.height || 0)} | 置信度: {(face.confidence * 100).toFixed(1)}%
                   </p>
                 </div>
 
