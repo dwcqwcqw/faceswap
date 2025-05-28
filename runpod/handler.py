@@ -857,15 +857,15 @@ def process_detect_faces(input_data):
             'file_type': 'video' if is_video else 'image',
             'faces': [
                 {
-                    'bbox': face['bbox'],
-                    'confidence': face['confidence'],
-                    'landmarks': face.get('landmarks', []),
-                    'x': face['bbox'][0] if 'bbox' in face else 0,
-                    'y': face['bbox'][1] if 'bbox' in face else 0,
-                    'width': face['bbox'][2] if 'bbox' in face else 0,
-                    'height': face['bbox'][3] if 'bbox' in face else 0
+                    'id': face.get('face_id', i),
+                    'confidence': face.get('confidence', 0.9),
+                    'x': face['bbox']['x'] if 'bbox' in face else 0,
+                    'y': face['bbox']['y'] if 'bbox' in face else 0,
+                    'width': face['bbox']['width'] if 'bbox' in face else 0,
+                    'height': face['bbox']['height'] if 'bbox' in face else 0,
+                    'landmarks': face.get('landmarks', [])
                 }
-                for face in faces
+                for i, face in enumerate(faces)
             ]
         }
         
