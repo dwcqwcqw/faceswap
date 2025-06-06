@@ -12,8 +12,18 @@ export default function TaskDetail({ task, onClose }: TaskDetailProps) {
     if (task.result_url) {
       const link = document.createElement('a')
       link.href = apiService.getDownloadUrl(task.result_url.split('/').pop() || '')
+      
+      // 根据任务类型确定正确的文件扩展名
       const extension = task.type === 'single-video' || task.type === 'multi-video' ? 'mp4' : 'jpg'
-      link.download = `${task.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`
+      
+      // 清理文件名，移除特殊字符但保留中文
+      const cleanTitle = task.title.replace(/[<>:"/\\|?*]/g, '_').trim()
+      
+      // 生成带时间戳的文件名避免重复
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_')
+      const filename = `${cleanTitle}_${timestamp}.${extension}`
+      
+      link.download = filename
       link.click()
     }
   }

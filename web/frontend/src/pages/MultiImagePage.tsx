@@ -12,6 +12,7 @@ interface FaceMapping {
   faceId: string;
   sourceFile: File | null;  // 替换的源人脸文件
   previewUrl?: string;
+  croppedFaceUrl?: string; // 添加裁剪后的人脸预览
 }
 
 export default function MultiImagePage() {
@@ -33,6 +34,55 @@ export default function MultiImagePage() {
   useEffect(() => {
     // 任务管理器会自动恢复活跃任务，无需手动处理
   }, [])
+
+  // 添加用于裁剪人脸的函数
+  const cropFaceFromImage = (imageFile: File, face: any): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      
+      img.onload = () => {
+        try {
+          // 计算裁剪区域，添加一些边距以获得更完整的人脸
+          const margin = Math.max(face.width, face.height) * 0.2 // 20%边距
+          const cropX = Math.max(0, face.x - margin)
+          const cropY = Math.max(0, face.y - margin)
+          const cropWidth = Math.min(img.naturalWidth - cropX, face.width + margin * 2)
+          const cropHeight = Math.min(img.naturalHeight - cropY, face.height + margin * 2)
+          
+          canvas.width = cropWidth
+          canvas.height = cropHeight
+          
+          if (ctx) {
+            // 绘制裁剪后的人脸
+            ctx.drawImage(
+              img,
+              cropX, cropY, cropWidth, cropHeight,
+              0, 0, cropWidth, cropHeight
+            )
+            
+            // 转换为blob URL
+            canvas.toBlob((blob) => {
+              if (blob) {
+                const url = URL.createObjectURL(blob)
+                resolve(url)
+              } else {
+                reject(new Error('无法生成人脸预览'))
+              }
+            }, 'image/jpeg', 0.8)
+          } else {
+            reject(new Error('无法创建canvas上下文'))
+          }
+        } catch (error) {
+          reject(error)
+        }
+      }
+      
+      img.onerror = () => reject(new Error('图片加载失败'))
+      img.src = URL.createObjectURL(imageFile)
+    })
+  }
 
   const handleDetectFaces = async () => {
     if (!targetImage) return
@@ -104,10 +154,27 @@ export default function MultiImagePage() {
       setDetectedFaces(faces)
       
       // Initialize face mappings - 确保索引与排序后的人脸一致
-      const mappings: FaceMapping[] = faces.faces.map((_: any, index: number) => ({
-        faceId: `face_${index}`,
-        sourceFile: null
-      }))
+      const mappings: FaceMapping[] = []
+      
+      // 为每个检测到的人脸生成裁剪预览
+      for (let i = 0; i < faces.faces.length; i++) {
+        const face = faces.faces[i]
+        try {
+          const croppedUrl = await cropFaceFromImage(targetImage, face)
+          mappings.push({
+            faceId: `face_${i}`,
+            sourceFile: null,
+            croppedFaceUrl: croppedUrl
+          })
+        } catch (error) {
+          console.warn(`生成人脸 ${i + 1} 预览失败:`, error)
+          mappings.push({
+            faceId: `face_${i}`,
+            sourceFile: null
+          })
+        }
+      }
+      
       setFaceMappings(mappings)
       
     } catch (error: any) {
@@ -351,54 +418,70 @@ export default function MultiImagePage() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
             {detectedFaces.faces.map((face: any, index: number) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-2 sm:mb-3">
-                  人脸 {index + 1}：这个位置的人脸将被替换为您上传的图片
+              <div key={index} className="border border-gray-200 rounded-lg p-3 sm:p-4 bg-white shadow-sm">
+                <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-2 sm:mb-3 text-center">
+                  人脸 {index + 1}
                 </h3>
                 
-                {/* Show detected face */}
+                {/* Show detected face - 显示实际的人脸预览 */}
                 <div className="mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-gray-600 mb-2">检测到的人脸:</p>
-                  <div className="relative overflow-hidden rounded border">
-                    {/* Full image with face highlight */}
-                    <img
-                      src={URL.createObjectURL(targetImage!)}
-                      alt={`原图 ${index + 1}`}
-                      className="w-full h-24 sm:h-32 object-contain"
-                      onLoad={(e) => {
-                        const img = e.target as HTMLImageElement
-                        if (!imageSize) {
-                          setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
-                        }
-                      }}
-                    />
-                    {/* Face overlay box */}
-                    {imageSize && face.x !== undefined && face.y !== undefined && (
-                      <div 
-                        className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20"
-                        style={{
-                          left: `${(face.x / imageSize.width) * 100}%`,
-                          top: `${(face.y / imageSize.height) * 100}%`,
-                          width: `${((face.width || 50) / imageSize.width) * 100}%`,
-                          height: `${((face.height || 50) / imageSize.height) * 100}%`,
-                        }}
-                      >
-                        <div className="absolute -top-6 left-0 text-xs text-blue-600 font-medium bg-white px-1 rounded">
-                          #{index + 1}
-                        </div>
-                      </div>
+                  <p className="text-xs sm:text-sm text-gray-600 mb-2 text-center">检测到的人脸:</p>
+                  <div className="relative overflow-hidden rounded border bg-gray-50 flex items-center justify-center" style={{ minHeight: '120px' }}>
+                    {faceMappings[index]?.croppedFaceUrl ? (
+                      <img
+                        src={faceMappings[index].croppedFaceUrl}
+                        alt={`检测人脸 ${index + 1}`}
+                        className="max-w-full max-h-32 object-contain rounded"
+                      />
+                    ) : (
+                      /* 备用方案：显示带框标注的原图 */
+                      <>
+                        <img
+                          src={URL.createObjectURL(targetImage!)}
+                          alt={`原图 ${index + 1}`}
+                          className="w-full h-24 sm:h-32 object-contain"
+                          onLoad={(e) => {
+                            const img = e.target as HTMLImageElement
+                            if (!imageSize) {
+                              setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
+                            }
+                          }}
+                        />
+                        {/* Face overlay box */}
+                        {imageSize && face.x !== undefined && face.y !== undefined && (
+                          <div 
+                            className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20"
+                            style={{
+                              left: `${(face.x / imageSize.width) * 100}%`,
+                              top: `${(face.y / imageSize.height) * 100}%`,
+                              width: `${((face.width || 50) / imageSize.width) * 100}%`,
+                              height: `${((face.height || 50) / imageSize.height) * 100}%`,
+                            }}
+                          >
+                            <div className="absolute -top-6 left-0 text-xs text-blue-600 font-medium bg-white px-1 rounded">
+                              #{index + 1}
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    位置: ({Math.round(face.x || 0)}, {Math.round(face.y || 0)}) | 尺寸: {Math.round(face.width || 0)}×{Math.round(face.height || 0)} | 置信度: {(face.confidence * 100).toFixed(1)}%
+                  <p className="text-xs text-gray-500 mt-1 text-center">
+                    置信度: {(face.confidence * 100).toFixed(1)}%
                   </p>
+                </div>
+
+                {/* 箭头指向 */}
+                <div className="flex items-center justify-center mb-3">
+                  <div className="text-2xl text-blue-500">↓</div>
                 </div>
 
                 {/* Upload replacement face */}
                 <div>
+                  <p className="text-xs sm:text-sm text-gray-600 mb-2 text-center font-medium">替换为:</p>
                   <FileUpload
-                    label={`替换人脸 ${index + 1}`}
-                    description="上传要替换到此位置的人脸图片"
+                    label=""
+                    description={`上传要替换人脸 ${index + 1} 的图片`}
                     onFileSelect={(file) => handleFaceFileSelect(index, file)}
                     currentFile={faceMappings[index]?.sourceFile || null}
                     onRemove={() => handleFaceFileSelect(index, null)}
@@ -407,6 +490,14 @@ export default function MultiImagePage() {
                     }}
                   />
 
+                  {/* 显示预览对比 */}
+                  {faceMappings[index]?.sourceFile && (
+                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded">
+                      <p className="text-xs text-green-700 text-center font-medium">
+                        ✓ 人脸 {index + 1} 的替换图片已选择
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

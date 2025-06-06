@@ -48,6 +48,12 @@ export default function FileUpload({
         return;
       }
       
+      // Check for image files in video upload
+      if (accept['video/*'] && file.type.startsWith('image/')) {
+        alert('检测到图片文件！当前是视频上传区域，请上传视频文件或前往图片换脸页面。');
+        return;
+      }
+      
       // Generate preview URL for images
       if (file.type.startsWith('image/')) {
         const url = URL.createObjectURL(file);

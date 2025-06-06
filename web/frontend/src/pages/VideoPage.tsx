@@ -8,8 +8,8 @@ import { TaskHistoryItem } from '../utils/taskHistory'
 import { taskManager } from '../utils/taskManager'
 
 export default function VideoPage() {
-  const [sourceVideo, setSourceVideo] = useState<File | null>(null)
-  const [targetFace, setTargetFace] = useState<File | null>(null)
+  const [sourceFace, setSourceFace] = useState<File | null>(null)
+  const [targetVideo, setTargetVideo] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedHistoryTask, setSelectedHistoryTask] = useState<TaskHistoryItem | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -20,7 +20,7 @@ export default function VideoPage() {
   }, [])
 
   const handleProcess = async () => {
-    if (!sourceVideo || !targetFace) return
+    if (!sourceFace || !targetVideo) return
     
     // 检查是否可以启动新任务
     if (!taskManager.canStartNewTask()) {
@@ -32,16 +32,16 @@ export default function VideoPage() {
     setError(null)
 
     try {
-      // Upload source video (actually the face image)
+      // Upload source face image
       console.log('上传人脸图片...')
-      const sourceResponse = await apiService.uploadFile(sourceVideo)
+      const sourceResponse = await apiService.uploadFile(sourceFace)
       if (!sourceResponse.success || !sourceResponse.data) {
         throw new Error('人脸图片上传失败')
       }
 
       // Upload target video
       console.log('上传目标视频...')
-      const targetResponse = await apiService.uploadFile(targetFace)
+      const targetResponse = await apiService.uploadFile(targetVideo)
       if (!targetResponse.success || !targetResponse.data) {
         throw new Error('目标视频上传失败')
       }
@@ -66,16 +66,16 @@ export default function VideoPage() {
         await taskManager.startTask(
           jobId,
           'single-video',
-          `视频换脸 - ${targetFace.name} → ${sourceVideo.name}`,
+          `视频换脸 - ${targetVideo.name} → ${sourceFace.name}`,
           {
-            source: sourceVideo.name,
-            target: targetFace.name
+            source: sourceFace.name,
+            target: targetVideo.name
           }
         )
         
         // 清空表单
-        setSourceVideo(null)
-        setTargetFace(null)
+        setSourceFace(null)
+        setTargetVideo(null)
         
         console.log('✅ 视频换脸任务已提交，可以继续提交新任务')
       } else {
@@ -99,7 +99,7 @@ export default function VideoPage() {
     setSelectedHistoryTask(null)
   }
 
-  const canProcess = sourceVideo && targetFace && !isSubmitting
+  const canProcess = sourceFace && targetVideo && !isSubmitting
 
   return (
     <div className="max-w-6xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
@@ -153,9 +153,9 @@ export default function VideoPage() {
           <FileUpload
             label="源人脸图片"
             description="上传要替换到视频中的人脸图片"
-            onFileSelect={setSourceVideo}
-            currentFile={sourceVideo}
-            onRemove={() => setSourceVideo(null)}
+            onFileSelect={setSourceFace}
+            currentFile={sourceFace}
+            onRemove={() => setSourceFace(null)}
             accept={{ 
               'image/*': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.heic', '.heif', '.ico', '.svg']
             }}
@@ -168,9 +168,9 @@ export default function VideoPage() {
           <FileUpload
             label="目标视频"
             description="上传需要换脸的视频文件"
-            onFileSelect={setTargetFace}
-            currentFile={targetFace}
-            onRemove={() => setTargetFace(null)}
+            onFileSelect={setTargetVideo}
+            currentFile={targetVideo}
+            onRemove={() => setTargetVideo(null)}
             accept={{ 
               'video/*': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.3gp', '.m4v', '.webm']
             }}
