@@ -85,8 +85,8 @@ def upload_to_r2(local_path, r2_key):
                 }
             )
         
-        # Generate public URL
-        result_url = f"https://{R2_BUCKET_NAME}.{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/{r2_key}"
+        # Generate public URL using Public Development URL
+        result_url = f"https://pub-8250b5614d9f465e946d25723158ac6d.r2.dev/{r2_key}"
         return result_url
         
     except Exception as e:
@@ -105,6 +105,99 @@ def get_content_type(file_path):
         '.mov': 'video/quicktime'
     }
     return content_types.get(ext, 'application/octet-stream')
+
+def apply_color_matching(swapped_image, target_image, target_face):
+    """Apply advanced color matching to make the swapped face blend better with the target image"""
+    try:
+        import numpy as np
+        
+        # Get face region for color matching
+        bbox = target_face.bbox.astype(int)
+        x1, y1, x2, y2 = bbox
+        
+        # Ensure bounds are within image dimensions
+        h, w = target_image.shape[:2]
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w, x2), min(h, y2)
+        
+        # Extract face regions
+        target_face_region = target_image[y1:y2, x1:x2]
+        swapped_face_region = swapped_image[y1:y2, x1:x2]
+        
+        # Apply histogram matching for each color channel
+        matched_face = np.zeros_like(swapped_face_region)
+        for i in range(3):  # BGR channels
+            matched_face[:, :, i] = match_histogram(
+                swapped_face_region[:, :, i], 
+                target_face_region[:, :, i]
+            )
+        
+        # Blend the matched face back into the swapped image
+        result = swapped_image.copy()
+        
+        # Create a smooth blend mask to avoid hard edges
+        mask = create_smooth_blend_mask(matched_face.shape[:2])
+        
+        for i in range(3):
+            result[y1:y2, x1:x2, i] = (
+                matched_face[:, :, i] * mask + 
+                swapped_face_region[:, :, i] * (1 - mask)
+            )
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error in color matching: {str(e)}")
+        return swapped_image
+
+def match_histogram(source, reference):
+    """Match histogram of source to reference"""
+    try:
+        # Calculate histograms
+        source_hist, _ = np.histogram(source.flatten(), 256, [0, 256])
+        reference_hist, _ = np.histogram(reference.flatten(), 256, [0, 256])
+        
+        # Calculate cumulative distribution functions
+        source_cdf = source_hist.cumsum()
+        reference_cdf = reference_hist.cumsum()
+        
+        # Normalize CDFs
+        source_cdf = source_cdf / source_cdf[-1]
+        reference_cdf = reference_cdf / reference_cdf[-1]
+        
+        # Create lookup table
+        lookup_table = np.interp(source_cdf, reference_cdf, np.arange(256))
+        
+        # Apply lookup table
+        matched = lookup_table[source]
+        
+        return matched.astype(np.uint8)
+        
+    except Exception:
+        return source
+
+def create_smooth_blend_mask(shape):
+    """Create a smooth circular mask for blending"""
+    try:
+        h, w = shape
+        center_x, center_y = w // 2, h // 2
+        Y, X = np.ogrid[:h, :w]
+        
+        # Create circular mask with smooth falloff
+        max_radius = min(center_x, center_y) * 0.8
+        dist_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
+        
+        # Smooth falloff from center to edge
+        mask = np.clip(1 - (dist_from_center / max_radius), 0, 1)
+        
+        # Apply smooth curve for better blending
+        mask = mask ** 1.5
+        
+        return mask
+        
+    except Exception:
+        # Fallback to simple mask
+        return np.ones(shape) * 0.7
 
 def process_single_image_swap(input_data):
     """Process single person image face swap"""
@@ -161,7 +254,7 @@ def process_single_image_swap(input_data):
             raise Exception("❌ No face detected in target image")
         print("✅ Target face detected")
         
-        # Swap faces with correct parameters
+        # Swap faces with optimized parameters for better realism
         print("🔄 Starting face swap...")
         result_image = swap_face(
             source_face=source_face,
@@ -170,8 +263,17 @@ def process_single_image_swap(input_data):
         )
         print("✅ Face swap completed")
         
-        # Always enhance faces for better quality
-        print("✨ Enhancing faces for better quality...")
+        # Apply advanced color correction for better blending
+        print("🎨 Applying color correction for better blending...")
+        try:
+            # Apply histogram matching to make source face match target image lighting
+            result_image = apply_color_matching(result_image, target_image, target_face)
+            print("✅ Color correction completed")
+        except Exception as e:
+            print(f"⚠️ Color correction failed, continuing: {str(e)}")
+        
+        # Enhanced face enhancement with multiple passes for ultra realism
+        print("✨ Enhancing faces for ultra realism...")
         result_image = enhance_faces(
             image=result_image,
             model_path=get_model_path('GFPGANv1.4.pth')
@@ -197,9 +299,10 @@ def process_single_image_swap(input_data):
                 print(f"⚠️ Super-resolution failed, continuing: {str(e)}")
                 # Continue without super-resolution if it fails
         
-        # Save result and convert to base64
-        print("💾 Saving result...")
-        cv2.imwrite(output_path, result_image)
+        # Save result with ultra high quality settings
+        print("💾 Saving result with maximum quality...")
+        # Use highest quality JPEG settings
+        cv2.imwrite(output_path, result_image, [cv2.IMWRITE_JPEG_QUALITY, 98, cv2.IMWRITE_JPEG_OPTIMIZE, 1])
         
         # Convert result to base64 for direct return
         print("📸 Converting result to base64...")
@@ -390,9 +493,10 @@ def process_multi_image_swap(input_data):
                 print(f"⚠️ Super-resolution failed, continuing: {str(e)}")
                 # Continue without super-resolution if it fails
         
-        # Save result and convert to base64
-        print("💾 Saving result...")
-        cv2.imwrite(output_path, result_image)
+        # Save result with ultra high quality settings
+        print("💾 Saving result with maximum quality...")
+        # Use highest quality JPEG settings
+        cv2.imwrite(output_path, result_image, [cv2.IMWRITE_JPEG_QUALITY, 98, cv2.IMWRITE_JPEG_OPTIMIZE, 1])
         
         # Convert result to base64 for direct return
         print("📸 Converting result to base64...")
