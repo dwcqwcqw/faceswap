@@ -416,7 +416,15 @@ def process_multi_image_swap(input_data):
             else:
                 raise Exception("❌ No faces detected in target image")
         else:
-            print(f"✅ {len(target_faces)} target face(s) detected")
+            # 🔧 CRITICAL FIX: Sort faces in the same order as frontend
+            # Sort by Y coordinate first (top to bottom), then by X coordinate (left to right)
+            # This ensures consistent mapping between frontend display and backend processing
+            target_faces.sort(key=lambda face: (face.bbox[1], face.bbox[0]))  # bbox format: [x1, y1, x2, y2]
+            
+            print(f"✅ {len(target_faces)} target face(s) detected and sorted (top-to-bottom, left-to-right)")
+            for i, face in enumerate(target_faces):
+                x1, y1, x2, y2 = face.bbox
+                print(f"   Face {i}: position ({x1:.0f}, {y1:.0f}) confidence {face.det_score:.3f}")
         
         # Process face swapping
         print("🔄 Starting multi-face swap...")
@@ -424,10 +432,17 @@ def process_multi_image_swap(input_data):
         
         if face_mappings:
             # New mode: specific source face for each detected face
+            print(f"📋 Face mappings received: {list(face_mappings.keys())}")
+            print(f"📋 Available source faces: {list(source_faces.keys())}")
+            
             for i, target_face in enumerate(target_faces):
                 face_key = f"face_{i}"
+                x1, y1, x2, y2 = target_face.bbox
+                print(f"   🎯 Processing target face {i}: position ({x1:.0f}, {y1:.0f})")
+                
                 if face_key in source_faces:
                     source_path = source_faces[face_key]
+                    print(f"   📁 Using source image: {source_path}")
                     source_image = cv2.imread(source_path)
                     if source_image is not None:
                         source_face = get_one_face(source_image)
@@ -438,13 +453,13 @@ def process_multi_image_swap(input_data):
                                 target_face=target_face,
                                 temp_frame=result_image
                             )
-                            print(f"   ✅ Face {i+1} swap completed")
+                            print(f"   ✅ Face {i+1} swap completed successfully")
                         else:
                             print(f"   ⚠️ No face detected in source image for face {i+1}, skipping")
                     else:
                         print(f"   ⚠️ Failed to load source image for face {i+1}, skipping")
                 else:
-                    print(f"   ⚠️ No source mapping for face {i+1}, skipping")
+                    print(f"   ⚠️ No source mapping for face {i+1} (key: {face_key}), skipping")
         else:
             # Legacy mode: use single source for all faces
             source_image = cv2.imread(source_path)
@@ -949,8 +964,37 @@ def process_detect_faces(input_data):
         
         # Detect faces
         print("🔍 Starting face detection...")
-        faces = detect_faces(image)
-        print(f"✅ Face detection completed, found {len(faces)} faces")
+        from modules.face_analyser import get_many_faces
+        
+        # Use get_many_faces for consistency with processing
+        detected_faces = get_many_faces(image)
+        if not detected_faces:
+            detected_faces = []
+        
+        # 🔧 CRITICAL FIX: Sort faces in the same order as frontend and processing
+        # Sort by Y coordinate first (top to bottom), then by X coordinate (left to right)
+        detected_faces.sort(key=lambda face: (face.bbox[1], face.bbox[0]))  # bbox format: [x1, y1, x2, y2]
+        
+        print(f"✅ Face detection completed, found {len(detected_faces)} faces (sorted)")
+        for i, face in enumerate(detected_faces):
+            x1, y1, x2, y2 = face.bbox
+            print(f"   Face {i}: position ({x1:.0f}, {y1:.0f}) confidence {face.det_score:.3f}")
+        
+        # Convert to the expected format
+        faces = []
+        for i, face in enumerate(detected_faces):
+            x1, y1, x2, y2 = face.bbox
+            faces.append({
+                'face_id': i,
+                'confidence': float(face.det_score),
+                'bbox': {
+                    'x': int(x1),
+                    'y': int(y1), 
+                    'width': int(x2 - x1),
+                    'height': int(y2 - y1)
+                },
+                'landmarks': face.landmark_2d_106.tolist() if hasattr(face, 'landmark_2d_106') else []
+            })
         
         # Cleanup
         import shutil
@@ -962,15 +1006,15 @@ def process_detect_faces(input_data):
             'file_type': 'video' if is_video else 'image',
             'faces': [
                 {
-                    'id': face.get('face_id', i),
-                    'confidence': face.get('confidence', 0.9),
-                    'x': face['bbox']['x'] if 'bbox' in face else 0,
-                    'y': face['bbox']['y'] if 'bbox' in face else 0,
-                    'width': face['bbox']['width'] if 'bbox' in face else 0,
-                    'height': face['bbox']['height'] if 'bbox' in face else 0,
-                    'landmarks': face.get('landmarks', [])
+                    'id': face['face_id'],
+                    'confidence': face['confidence'],
+                    'x': face['bbox']['x'],
+                    'y': face['bbox']['y'],
+                    'width': face['bbox']['width'],
+                    'height': face['bbox']['height'],
+                    'landmarks': face['landmarks']
                 }
-                for i, face in enumerate(faces)
+                for face in faces
             ]
         }
         
