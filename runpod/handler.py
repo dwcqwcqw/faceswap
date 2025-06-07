@@ -108,9 +108,8 @@ def get_content_type(file_path):
 
 def apply_color_matching(swapped_image, target_image, target_face):
     """Apply advanced color matching to make the swapped face blend better with the target image"""
+    import numpy as np
     try:
-        import numpy as np
-        
         # Get face region for color matching
         bbox = target_face.bbox.astype(int)
         x1, y1, x2, y2 = bbox
@@ -152,6 +151,7 @@ def apply_color_matching(swapped_image, target_image, target_face):
 
 def match_histogram(source, reference):
     """Match histogram of source to reference"""
+    import numpy as np
     try:
         # Calculate histograms
         source_hist, _ = np.histogram(source.flatten(), 256, [0, 256])
@@ -178,6 +178,7 @@ def match_histogram(source, reference):
 
 def create_smooth_blend_mask(shape):
     """Create a smooth circular mask for blending"""
+    import numpy as np
     try:
         h, w = shape
         center_x, center_y = w // 2, h // 2
